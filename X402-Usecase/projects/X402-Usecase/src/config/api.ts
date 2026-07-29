@@ -1,0 +1,23 @@
+export const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:4021/api/v1';
+
+export const API_ENDPOINTS = {
+  COURSES: `${API_BASE_URL}/courses`,
+  COURSE_SEARCH: `${API_BASE_URL}/courses/search`,
+  COURSE_CATEGORIES: `${API_BASE_URL}/courses/categories`,
+  COURSE_POPULAR: `${API_BASE_URL}/courses/popular`,
+  COURSE_TRENDING: `${API_BASE_URL}/courses/trending`,
+  COURSE_RECOMMENDED: `${API_BASE_URL}/courses/recommended`,
+  COURSE_CATEGORY: (slug: string) => `${API_BASE_URL}/courses/category/${slug}`,
+  COURSE_DETAIL: (id: string) => `${API_BASE_URL}/courses/${id}`,
+  COURSE_DETAIL_SLUG: (slug: string) => `${API_BASE_URL}/courses/slug/${slug}`,
+  AUTH_REGISTER: `${API_BASE_URL}/auth/register`,
+  AUTH_LOGIN: `${API_BASE_URL}/auth/login`,
+  AUTH_LOGOUT: `${API_BASE_URL}/auth/logout`,
+  AUTH_REFRESH: `${API_BASE_URL}/auth/refresh`,
+  AUTH_ME: `${API_BASE_URL}/auth/me`,
+  AUTH_FORGOT_PASSWORD: `${API_BASE_URL}/auth/forgot-password`,
+  AUTH_RESET_PASSWORD: `${API_BASE_URL}/auth/reset-password`,
+  LEARNER_COURSES: `${API_BASE_URL}/learners/courses`,
+  LEARNER_UNLOCK_CHAPTER: `${API_BASE_URL}/learners/chapters/unlock`,
+  LEARNER_UNLOCK_CHAPTER_X402: (chapterId: string) => `${API_BASE_URL}/learners/chapters/${chapterId}/unlock`,
+};
