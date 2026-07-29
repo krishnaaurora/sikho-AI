@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "build": "npm --prefix x402-demo-server install && npm --prefix x402-demo-server run build",
+    "start": "npm --prefix x402-demo-server start"
+  },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "class-variance-authority": "^0.7.1",
