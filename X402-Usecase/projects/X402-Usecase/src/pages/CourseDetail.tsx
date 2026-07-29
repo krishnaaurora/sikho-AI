@@ -315,7 +315,7 @@ const CourseDetailPage: React.FC = () => {
                                 <div className="flex items-center gap-2 text-sm text-gray-500">
                                   <RatingStars rating={related.rating} size="sm" />
                                   <span>{related.rating.toFixed(1)}</span>
-                                  <span>({related.totalReviews.toLocaleString()})</span>
+                                  <span>({related.totalRatings.toLocaleString()})</span>
                                 </div>
                                 <p className="text-lg font-bold text-gray-900 mt-2">
                                   {related.price === 0 ? 'Free' : `${related.currency} ${related.price}`}

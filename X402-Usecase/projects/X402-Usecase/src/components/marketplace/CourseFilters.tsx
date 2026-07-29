@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { courseApi } from '../../utils/api';
-import type { Category, GetCoursesQuery, CourseLevel } from '../../types';
+import type { Category, GetCoursesQuery } from '../../types';
+import { CourseLevel } from '../../types';
 
 interface CourseFiltersProps {
   filters: GetCoursesQuery;

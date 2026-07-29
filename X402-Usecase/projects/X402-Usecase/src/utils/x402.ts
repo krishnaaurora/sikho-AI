@@ -13,7 +13,7 @@ export async function createX402Fetch(walletSigner: any) {
   algodClient.suggestedParams = async () => {
     const params = await originalSuggestedParams()
     // Enforce fee to be minFee (typically 1000 microAlgos / 1mA)
-    const minFee = params.minFee ? Number(params.minFee) : 1000
+    const minFee = params.minFee ? BigInt(params.minFee) : 1000n
     params.fee = minFee
     return params
   }
