@@ -139,6 +139,7 @@ async function seedDatabase() {
       });
       await Lesson.create({
         chapterId: (ch1 as any)._id,
+        courseId: (course1 as any)._id,
         title: "What is Algorand?",
         content: "Algorand is a pure proof-of-stake blockchain network...",
         duration: 15,
@@ -146,6 +147,7 @@ async function seedDatabase() {
       });
       await Lesson.create({
         chapterId: (ch1 as any)._id,
+        courseId: (course1 as any)._id,
         title: "Account Creation and Assets",
         content: "How to manage keys, addresses, and ASAs on Algorand.",
         duration: 25,
@@ -159,6 +161,7 @@ async function seedDatabase() {
       });
       await Lesson.create({
         chapterId: (ch2 as any)._id,
+        courseId: (course1 as any)._id,
         title: "Writing PyTeal Contracts",
         content: "Learn how PyTeal compiler translates Python to TEAL bytecode.",
         duration: 35,
