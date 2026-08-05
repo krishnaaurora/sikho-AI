@@ -12,10 +12,13 @@ const app = express();
 
 // Security and configuration middleware
 app.use(helmet());
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'];
+const allowedOrigins = appConfig.corsOrigin === "*" 
+  ? [] 
+  : appConfig.corsOrigin.split(",").map(o => o.trim());
+
 app.use(cors({ 
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    if (!origin || appConfig.corsOrigin === "*" || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
