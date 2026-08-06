@@ -3,12 +3,12 @@ import { env } from "../../config/env";
 import { decodePaymentSignatureHeader } from "@x402/core/http";
 import { logger } from "../../utils/logger";
 
-/** CAIP-2 for Algorand TestNet */
-const ALGORAND_TESTNET_CAIP2 =
-  "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=";
+/** CAIP-2 for Algorand MainNet */
+const ALGORAND_MAINNET_CAIP2 =
+  "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
 
-/** USDC ASA on Algorand TestNet */
-const USDC_TESTNET_ASA_ID = "10458941";
+/** USDC ASA on Algorand MainNet */
+const USDC_MAINNET_ASA_ID = "31566704";
 
 /** Decimal places for USDC */
 const USDC_DECIMALS = 6;
@@ -38,16 +38,19 @@ export function buildPaymentRequired(
     accepts: [
       {
         scheme: "exact",
-        network: ALGORAND_TESTNET_CAIP2,
+        network: ALGORAND_MAINNET_CAIP2,
         payTo,
         amount: amountStr,
-        asset: USDC_TESTNET_ASA_ID,
+        asset: USDC_MAINNET_ASA_ID,
         extra: {
           name: "USDC",
           version: "1",
           resource: requestUrl,
+          tag: "x402-global-challenge",
+          discovery: true,
+          category: "education",
         },
-        description: `Unlock chapter ${chapterId} for $${priceUsd.toFixed(2)} USDC`,
+        description: `Unlocks one premium course chapter with AI explanations, personalized study materials, and customized quiz generation for chapter ID: ${chapterId} for $${priceUsd.toFixed(2)} USDC`,
         maxTimeoutSeconds: 300,
       },
     ],

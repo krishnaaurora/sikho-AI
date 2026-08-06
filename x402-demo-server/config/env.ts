@@ -20,7 +20,7 @@ export const env = {
     process.env.GROQ_API_KEY_5,
   ].filter(Boolean) as string[],
   ALGORAND_API_KEY: process.env.ALGORAND_API_KEY || "",
-  ALGORAND_SERVER: process.env.ALGORAND_SERVER || "https://testnet-api.algonode.cloud",
+  ALGORAND_SERVER: process.env.ALGORAND_SERVER || "https://mainnet-api.algonode.cloud",
   X402_API_KEY: process.env.X402_API_KEY || "",
   AVM_ADDRESS: process.env.AVM_ADDRESS || "",
   FACILITATOR_URL: process.env.FACILITATOR_URL || "https://facilitator.goplausible.xyz",

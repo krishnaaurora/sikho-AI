@@ -91,8 +91,16 @@ const CourseDetailPage: React.FC = () => {
     );
   }
 
-  const minChapterPrice = getMinChapterPrice(course.chapters);
-  const ratingDistribution = getRatingDistribution(course.reviews);
+  const chapters = course.chapters || [];
+  const reviews = course.reviews || [];
+  const skills = course.skills || [];
+  const requirements = course.requirements || [];
+  const whoIsThisFor = course.whoIsThisFor || [];
+  const relatedCourses = course.relatedCourses || [];
+  const courseIncludes = course.courseIncludes || [];
+
+  const minChapterPrice = getMinChapterPrice(chapters);
+  const ratingDistribution = getRatingDistribution(reviews);
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
@@ -192,7 +200,7 @@ const CourseDetailPage: React.FC = () => {
                   )}
 
                   <div className="space-y-3">
-                    {course.courseIncludes.map((item, index) => (
+                    {courseIncludes.map((item, index) => (
                       <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
                         <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -250,11 +258,11 @@ const CourseDetailPage: React.FC = () => {
                     </section>
 
                     {/* Skills */}
-                    {course.skills.length > 0 && (
+                    {skills.length > 0 && (
                       <section className="bg-white rounded-2xl shadow-sm p-8">
                         <h2 className="text-2xl font-bold text-gray-900 mb-6">Skills You'll Learn</h2>
                         <div className="flex flex-wrap gap-3">
-                          {course.skills.map((skill, index) => (
+                          {skills.map((skill, index) => (
                             <span
                               key={index}
                               className="px-4 py-2 bg-blue-50 text-blue-700 rounded-full text-sm font-medium"
@@ -267,11 +275,11 @@ const CourseDetailPage: React.FC = () => {
                     )}
 
                     {/* Requirements */}
-                    {course.requirements.length > 0 && (
+                    {requirements.length > 0 && (
                       <section className="bg-white rounded-2xl shadow-sm p-8">
                         <h2 className="text-2xl font-bold text-gray-900 mb-4">Requirements</h2>
                         <ul className="list-disc list-inside space-y-2 text-gray-700">
-                          {course.requirements.map((req, index) => (
+                          {requirements.map((req, index) => (
                             <li key={index}>{req}</li>
                           ))}
                         </ul>
@@ -279,11 +287,11 @@ const CourseDetailPage: React.FC = () => {
                     )}
 
                     {/* Who This is For */}
-                    {course.whoIsThisFor.length > 0 && (
+                    {whoIsThisFor.length > 0 && (
                       <section className="bg-white rounded-2xl shadow-sm p-8">
                         <h2 className="text-2xl font-bold text-gray-900 mb-4">Who This Course Is For</h2>
                         <ul className="list-disc list-inside space-y-2 text-gray-700">
-                          {course.whoIsThisFor.map((item, index) => (
+                          {whoIsThisFor.map((item, index) => (
                             <li key={index}>{item}</li>
                           ))}
                         </ul>
@@ -291,11 +299,11 @@ const CourseDetailPage: React.FC = () => {
                     )}
 
                     {/* Related Courses */}
-                    {course.relatedCourses.length > 0 && (
+                    {relatedCourses.length > 0 && (
                       <section className="bg-white rounded-2xl shadow-sm p-8">
                         <h2 className="text-2xl font-bold text-gray-900 mb-6">Related Courses</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {course.relatedCourses.map(related => (
+                          {relatedCourses.map(related => (
                             <Link
                               key={related._id}
                               to={`/courses/${related._id}`}
@@ -331,7 +339,7 @@ const CourseDetailPage: React.FC = () => {
 
                 {activeTab === 'curriculum' && (
                   <div className="space-y-4">
-                    {course.chapters.map(chapter => (
+                    {chapters.map(chapter => (
                       <div
                         key={chapter._id}
                         className="border border-gray-200 rounded-xl overflow-hidden bg-white"
@@ -365,7 +373,7 @@ const CourseDetailPage: React.FC = () => {
                               <p className="text-gray-600 text-sm mb-4">{chapter.description}</p>
                             )}
                             <div className="space-y-2">
-                              {chapter.lessons.map(lesson => (
+                              {(chapter.lessons || []).map(lesson => (
                                 <div
                                   key={lesson._id}
                                   className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
@@ -421,7 +429,7 @@ const CourseDetailPage: React.FC = () => {
                                 />
                               </div>
                               <span className="text-sm text-gray-500 w-8 text-right">
-                                {course.reviews.filter(r => r.rating === star).length}
+                                {reviews.filter(r => r.rating === star).length}
                               </span>
                             </div>
                           ))}
@@ -431,7 +439,7 @@ const CourseDetailPage: React.FC = () => {
 
                     {/* Review List */}
                     <div className="space-y-4">
-                      {course.reviews.map(review => (
+                      {reviews.map(review => (
                         <div key={review._id} className="bg-white rounded-2xl shadow-sm p-6">
                           <div className="flex items-start gap-4">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0">
@@ -459,7 +467,7 @@ const CourseDetailPage: React.FC = () => {
                           </div>
                         </div>
                       ))}
-                      {course.reviews.length === 0 && (
+                      {reviews.length === 0 && (
                         <div className="bg-white rounded-2xl shadow-sm p-8 text-center text-gray-500">
                           No reviews yet.
                         </div>
@@ -473,7 +481,7 @@ const CourseDetailPage: React.FC = () => {
                     <section className="bg-white rounded-2xl shadow-sm p-8 mb-6">
                       <h2 className="text-2xl font-bold text-gray-900 mb-6">Chapter Pricing</h2>
                       <div className="space-y-3">
-                        {course.chapters.map(chapter => (
+                        {chapters.map(chapter => (
                           <div key={chapter._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                             <div>
                               <h3 className="font-semibold text-gray-900">{chapter.title}</h3>
