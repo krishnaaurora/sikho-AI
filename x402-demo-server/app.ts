@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
@@ -7,6 +7,80 @@ import routes from "./routes";
 import { notFoundHandler } from "./middlewares/notFound.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
 import { appConfig } from "./config/app.config";
+
+// ---------------------------------------------------------------------------
+// Merchant branding constants for GoPlausible x402 dashboard enrichment.
+// The facilitator scrapes the root URL (/) of your domain to read these tags.
+// See: https://docs.goplausible.xyz/x402/merchant-branding
+// ---------------------------------------------------------------------------
+const MERCHANT = {
+  name: "Sikho AI",
+  siteName: "Sikho AI",
+  description:
+    "AI-powered micro-payment learning platform — unlock premium course chapters with USDC on Algorand via x402.",
+  /** Public logo hosted on the Vercel deployment */
+  logoUrl: "https://sikho-ai-37ni.vercel.app/logo.png",
+  /** Canonical domain used in OG tags */
+  siteUrl: "https://sikho-ai-37ni.vercel.app",
+  /** x402 discovery tags already set in buildPaymentRequired() */
+  tag: "x402-global-challenge",
+  category: "education",
+  network: "Algorand MainNet",
+};
+
+/**
+ * Renders the merchant-branding HTML page served at GET /.
+ * The GoPlausible facilitator and any OG-aware crawler will read:
+ *   og:site_name  → Merchant Name on the dashboard
+ *   og:title      → Fallback Merchant Name
+ *   og:description → Merchant description
+ *   og:image       → Merchant logo (must be a public HTTPS URL)
+ */
+function buildMerchantHtml(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Primary merchant identity — read by GoPlausible x402 facilitator -->
+  <title>${MERCHANT.name}</title>
+  <meta name="description" content="${MERCHANT.description}" />
+
+  <!-- Open Graph tags (merchant enrichment source for GoPlausible dashboard) -->
+  <meta property="og:site_name" content="${MERCHANT.siteName}" />
+  <meta property="og:title"     content="${MERCHANT.name}" />
+  <meta property="og:description" content="${MERCHANT.description}" />
+  <meta property="og:image"     content="${MERCHANT.logoUrl}" />
+  <meta property="og:url"       content="${MERCHANT.siteUrl}" />
+  <meta property="og:type"      content="website" />
+
+  <!-- x402 / Algorand Global Challenge discovery signals -->
+  <meta name="x402:tag"      content="${MERCHANT.tag}" />
+  <meta name="x402:network"  content="${MERCHANT.network}" />
+  <meta name="x402:category" content="${MERCHANT.category}" />
+  <meta name="x402:discovery" content="true" />
+
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',system-ui,sans-serif;background:#0a0a0f;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center}
+    .card{text-align:center;padding:3rem 4rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:1.5rem;backdrop-filter:blur(12px)}
+    img.logo{width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:1.5rem;border:3px solid rgba(99,102,241,.6)}
+    h1{font-size:2rem;font-weight:700;background:linear-gradient(135deg,#818cf8,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.75rem}
+    p{color:#94a3b8;max-width:480px;line-height:1.6;margin-bottom:1.5rem}
+    .badge{display:inline-flex;align-items:center;gap:.5rem;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:2rem;padding:.35rem 1rem;font-size:.8rem;color:#818cf8}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img class="logo" src="${MERCHANT.logoUrl}" alt="${MERCHANT.name} logo" />
+    <h1>${MERCHANT.name}</h1>
+    <p>${MERCHANT.description}</p>
+    <span class="badge">⛓ ${MERCHANT.tag} &nbsp;|&nbsp; 🎓 ${MERCHANT.category}</span>
+  </div>
+</body>
+</html>`;
+}
 
 const app = express();
 
@@ -34,6 +108,37 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Logging middleware
 app.use(morganMiddleware);
+
+// ---------------------------------------------------------------------------
+// Root route — merchant branding for GoPlausible x402 dashboard enrichment.
+// Content-negotiated: HTML for browsers/crawlers, JSON for API clients.
+// ---------------------------------------------------------------------------
+app.get("/", (req: Request, res: Response) => {
+  const acceptsJson =
+    req.headers["accept"]?.includes("application/json") &&
+    !req.headers["accept"]?.includes("text/html");
+
+  if (acceptsJson) {
+    // API clients / x402 tooling — return machine-readable discovery info
+    return res.json({
+      name: MERCHANT.name,
+      description: MERCHANT.description,
+      logo: MERCHANT.logoUrl,
+      site: MERCHANT.siteUrl,
+      x402: {
+        tag: MERCHANT.tag,
+        network: MERCHANT.network,
+        category: MERCHANT.category,
+        discovery: true,
+      },
+      api: `${MERCHANT.siteUrl}${appConfig.apiPrefix}`,
+    });
+  }
+
+  // Browsers and OG crawlers (including GoPlausible facilitator re-scrape)
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  return res.send(buildMerchantHtml());
+});
 
 // API routes
 app.use(appConfig.apiPrefix, routes);
