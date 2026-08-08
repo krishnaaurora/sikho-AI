@@ -31,7 +31,7 @@ export const errorHandler = (
   return sendErrorResponse(
     res,
     null,
-    "Internal Server Error",
+    error.message as string,
     500
   );
 };

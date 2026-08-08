@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
+import path from "path";
 import { morganMiddleware } from "./config/logger.config";
 import routes from "./routes";
 import { notFoundHandler } from "./middlewares/notFound.middleware";
@@ -86,6 +87,21 @@ const app = express();
 
 // Security and configuration middleware
 app.use(helmet());
+
+// ---------------------------------------------------------------------------
+// Static assets — serves /logo.png (and any other files in public/) directly.
+// Required so that `backend_url/logo.png` returns HTTP 200 for GoPlausible
+// merchant enrichment verification.
+// ---------------------------------------------------------------------------
+app.use(
+  express.static(path.join(__dirname, "public"), {
+    // Allow logo to be fetched cross-origin (scrapers, dashboards, browsers)
+    setHeaders(res) {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+    },
+  })
+);
 const allowedOrigins = appConfig.corsOrigin === "*" 
   ? [] 
   : appConfig.corsOrigin.split(",").map(o => o.trim());

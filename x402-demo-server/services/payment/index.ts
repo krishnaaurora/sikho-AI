@@ -1,7 +1,16 @@
 import { env } from "../../config/env";
-// @ts-ignore
-import { decodePaymentSignatureHeader } from "@x402/core/http";
 import { logger } from "../../utils/logger";
+import { AppError } from "../../utils/errors";
+
+// @ts-ignore — @x402/core/http types may not be declared
+let decodePaymentSignatureHeader: (header: string) => any;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  decodePaymentSignatureHeader = require("@x402/core/http").decodePaymentSignatureHeader;
+} catch (e) {
+  logger.warn("@x402/core/http not available, will forward raw header to facilitator");
+  decodePaymentSignatureHeader = (header: string) => header;
+}
 
 /** CAIP-2 for Algorand MainNet */
 const ALGORAND_MAINNET_CAIP2 =
@@ -68,34 +77,61 @@ export async function verifyX402Payment(
   const facilitatorUrl =
     env.FACILITATOR_URL || "https://facilitator.goplausible.xyz";
 
-  const paymentPayload = decodePaymentSignatureHeader(paymentHeader);
-
-  const res = await fetch(`${facilitatorUrl}/settle`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      x402Version: 2,
-      paymentPayload,
-      paymentRequirements: (paymentRequired as any).accepts[0],
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Facilitator rejected payment: ${res.status} ${text}`);
+  // Decode the payment signature header — fall back to raw string if decoder unavailable
+  let paymentPayload: any;
+  try {
+    paymentPayload = decodePaymentSignatureHeader(paymentHeader);
+  } catch (decodeErr: any) {
+    logger.error(`Failed to decode X-PAYMENT header: ${decodeErr?.message}`);
+    throw new AppError(`Invalid payment header: ${decodeErr?.message}`, 400);
   }
 
-  const body = (await res.json()) as any;
-  logger.info(`Facilitator response: ${JSON.stringify(body)}`);
+  const settleBody = {
+    x402Version: 2,
+    paymentPayload,
+    paymentRequirements: (paymentRequired as any).accepts[0],
+  };
+
+  logger.info(`Sending to facilitator (${facilitatorUrl}/settle): ${JSON.stringify(settleBody)}`);
+
+  let res: Response;
+  try {
+    res = await fetch(`${facilitatorUrl}/settle`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settleBody),
+    }) as unknown as Response;
+  } catch (networkErr: any) {
+    logger.error(`Network error reaching facilitator: ${networkErr?.message}`);
+    throw new AppError(`Cannot reach payment facilitator: ${networkErr?.message}`, 502);
+  }
+
+  const rawText = await (res as any).text();
+  logger.info(`Facilitator raw response [${(res as any).status}]: ${rawText}`);
+
+  if (!(res as any).ok) {
+    throw new AppError(
+      `Facilitator rejected payment (${(res as any).status}): ${rawText}`,
+      402
+    );
+  }
+
+  let body: any;
+  try {
+    body = JSON.parse(rawText);
+  } catch {
+    throw new AppError(`Facilitator returned non-JSON response: ${rawText}`, 502);
+  }
 
   if (!body.success) {
-    throw new Error(
-      `Payment settlement failed: ${body.errorMessage || body.errorReason || "unknown error"}`
+    throw new AppError(
+      `Payment settlement failed: ${body.errorMessage || body.errorReason || body.error || "unknown error"}`,
+      402
     );
   }
 
   return {
-    transactionHash: body.transaction || body.txid || "",
+    transactionHash: body.transaction || body.txid || body.transactionId || "",
     payer: body.payer || "",
   };
 }
