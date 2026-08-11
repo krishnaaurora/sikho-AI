@@ -32,6 +32,14 @@ function usdToUSDCAtomicStr(usd: number): string {
 /**
  * Build the payment-required response body that the X402 client expects.
  * Returns a structured object matching the X402 payment-required spec.
+ *
+ * IMPORTANT: The `resource` URL is what the GoPlausible facilitator uses to:
+ *   1. Determine MERCHANT SITE domain (domain of the resource URL)
+ *   2. Scrape OG tags from the domain root (logo, name, description)
+ *   3. Register the URL as a known x402 endpoint (shown in RESOURCES)
+ *
+ * We use the PUBLIC_SITE_URL (Vercel frontend) so the facilitator can reach it.
+ * Using the raw Express requestUrl would give localhost:4021 which is unreachable.
  */
 export function buildPaymentRequired(
   chapterId: string,
@@ -40,6 +48,11 @@ export function buildPaymentRequired(
 ): object {
   const payTo = env.AVM_ADDRESS;
   const amountStr = usdToUSDCAtomicStr(priceUsd);
+
+  // Use the canonical Vercel URL so GoPlausible facilitator can reach and scrape it.
+  // Pattern: /courses/:courseId  (matches App.tsx route structure)
+  // The chapterId is used as the path segment — facilitator will show this as a resource endpoint.
+  const resourceUrl = `${env.PUBLIC_SITE_URL}/courses/${chapterId}`;
 
   return {
     x402Version: 2,
@@ -54,7 +67,7 @@ export function buildPaymentRequired(
         extra: {
           name: "USDC",
           version: "1",
-          resource: requestUrl,
+          resource: resourceUrl,
           tag: "x402-global-challenge",
           discovery: true,
           category: "education",
@@ -137,6 +150,6 @@ export async function verifyX402Payment(
 }
 
 // Placeholder service stubs for other payment routes
-export const createPaymentService = async () => {};
-export const getPaymentHistoryService = async () => {};
-export const getPaymentByIdService = async () => {};
+export const createPaymentService = async () => { };
+export const getPaymentHistoryService = async () => { };
+export const getPaymentByIdService = async () => { };

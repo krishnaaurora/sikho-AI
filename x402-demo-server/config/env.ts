@@ -24,4 +24,11 @@ export const env = {
   X402_API_KEY: process.env.X402_API_KEY || "",
   AVM_ADDRESS: process.env.AVM_ADDRESS || "",
   FACILITATOR_URL: process.env.FACILITATOR_URL || "https://facilitator.goplausible.xyz",
+  /**
+   * Canonical public-facing URL for this merchant's site.
+   * Used in x402 `resource` field and OG tags so the GoPlausible facilitator
+   * can scrape merchant branding (logo, name, description, MERCHANT SITE domain).
+   * Must be the Vercel production URL — NOT localhost.
+   */
+  PUBLIC_SITE_URL: process.env.PUBLIC_SITE_URL || "https://sikho-ai-37ni.vercel.app",
 };

@@ -8,6 +8,7 @@ import routes from "./routes";
 import { notFoundHandler } from "./middlewares/notFound.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
 import { appConfig } from "./config/app.config";
+import { env } from "./config/env";
 
 // ---------------------------------------------------------------------------
 // Merchant branding constants for GoPlausible x402 dashboard enrichment.
@@ -19,11 +20,11 @@ const MERCHANT = {
   siteName: "Sikho AI",
   description:
     "AI-powered micro-payment learning platform — unlock premium course chapters with USDC on Algorand via x402.",
-  /** Public logo hosted on the Vercel deployment */
-  logoUrl: "https://sikho-ai-37ni.vercel.app/logo.png",
-  /** Canonical domain used in OG tags */
-  siteUrl: "https://sikho-ai-37ni.vercel.app",
-  /** x402 discovery tags already set in buildPaymentRequired() */
+  /** Logo served from the Vercel deployment — driven by PUBLIC_SITE_URL env var */
+  get logoUrl() { return `${env.PUBLIC_SITE_URL}/logo.png`; },
+  /** Canonical site URL — driven by PUBLIC_SITE_URL env var (set to Vercel domain) */
+  get siteUrl() { return env.PUBLIC_SITE_URL; },
+  /** x402 discovery tags */
   tag: "x402-global-challenge",
   category: "education",
   network: "Algorand MainNet",
@@ -102,18 +103,18 @@ app.use(
     },
   })
 );
-const allowedOrigins = appConfig.corsOrigin === "*" 
-  ? [] 
+const allowedOrigins = appConfig.corsOrigin === "*"
+  ? []
   : appConfig.corsOrigin.split(",").map(o => o.trim());
 
-app.use(cors({ 
+app.use(cors({
   origin: function (origin, callback) {
     if (!origin || appConfig.corsOrigin === "*" || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
-  }, 
+  },
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization', 'X-PAYMENT', 'PAYMENT-SIGNATURE', 'Access-Control-Expose-Headers'],
   exposedHeaders: ['X-PAYMENT-RESPONSE', 'Access-Control-Expose-Headers', 'PAYMENT-REQUIRED', 'PAYMENT-RESPONSE'],
