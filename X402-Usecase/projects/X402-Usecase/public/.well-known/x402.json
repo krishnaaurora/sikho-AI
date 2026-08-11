@@ -1,0 +1,13 @@
+{
+  "x402Version": 2,
+  "merchant": {
+    "name": "Sikho AI",
+    "description": "AI-powered micro-payment learning platform — unlock premium course chapters with USDC on Algorand via x402.",
+    "logo": "https://sikho-ai-37ni.vercel.app/logo.png",
+    "site": "https://sikho-ai-37ni.vercel.app",
+    "category": "education",
+    "network": "Algorand MainNet",
+    "tag": "x402-global-challenge",
+    "discovery": true
+  }
+}
