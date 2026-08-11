@@ -7,6 +7,7 @@ import {
   unlockChapterService,
 } from "../../services/learner";
 import { buildPaymentRequired, verifyX402Payment } from "../../services/payment";
+import { authenticate, requireLearner } from "../../middlewares/auth.middleware";
 // @ts-ignore
 import { encodePaymentRequiredHeader } from "@x402/core/http";
 import Chapter from "../../models/Chapter.model";
@@ -44,7 +45,6 @@ export const getCourseById = async (req: Request, res: Response) => {};
  * - With X-PAYMENT header: verifies via facilitator, unlocks chapter, returns purchase.
  */
 export const unlockChapterX402 = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req as any).user._id;
   const chapterId = String(req.params.chapterId);
 
   // Look up the chapter to get the price
@@ -59,13 +59,26 @@ export const unlockChapterX402 = asyncHandler(async (req: Request, res: Response
 
   const paymentHeader = (req.headers["x-payment"] || req.headers["payment-signature"]) as string | undefined;
 
-  // No payment header → return 402 with payment requirements
+  // No payment header → return 402 with payment requirements (accessible publicly for crawlers/Bazaar)
   if (!paymentHeader) {
     res.setHeader("Content-Type", "application/json");
     res.setHeader("Access-Control-Expose-Headers", "X-PAYMENT-RESPONSE, PAYMENT-REQUIRED, PAYMENT-RESPONSE");
     res.setHeader("PAYMENT-REQUIRED", encodePaymentRequiredHeader(paymentRequired as any));
     return res.status(402).json(paymentRequired);
   }
+
+  // Payment header present → Perform authentication and role checks dynamically
+  await new Promise<void>((resolve, reject) => {
+    authenticate(req as any, res, (err) => {
+      if (err) return reject(err);
+      requireLearner(req as any, res, (err2) => {
+        if (err2) return reject(err2);
+        resolve();
+      });
+    });
+  });
+
+  const userId = (req as any).user._id;
 
   // Payment header present → verify it with the facilitator
   logger.info(`Verifying X402 payment for chapter ${chapterId}`);

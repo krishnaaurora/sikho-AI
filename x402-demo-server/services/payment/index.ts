@@ -10,9 +10,7 @@ try {
 } catch (e) {
   logger.warn("@x402/core/http not available, will forward raw header to facilitator");
   decodePaymentSignatureHeader = (header: string) => header;
-}
-
-import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
+}import { declareDiscoveryExtension } from "@x402-avm/extensions/bazaar";
 
 /** CAIP-2 for Algorand MainNet */
 const ALGORAND_MAINNET_CAIP2 =
@@ -78,6 +76,11 @@ export function buildPaymentRequired(
       }
     }
   });
+
+  // Manually enrich the HTTP method info since we are not registering via standard server middleware adapter
+  if (discoveryExtension.bazaar?.info?.input) {
+    (discoveryExtension.bazaar.info.input as any).method = "GET";
+  }
 
   return {
     x402Version: 2,
