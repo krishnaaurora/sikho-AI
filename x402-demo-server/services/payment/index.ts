@@ -113,7 +113,7 @@ export function buildPaymentRequired(
           tag: "x402-global-challenge",
           discovery: true,
           category: "education",
-          feePayer: payTo,
+          feePayer: "ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA",
         },
         description: `Unlocks one premium course chapter with AI explanations, personalized study materials, and customized quiz generation for chapter ID: ${chapterId} for $${priceUsd.toFixed(2)} USDC`,
         maxTimeoutSeconds: 300,
