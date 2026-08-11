@@ -1,3 +1,4 @@
+
 import { env } from "../../config/env";
 import { logger } from "../../utils/logger";
 import { AppError } from "../../utils/errors";
@@ -80,6 +81,12 @@ export function buildPaymentRequired(
   if (discoveryExtension.bazaar?.info?.input) {
     (discoveryExtension.bazaar.info.input as any).method = "GET";
   }
+  if (discoveryExtension.bazaar?.schema?.properties?.input?.required) {
+    const reqs = discoveryExtension.bazaar.schema.properties.input.required as any[];
+    if (!reqs.includes("method")) {
+      reqs.push("method");
+    }
+  }
 
   return {
     x402Version: 2,
@@ -102,6 +109,7 @@ export function buildPaymentRequired(
           tag: "x402-global-challenge",
           discovery: true,
           category: "education",
+          feePayer: payTo,
         },
         description: `Unlocks one premium course chapter with AI explanations, personalized study materials, and customized quiz generation for chapter ID: ${chapterId} for $${priceUsd.toFixed(2)} USDC`,
         maxTimeoutSeconds: 300,
