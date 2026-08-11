@@ -86,6 +86,10 @@ function buildMerchantHtml(): string {
 
 const app = express();
 
+// Preserve the public HTTPS URL behind Render / any reverse proxy so the
+// x402 challenge advertises a probeable public resource URL.
+app.set("trust proxy", 1);
+
 // Security and configuration middleware
 app.use(helmet());
 

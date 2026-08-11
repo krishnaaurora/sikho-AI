@@ -54,7 +54,9 @@ export const unlockChapterX402 = asyncHandler(async (req: Request, res: Response
     throw new AppError("Chapter not found", 404);
   }
 
-  const requestUrl = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+  const forwardedProto = String(req.headers["x-forwarded-proto"] || req.protocol || "http");
+  const forwardedHost = String(req.headers["x-forwarded-host"] || req.get("host") || "");
+  const requestUrl = `${forwardedProto}://${forwardedHost}${req.originalUrl}`;
   const paymentRequired = buildPaymentRequired(chapterId, chapter.price ?? 0, requestUrl);
 
   const paymentHeader = (req.headers["x-payment"] || req.headers["payment-signature"]) as string | undefined;

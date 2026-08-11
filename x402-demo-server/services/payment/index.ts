@@ -38,8 +38,8 @@ function usdToUSDCAtomicStr(usd: number): string {
  *   2. Scrape OG tags from the domain root (logo, name, description)
  *   3. Register the URL as a known x402 endpoint (shown in RESOURCES)
  *
- * We use the PUBLIC_SITE_URL (Vercel frontend) so the facilitator can reach it.
- * Using the raw Express requestUrl would give localhost:4021 which is unreachable.
+ * We use the public unlock endpoint URL so the facilitator can probe the real
+ * x402 resource. The frontend course page is not the payment endpoint.
  */
 export function buildPaymentRequired(
   chapterId: string,
@@ -49,10 +49,9 @@ export function buildPaymentRequired(
   const payTo = env.AVM_ADDRESS;
   const amountStr = usdToUSDCAtomicStr(priceUsd);
 
-  // Use the canonical Vercel URL so GoPlausible facilitator can reach and scrape it.
-  // Pattern: /courses/:courseId  (matches App.tsx route structure)
-  // The chapterId is used as the path segment — facilitator will show this as a resource endpoint.
-  const resourceUrl = `${env.PUBLIC_SITE_URL}/courses/${chapterId}`;
+  // Use the actual public x402 unlock endpoint so the facilitator can catalog
+  // and probe the real resource instead of the front-end SPA route.
+  const resourceUrl = requestUrl;
 
   // Declare discovery extension for the Bazaar Discovery Extension
   const discoveryExtension = declareDiscoveryExtension({
