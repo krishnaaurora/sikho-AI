@@ -81,6 +81,10 @@ export function buildPaymentRequired(
   if (discoveryExtension.bazaar?.info?.input) {
     (discoveryExtension.bazaar.info.input as any).method = "GET";
   }
+  const inputProps = discoveryExtension.bazaar?.schema?.properties?.input?.properties as any;
+  if (inputProps?.method) {
+    inputProps.method.enum = ["GET"];
+  }
   if (discoveryExtension.bazaar?.schema?.properties?.input?.required) {
     const reqs = discoveryExtension.bazaar.schema.properties.input.required as any[];
     if (!reqs.includes("method")) {
