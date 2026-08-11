@@ -84,6 +84,10 @@ export function buildPaymentRequired(
   return {
     x402Version: 2,
     error: "Payment Required",
+    resource: {
+      url: resourceUrl,
+      description: `Unlocks one premium course chapter with AI explanations, personalized study materials, and customized quiz generation for chapter ID: ${chapterId} for $${priceUsd.toFixed(2)} USDC`,
+    },
     accepts: [
       {
         scheme: "exact",
