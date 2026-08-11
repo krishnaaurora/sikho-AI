@@ -69,7 +69,11 @@ export const unlockChapterX402 = asyncHandler(async (req: Request, res: Response
     return res.status(402).json(paymentRequired);
   }
 
-  // Payment header present → Perform authentication and role checks dynamically
+  // Payment header present → verify it with the facilitator
+  logger.info(`Verifying X402 payment for chapter ${chapterId}`);
+  const { transactionHash } = await verifyX402Payment(paymentHeader, paymentRequired);
+
+  // After settlement succeeds, require an authenticated learner to record the purchase.
   await new Promise<void>((resolve, reject) => {
     authenticate(req as any, res, (err) => {
       if (err) return reject(err);
@@ -81,10 +85,6 @@ export const unlockChapterX402 = asyncHandler(async (req: Request, res: Response
   });
 
   const userId = (req as any).user._id;
-
-  // Payment header present → verify it with the facilitator
-  logger.info(`Verifying X402 payment for chapter ${chapterId}`);
-  const { transactionHash } = await verifyX402Payment(paymentHeader, paymentRequired);
 
   // Create purchase record and mark chapter as unlocked
   const purchase = await unlockChapterService(userId, chapterId, transactionHash);
