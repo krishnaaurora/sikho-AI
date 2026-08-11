@@ -12,6 +12,8 @@ try {
   decodePaymentSignatureHeader = (header: string) => header;
 }
 
+import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
+
 /** CAIP-2 for Algorand MainNet */
 const ALGORAND_MAINNET_CAIP2 =
   "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
@@ -54,6 +56,29 @@ export function buildPaymentRequired(
   // The chapterId is used as the path segment — facilitator will show this as a resource endpoint.
   const resourceUrl = `${env.PUBLIC_SITE_URL}/courses/${chapterId}`;
 
+  // Declare discovery extension for the Bazaar Discovery Extension
+  const discoveryExtension = declareDiscoveryExtension({
+    input: { chapterId },
+    inputSchema: {
+      type: "object",
+      properties: {
+        chapterId: { type: "string", description: "The ID of the premium course chapter to unlock" }
+      },
+      required: ["chapterId"]
+    },
+    output: {
+      example: {
+        success: true,
+        message: "Chapter unlocked successfully",
+        purchase: {
+          chapterId: chapterId,
+          unlocked: true,
+          unlockedAt: new Date().toISOString()
+        }
+      }
+    }
+  });
+
   return {
     x402Version: 2,
     error: "Payment Required",
@@ -76,6 +101,9 @@ export function buildPaymentRequired(
         maxTimeoutSeconds: 300,
       },
     ],
+    extensions: {
+      ...discoveryExtension
+    }
   };
 }
 
