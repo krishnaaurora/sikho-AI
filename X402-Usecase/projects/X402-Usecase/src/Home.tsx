@@ -167,54 +167,36 @@ function Home() {
       {/* 1. HERO SECTION */}
       <Hero />
 
-      {/* 2. PLATFORM FEATURES GRID HEADER (PREMIUM BLUEPRINT BACKGROUND) */}
-      <section className="relative py-24 bg-white border-t border-slate-100 overflow-hidden">
+      {/* 2. PLATFORM FEATURES GRID HEADER (STICKY SCROLL WITH GRID BLUEPRINT BACKGROUND) */}
+      <section className="sticky top-16 z-20 py-16 bg-white/95 backdrop-blur-md border-y border-slate-100 overflow-hidden shadow-sm">
         {/* Subtle grid blueprint lines */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] opacity-30 pointer-events-none" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] opacity-20 pointer-events-none" />
         
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-100/60 text-[#2563EB] text-xs font-semibold tracking-wide uppercase">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-100/60 text-[#2563EB] text-[10px] font-semibold tracking-wide uppercase">
             ✦ Platform Features ✦
           </span>
-          <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-[#0E172C] tracking-tight max-w-4xl mx-auto leading-none">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#0E172C] tracking-tight max-w-3xl mx-auto leading-none">
             Everything you need to{" "}
             <span className="relative inline-block">
               learn, build
-              <svg className="absolute -bottom-2.5 left-0 w-full text-[#2563EB] opacity-80" height="8" viewBox="0 0 100 8" preserveAspectRatio="none" fill="none">
+              <svg className="absolute -bottom-2 left-0 w-full text-[#2563EB] opacity-80" height="6" viewBox="0 0 100 8" preserveAspectRatio="none" fill="none">
                 <path d="M0,5 C30,2 70,8 100,5" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
               </svg>
             </span>{" "}
             and grow
           </h2>
-          <p className="text-slate-500 font-medium text-base sm:text-lg max-w-xl mx-auto pt-2">
+          <p className="text-slate-400 font-medium text-xs sm:text-sm max-w-xl mx-auto">
             One platform. Multiple ways to learn, practise and prove progress.
           </p>
 
-          <div className="pt-4 flex flex-wrap justify-center gap-4">
+          <div className="pt-2 flex flex-wrap justify-center gap-3">
             <a href="#learn-feature">
-              <Button className="rounded-xl px-7 py-6 bg-[#004BFF] hover:bg-[#003DD6] text-white font-bold text-sm shadow-lg shadow-blue-500/10 flex items-center gap-1.5 transition-all">
+              <Button className="rounded-xl px-5 py-5 bg-[#004BFF] hover:bg-[#003DD6] text-white font-bold text-xs shadow-lg shadow-blue-500/10 flex items-center gap-1.5 transition-all">
                 <span>Start your learning journey</span>
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-3.5 w-3.5" />
               </Button>
             </a>
-            <a href="#research-feature">
-              <Button className="rounded-xl px-7 py-6 bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm border border-slate-200/80 shadow-sm">
-                See the research compiler
-              </Button>
-            </a>
-          </div>
-
-          {/* Sub navigation markers */}
-          <div className="pt-12 flex justify-center items-center gap-8 text-[11px] font-mono font-bold tracking-wider text-slate-400 select-none">
-            <span>01 LEARN</span>
-            <span>&bull;</span>
-            <span>02 CODE</span>
-            <span>&bull;</span>
-            <span>03 CAREER</span>
-            <span>&bull;</span>
-            <span>04 RESEARCH</span>
-            <span>&bull;</span>
-            <span>05 CREATE</span>
           </div>
         </div>
       </section>
