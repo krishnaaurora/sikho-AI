@@ -11,6 +11,8 @@ import LearnerDashboard from './pages/LearnerDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import ExplainPage from './pages/ExplainPage'
+import ApiPlayground from './pages/ApiPlayground'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { getAlgodConfigFromViteEnvironment, getKmdConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
 
@@ -87,6 +89,16 @@ function AppContent() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/explain" element={
+              <ProtectedRoute>
+                <ExplainPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/playground" element={
+              <ProtectedRoute>
+                <ApiPlayground />
+              </ProtectedRoute>
+            } />
             <Route path="/courses" element={
               <ProtectedRoute>
                 <BrowseCourses />

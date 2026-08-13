@@ -20,4 +20,5 @@ export const API_ENDPOINTS = {
   LEARNER_COURSES: `${API_BASE_URL}/learners/courses`,
   LEARNER_UNLOCK_CHAPTER: `${API_BASE_URL}/learners/chapters/unlock`,
   LEARNER_UNLOCK_CHAPTER_X402: (chapterId: string) => `${API_BASE_URL}/learners/chapters/${chapterId}/unlock`,
+  AI_EXPLAIN: `${API_BASE_URL}/ai/explain`,
 };

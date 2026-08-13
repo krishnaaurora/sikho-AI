@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Menu, X, User, Settings, Bell, LogOut, Wallet, Sparkles } from "lucide-react";
+import { Menu, X, User, Settings, Bell, LogOut, Wallet, Sparkles, Upload } from "lucide-react";
 import { Button } from "./ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -117,6 +117,32 @@ const Navbar = () => {
                           <span>Connect Wallet</span>
                         </Button>
                       )}
+
+                      {/* ChatGPT-style Nav upload */}
+                      <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl cursor-pointer text-xs font-bold transition-all">
+                        <Upload className="h-4 w-4 text-blue-500" />
+                        <span className="hidden sm:inline">Ground PDF</span>
+                        <input 
+                          type="file" 
+                          accept=".pdf,.txt" 
+                          className="hidden" 
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const event = new CustomEvent("navbar-pdf-upload", { detail: { file } });
+                              window.dispatchEvent(event);
+                            }
+                          }}
+                        />
+                      </label>
+
+                      <Button
+                        variant="ghost"
+                        className="p-2 rounded-xl text-slate-650 hover:text-indigo-650 hover:bg-slate-100 flex items-center gap-1.5 font-bold"
+                        asChild
+                      >
+                        <Link to="/playground">API Playground</Link>
+                      </Button>
 
                       <button className="p-2 rounded-xl text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-all relative">
                         <Bell className="h-5 w-5" />

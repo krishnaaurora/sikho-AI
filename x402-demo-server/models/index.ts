@@ -11,6 +11,9 @@ export { default as ChatSession } from "./ChatSession.model";
 export { default as AiChat } from "./AiChat.model";
 export { default as Certificate } from "./Certificate.model";
 export { default as Analytics } from "./Analytics.model";
+export { LearningSource } from "./LearningSource.model";
+export { LearningSession } from "./LearningSession.model";
+export { LearningVersion } from "./LearningVersion.model";
 
 export * from "./User.model";
 export * from "./Category.model";
@@ -25,3 +28,6 @@ export * from "./ChatSession.model";
 export * from "./AiChat.model";
 export * from "./Certificate.model";
 export * from "./Analytics.model";
+export * from "./LearningSource.model";
+export * from "./LearningSession.model";
+export * from "./LearningVersion.model";

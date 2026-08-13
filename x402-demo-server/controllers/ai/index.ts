@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { sendSuccessResponse, sendErrorResponse } from "../../utils/response";
 import { AppError } from "../../utils/errors";
+import { explainConcept } from "../../services/ai";
 
 // This is a placeholder - in a real implementation, you would use the Groq SDK
 // For now, we'll simulate the AI course generation
@@ -89,4 +90,32 @@ export const analyze = asyncHandler(async (req: Request, res: Response) => {
     { message: "Analysis endpoint placeholder" },
     "Analysis complete"
   );
+});
+
+export const explain = asyncHandler(async (req: Request, res: Response) => {
+  const { query, learningStyle, depth, examples, language, sourceId } = req.body;
+  const result = await explainConcept({ query, learningStyle, depth, examples, language, sourceId });
+  
+  // Format to match user's custom schema format specification
+  const enrichedPayload = {
+    explanationId: `exp_${Date.now()}`,
+    versionId: `v${Math.floor(Math.random() * 100) + 1}`,
+    topic: result.topic || query,
+    definition: result.blocks.find((b: any) => b.type === "definition")?.content || "Concept explanation",
+    sections: result.blocks.map((b: any) => b.title),
+    visuals: result.blocks.filter((b: any) => b.type === "flow" || b.type === "architecture"),
+    examples: result.blocks.filter((b: any) => b.type === "example" || b.type === "real-world"),
+    sources: result.sources || [],
+    blocks: result.blocks, // preserve blocks for React renderer compatibility
+    preferences: result.preferences, // preserve preferences
+    knowledgeMap: [
+      { concept: "Core definition", status: "understood" },
+      { concept: "Practical use", status: "partial" },
+      { concept: "Advanced scaling", status: "weak" }
+    ],
+    knowledgeGaps: ["Advanced scaling"],
+    nextConcepts: ["Connection lifecycle protocol", "Failover strategy"]
+  };
+
+  return sendSuccessResponse(res, enrichedPayload, "Explanation generated successfully");
 });

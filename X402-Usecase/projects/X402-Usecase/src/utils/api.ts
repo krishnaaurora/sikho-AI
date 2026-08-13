@@ -238,3 +238,34 @@ export const analyticsApi = {
     return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/analytics/overview`);
   },
 };
+
+export const aiApi = {
+  async explain(data: {
+    query: string;
+    learningStyle: string;
+    depth: string;
+    examples: string;
+    language: string;
+  }) {
+    return fetchAPI<ApiResponse<{
+      topic: string;
+      preferences: {
+        learningStyle: string;
+        depth: string;
+        examples: string;
+        language: string;
+      };
+      blocks: {
+        id: string;
+        type: "definition" | "explanation" | "example" | "takeaways";
+        title: string;
+        content?: string;
+        items?: string[];
+      }[];
+    }>>(API_ENDPOINTS.AI_EXPLAIN, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+};
+

@@ -14,11 +14,11 @@ try {
 }import { declareDiscoveryExtension } from "@x402-avm/extensions/bazaar";
 
 /** CAIP-2 for Algorand MainNet */
-const ALGORAND_MAINNET_CAIP2 =
+export const ALGORAND_MAINNET_CAIP2 =
   "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
 
 /** USDC ASA on Algorand MainNet */
-const USDC_MAINNET_ASA_ID = "31566704";
+export const USDC_MAINNET_ASA_ID = "31566704";
 
 /** Decimal places for USDC */
 const USDC_DECIMALS = 6;
@@ -26,7 +26,7 @@ const USDC_DECIMALS = 6;
 /**
  * Convert a USD dollar amount (e.g. 0.02) to USDC micro-units string.
  */
-function usdToUSDCAtomicStr(usd: number): string {
+export function usdToUSDCAtomicStr(usd: number): string {
   return Math.round(usd * Math.pow(10, USDC_DECIMALS)).toString();
 }
 
@@ -199,3 +199,5 @@ export async function verifyX402Payment(
 export const createPaymentService = async () => { };
 export const getPaymentHistoryService = async () => { };
 export const getPaymentByIdService = async () => { };
+
+export { buildWorkspacePaymentRequired } from "./workspacePayment";
