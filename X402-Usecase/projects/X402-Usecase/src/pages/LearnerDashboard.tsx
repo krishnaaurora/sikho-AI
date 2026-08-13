@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
-import { BookOpen, Lock, Unlock, Plus, Wallet, AlertCircle, Loader2 } from 'lucide-react';
+import {
+  BookOpen, Lock, Unlock, Loader2, AlertCircle,
+  ChevronDown, ChevronRight, ArrowRight, Send,
+  Sparkles, Code2, Compass, FlaskConical, PenLine,
+  Clock, RotateCcw, Plus
+} from 'lucide-react';
 import { learnerApi } from '../utils/api';
 import { useWallet } from '@txnlab/use-wallet-react';
 import { createX402Fetch } from '../utils/x402';
 import { API_ENDPOINTS } from '../config/api';
 import ConnectWallet from '../components/ConnectWallet';
-
-import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface Lesson {
   _id: string;
@@ -35,13 +38,78 @@ interface Course {
   chapters: Chapter[];
 }
 
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+const quickActions = [
+  {
+    id: 'learn',
+    label: 'Learn',
+    sub: 'AI explanations, deep dives & flashcards',
+    icon: BookOpen,
+    color: 'bg-blue-50 text-blue-600 border-blue-100',
+    dot: 'bg-blue-500',
+  },
+  {
+    id: 'build',
+    label: 'Build',
+    sub: 'Code editor, run & debug projects',
+    icon: Code2,
+    color: 'bg-violet-50 text-violet-600 border-violet-100',
+    dot: 'bg-violet-500',
+  },
+  {
+    id: 'career',
+    label: 'Career',
+    sub: 'Resume analysis & roadmap planner',
+    icon: Compass,
+    color: 'bg-amber-50 text-amber-600 border-amber-100',
+    dot: 'bg-amber-500',
+  },
+  {
+    id: 'research',
+    label: 'Research',
+    sub: 'Paper analysis & literature review',
+    icon: FlaskConical,
+    color: 'bg-rose-50 text-rose-600 border-rose-100',
+    dot: 'bg-rose-500',
+  },
+  {
+    id: 'create',
+    label: 'Create',
+    sub: 'Notes, mind maps & summaries',
+    icon: PenLine,
+    color: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    dot: 'bg-emerald-500',
+  },
+  {
+    id: 'practice',
+    label: 'Practice',
+    sub: 'Mock tests & coding assessments',
+    icon: Sparkles,
+    color: 'bg-sky-50 text-sky-600 border-sky-100',
+    dot: 'bg-sky-500',
+  },
+];
+
+const quickPrompts = [
+  'Explain neural networks simply',
+  'Create a study plan for DSA',
+  'Summarize this concept',
+  'Help me prepare for interviews',
+];
+
 const LearnerDashboard: React.FC = () => {
   const { user } = useAuth();
   const { activeAddress, signTransactions } = useWallet();
+
   const [courseTopic, setCourseTopic] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [showForm, setShowForm] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
@@ -49,464 +117,386 @@ const LearnerDashboard: React.FC = () => {
   const [unlockingChapter, setUnlockingChapter] = useState<string | null>(null);
   const [unlockError, setUnlockError] = useState<string | null>(null);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [showNewCourseModal, setShowNewCourseModal] = useState(false);
 
   const toggleChapter = (chapterId: string, isUnlocked: boolean) => {
     if (!isUnlocked) return;
-    const newExpanded = new Set(expandedChapters);
-    if (newExpanded.has(chapterId)) {
-      newExpanded.delete(chapterId);
-    } else {
-      newExpanded.add(chapterId);
-    }
-    setExpandedChapters(newExpanded);
+    const s = new Set(expandedChapters);
+    s.has(chapterId) ? s.delete(chapterId) : s.add(chapterId);
+    setExpandedChapters(s);
   };
 
   const toggleLesson = (lessonId: string) => {
-    const newExpanded = new Set(expandedLessons);
-    if (newExpanded.has(lessonId)) {
-      newExpanded.delete(lessonId);
-    } else {
-      newExpanded.add(lessonId);
-    }
-    setExpandedLessons(newExpanded);
+    const s = new Set(expandedLessons);
+    s.has(lessonId) ? s.delete(lessonId) : s.add(lessonId);
+    setExpandedLessons(s);
   };
 
   const fetchCourses = async () => {
     try {
       setIsLoading(true);
-      const response = await learnerApi.getCourses();
-      if (response.success) {
-        setCourses(response.data);
-        if (response.data.length > 0) {
-          setShowForm(false);
-        } else {
-          setShowForm(true);
-        }
+      const res = await learnerApi.getCourses();
+      if (res.success) {
+        setCourses(res.data);
         if (selectedCourse) {
-          const updatedCourse = response.data.find((c: Course) => c._id === selectedCourse._id);
-          if (updatedCourse) setSelectedCourse(updatedCourse);
+          const updated = res.data.find((c: Course) => c._id === selectedCourse._id);
+          if (updated) setSelectedCourse(updated);
         }
       }
-    } catch (error) {
-      console.error('Failed to fetch courses:', error);
+    } catch (e) {
+      console.error('Failed to fetch courses:', e);
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchCourses();
-  }, []);
+  useEffect(() => { fetchCourses(); }, []);
 
-  const handleCreateCourse = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateCourse = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!courseTopic.trim()) return;
-
     setIsCreating(true);
-
     try {
-      const response = await learnerApi.createCourse(courseTopic);
-      if (response.success) {
+      const res = await learnerApi.createCourse(courseTopic);
+      if (res.success) {
         await fetchCourses();
         setCourseTopic('');
-        setShowForm(false);
+        setShowNewCourseModal(false);
       }
-    } catch (error) {
-      console.error('Failed to create course:', error);
+    } catch (err) {
+      console.error('Failed to create course:', err);
     } finally {
       setIsCreating(false);
     }
   };
 
-  /**
-   * Handle chapter unlock using the X402 payment protocol.
-   * Creates an X402-aware fetch using the connected wallet, calls the server,
-   * and on success (200), refreshes courses to reveal the unlocked content.
-   */
+  const handlePromptClick = (p: string) => {
+    setCourseTopic(p);
+    setShowNewCourseModal(true);
+  };
+
   const handleUnlockChapter = async (_courseId: string, chapterId: string) => {
     setUnlockError(null);
-
-    // Require a connected wallet
     if (!activeAddress || !signTransactions) {
-      setUnlockError('Please connect your Algorand wallet first to make payments.');
+      setUnlockError('Please connect your Algorand wallet first.');
       return;
     }
-
     setUnlockingChapter(chapterId);
-
     try {
-      // Build an X402-enabled fetch using the connected wallet signer
-      const x402Fetch = await createX402Fetch({
-        address: activeAddress,
-        signTransactions,
-      });
-
-      // Get the JWT access token for authentication
-      const accessToken = localStorage.getItem('accessToken');
-
-      // Call the X402-protected unlock endpoint.
-      // The X402 client will:
-      //   1. Make the initial GET request → receives 402
-      //   2. Automatically prompt wallet to sign the payment transaction
-      //   3. Retry the GET with X-PAYMENT header → receives 200
-      const response = await x402Fetch(API_ENDPOINTS.LEARNER_UNLOCK_CHAPTER_X402(chapterId), {
+      const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
+      const token = localStorage.getItem('accessToken');
+      const res = await x402Fetch(API_ENDPOINTS.LEARNER_UNLOCK_CHAPTER_X402(chapterId), {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         credentials: 'include',
       });
-
-      if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        throw new Error(errorBody.message || `Unlock failed with status ${response.status}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || `Unlock failed with status ${res.status}`);
       }
-
-      // Refresh courses to reflect the newly unlocked chapter
       await fetchCourses();
-    } catch (error: any) {
-      console.error('X402 payment failed:', error);
-      setUnlockError(error?.message || 'Payment failed. Please try again.');
+    } catch (err: any) {
+      setUnlockError(err?.message || 'Payment failed. Please try again.');
     } finally {
       setUnlockingChapter(null);
     }
   };
 
+  const firstName = user?.fullName?.split(' ')[0] || 'Learner';
+
   return (
-    <div className="pt-20 min-h-screen bg-slate-50 dark:bg-slate-900">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Top greeting with Ask anything search box */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-8 mb-8 shadow-sm text-center max-w-4xl mx-auto space-y-6">
-          <div>
-            <h1 className="text-3xl font-black text-slate-900">
-              Good morning, {user?.fullName?.split(" ")[0] || "Learner"} 👋
-            </h1>
-            <p className="text-slate-500 text-sm font-semibold mt-1">
-              What are you working on today?
-            </p>
-          </div>
-          <form onSubmit={handleCreateCourse} className="max-w-2xl mx-auto relative">
-            <input
-              type="text"
-              value={courseTopic}
-              onChange={(e) => setCourseTopic(e.target.value)}
-              placeholder="Ask anything you want to learn..."
-              className="w-full pl-5 pr-36 py-4 border border-slate-200 rounded-2xl bg-slate-50 text-sm font-semibold text-slate-900 outline-none focus:border-blue-500 transition-all shadow-inner"
-              disabled={isCreating}
-            />
-            <button
-              type="submit"
-              disabled={isCreating || !courseTopic.trim()}
-              className="absolute right-2.5 top-2.5 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-xl text-xs font-bold transition-all shadow"
-            >
-              {isCreating ? 'Creating...' : 'Learn'}
-            </button>
-          </form>
-        </div>
+    <div className="min-h-screen bg-[#f7f7f8]" style={{ paddingTop: '64px' }}>
+      <div className="max-w-6xl mx-auto px-5 py-10">
 
-        {/* Course Creation Form (Inline for new users with no courses) */}
-        {showForm && courses.length === 0 && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-8 mb-8">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
-              What do you want to learn?
-            </h2>
-            <form onSubmit={handleCreateCourse} className="max-w-2xl">
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Course Topic
-                  <span className="text-xs text-slate-400 dark:text-slate-500 font-normal block mt-1">
-                    Describe any specific field of study you'd like to dynamically create.
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  value={courseTopic}
-                  onChange={(e) => setCourseTopic(e.target.value)}
-                  placeholder="e.g., Web Development with React, Machine Learning, Digital Marketing..."
-                  className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={isCreating}
-                />
-              </div>
-              <Button
-                type="submit"
-                disabled={isCreating || !courseTopic.trim()}
-                className="w-full md:w-auto"
-              >
-                {isCreating ? 'Creating Course...' : 'Create Course'}
-              </Button>
-            </form>
-          </div>
-        )}
+        {/* ── GREETING ── */}
+        {!selectedCourse && (
+          <>
+            <div className="mb-8">
+              <p className="text-sm font-medium text-slate-400 mb-1 tracking-wide uppercase">{getGreeting()}</p>
+              <h1 className="text-4xl font-bold text-slate-900 tracking-tight">
+                {firstName} <span className="wave-emoji">👋</span>
+              </h1>
+              <p className="text-slate-500 mt-2 text-base">What do you want to work on today?</p>
+            </div>
 
-        {/* Course Creation Form (Modal Dialog for existing users) */}
-        {showForm && courses.length > 0 && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <div 
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
-              onClick={() => setShowForm(false)}
-            />
-            
-            {/* Modal Box */}
-            <div className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl max-w-xl w-full p-8 z-10 animate-in fade-in zoom-in-95 duration-200">
-              <button 
-                onClick={() => setShowForm(false)}
-                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-750"
-              >
-                ✕
-              </button>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
-                What do you want to learn?
-              </h2>
-              <form onSubmit={handleCreateCourse} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                    Course Topic
-                  </label>
+            {/* ── ASK ANYTHING BAR ── */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-8 overflow-hidden">
+              <div className="px-6 pt-6 pb-4">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Ask anything</p>
+                <form onSubmit={handleCreateCourse} className="flex gap-3 items-center">
                   <input
                     type="text"
                     value={courseTopic}
-                    onChange={(e) => setCourseTopic(e.target.value)}
-                    placeholder="e.g., Web Development with React, Machine Learning, Digital Marketing..."
-                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-750 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={e => setCourseTopic(e.target.value)}
+                    placeholder="Type a topic, concept, or question..."
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-slate-400 transition-colors"
                     disabled={isCreating}
-                    autoFocus
                   />
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">
-                    We will dynamically generate structured chapters and lessons using AI.
-                  </p>
-                </div>
-                <div className="flex justify-end gap-3 pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowForm(false)}
-                    disabled={isCreating}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
+                  <button
                     type="submit"
                     disabled={isCreating || !courseTopic.trim()}
+                    className="flex items-center gap-2 px-5 py-3 bg-slate-900 hover:bg-slate-700 disabled:opacity-40 text-white text-sm font-semibold rounded-xl transition-all"
                   >
-                    {isCreating ? 'Creating Course...' : 'Create Course'}
-                  </Button>
-                </div>
-              </form>
+                    {isCreating ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                    {isCreating ? 'Creating...' : 'Generate'}
+                  </button>
+                </form>
+              </div>
+              <div className="px-6 pb-5 flex flex-wrap gap-2">
+                {quickPrompts.map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => handlePromptClick(p)}
+                    className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium px-3 py-1.5 rounded-full transition-colors border border-slate-200"
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
 
-
-        {/* Error Banner */}
-        {unlockError && (
-          <div className="flex items-start gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-6">
-            <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-red-800 dark:text-red-300">Payment Failed</p>
-              <p className="text-sm text-red-700 dark:text-red-400 mt-1">{unlockError}</p>
-            </div>
-            <button
-              onClick={() => setUnlockError(null)}
-              className="text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        {courses.length > 0 && !selectedCourse && (
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
-              My Courses
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {courses.map((course) => (
-                <div
-                  key={course._id}
-                  className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 cursor-pointer hover:border-blue-500 hover:shadow-md transition-all group"
-                  onClick={() => setSelectedCourse(course)}
-                >
-                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <BookOpen className="w-6 h-6" />
+            {/* ── QUICK ACTION TILES ── */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
+              {quickActions.map(a => {
+                const Icon = a.icon;
+                return (
+                  <div
+                    key={a.id}
+                    className={`bg-white border rounded-2xl p-5 cursor-pointer hover:shadow-md transition-all group ${a.color}`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${a.color} border`}>
+                        <Icon size={18} />
+                      </div>
+                      <ArrowRight size={14} className="opacity-30 group-hover:opacity-70 group-hover:translate-x-0.5 transition-all mt-1" />
+                    </div>
+                    <p className="font-semibold text-slate-800 text-sm mb-0.5">{a.label}</p>
+                    <p className="text-xs text-slate-400 leading-snug">{a.sub}</p>
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 line-clamp-2">
-                    {course.title}
-                  </h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                    Created on {new Date(course.createdAt).toLocaleDateString()}
-                  </p>
-                  <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100 dark:border-slate-700">
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      {course.chapters.length} chapters
-                    </span>
-                    <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                      View Details <ChevronRight className="w-4 h-4" />
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          </div>
+
+            {/* ── MY COURSES ── */}
+            {isLoading ? (
+              <div className="flex items-center gap-3 text-slate-400 text-sm py-6">
+                <Loader2 size={16} className="animate-spin" />
+                Loading your courses...
+              </div>
+            ) : courses.length > 0 ? (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-base font-semibold text-slate-800">My Courses</h2>
+                  <button
+                    onClick={() => setShowNewCourseModal(true)}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors border border-slate-200 rounded-xl px-3 py-1.5 bg-white hover:bg-slate-50"
+                  >
+                    <Plus size={13} /> New
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {courses.map(course => (
+                    <div
+                      key={course._id}
+                      onClick={() => setSelectedCourse(course)}
+                      className="bg-white rounded-2xl border border-slate-200 p-5 cursor-pointer hover:border-slate-400 hover:shadow-sm transition-all group"
+                    >
+                      <div className="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center mb-4">
+                        <BookOpen size={16} className="text-slate-500" />
+                      </div>
+                      <h3 className="text-sm font-semibold text-slate-800 mb-1 line-clamp-2 leading-snug">{course.title}</h3>
+                      <p className="text-xs text-slate-400 mb-4 flex items-center gap-1">
+                        <Clock size={11} />
+                        {new Date(course.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </p>
+                      <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                        <span className="text-xs text-slate-400">{course.chapters.length} chapters</span>
+                        <span className="text-xs font-semibold text-slate-700 flex items-center gap-1 group-hover:gap-2 transition-all">
+                          Open <ChevronRight size={12} />
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <BookOpen size={20} className="text-slate-400" />
+                </div>
+                <p className="text-slate-700 font-semibold text-sm mb-1">No courses yet</p>
+                <p className="text-slate-400 text-xs mb-5">Type something above to generate your first course.</p>
+              </div>
+            )}
+          </>
         )}
 
-        {/* Selected Course Detail */}
+        {/* ── COURSE DETAIL VIEW ── */}
         {selectedCourse && (
-          <div className="space-y-6">
-            <Button variant="outline" onClick={() => setSelectedCourse(null)} className="mb-2">
-              &larr; Back to Courses
-            </Button>
-            
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6">
+          <div>
+            <button
+              onClick={() => setSelectedCourse(null)}
+              className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 mb-6 transition-colors"
+            >
+              <RotateCcw size={13} /> Back to Dashboard
+            </button>
+
+            {/* Course header */}
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden mb-6">
+              <div className="bg-slate-900 px-7 py-6">
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center">
-                    <BookOpen className="w-8 h-8 text-white" />
+                  <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <BookOpen size={22} className="text-white" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold text-white">
-                      {selectedCourse.title}
-                    </h3>
-                    <p className="text-blue-100 text-sm mt-1">
-                      Created on {new Date(selectedCourse.createdAt).toLocaleDateString()} • {selectedCourse.chapters.length} chapters
+                    <h2 className="text-xl font-bold text-white">{selectedCourse.title}</h2>
+                    <p className="text-slate-400 text-sm mt-0.5">
+                      {new Date(selectedCourse.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                      {' · '}
+                      {selectedCourse.chapters.length} chapters
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-6">
-                <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-6">
-                  Course Chapters
-                </h4>
-                <div className="space-y-4">
-                  {selectedCourse.chapters.map((chapter) => (
+              {/* Error banner */}
+              {unlockError && (
+                <div className="flex items-start gap-3 bg-red-50 border-b border-red-100 px-7 py-4">
+                  <AlertCircle size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 text-sm">
+                    <p className="font-semibold text-red-700">Payment failed</p>
+                    <p className="text-red-600 mt-0.5">{unlockError}</p>
+                  </div>
+                  <button onClick={() => setUnlockError(null)} className="text-red-400 hover:text-red-600 text-lg leading-none">✕</button>
+                </div>
+              )}
+
+              {/* Chapters */}
+              <div className="p-6 space-y-3">
+                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">Chapters</h3>
+                {selectedCourse.chapters.map(chapter => (
+                  <div key={chapter._id} className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50">
                     <div
-                      key={chapter._id}
-                      className="border border-slate-200 dark:border-slate-700 rounded-xl hover:border-blue-500 transition-colors bg-white dark:bg-slate-800 shadow-sm"
+                      className={`flex items-center justify-between px-5 py-4 ${chapter.isUnlocked ? 'cursor-pointer hover:bg-slate-100' : ''} transition-colors`}
+                      onClick={() => toggleChapter(chapter._id, chapter.isUnlocked)}
                     >
-                      <div 
-                        className={`flex items-center justify-between p-5 ${chapter.isUnlocked ? 'cursor-pointer' : ''}`}
-                        onClick={() => toggleChapter(chapter._id, chapter.isUnlocked)}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${chapter.isUnlocked ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-700'}`}>
-                            {chapter.isUnlocked ? (
-                              <Unlock className="w-6 h-6" />
-                            ) : (
-                              <Lock className="w-6 h-6 text-slate-400" />
-                            )}
-                          </div>
-                          <div>
-                            <h5 className="font-semibold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                              {chapter.title}
-                              {chapter.isUnlocked && (
-                                expandedChapters.has(chapter._id) ? 
-                                  <ChevronDown className="w-5 h-5 text-slate-400" /> : 
-                                  <ChevronRight className="w-5 h-5 text-slate-400" />
-                              )}
-                            </h5>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                              {chapter.totalLessons} lessons
-                            </p>
-                          </div>
+                      <div className="flex items-center gap-4">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${chapter.isUnlocked ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
+                          {chapter.isUnlocked ? <Unlock size={15} /> : <Lock size={15} />}
                         </div>
-                        <div className="flex items-center gap-4 ml-4">
-                          {chapter.isUnlocked ? (
-                            <span className="px-4 py-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg font-semibold text-sm">
-                              Unlocked
-                            </span>
-                          ) : (
-                            <Button
-                              size="lg"
-                              disabled={unlockingChapter === chapter._id}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleUnlockChapter(selectedCourse._id, chapter._id);
-                              }}
-                            >
-                              {unlockingChapter === chapter._id ? (
-                                <span className="flex items-center gap-2">
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                  Paying...
-                                </span>
-                              ) : (
-                                `Unlock for $${chapter.price.toFixed(2)}`
-                              )}
-                            </Button>
-                          )}
+                        <div>
+                          <p className="font-semibold text-sm text-slate-800 flex items-center gap-1.5">
+                            {chapter.title}
+                            {chapter.isUnlocked && (expandedChapters.has(chapter._id)
+                              ? <ChevronDown size={14} className="text-slate-400" />
+                              : <ChevronRight size={14} className="text-slate-400" />
+                            )}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-0.5">{chapter.totalLessons} lessons</p>
                         </div>
                       </div>
-                      
-                      {expandedChapters.has(chapter._id) && chapter.lessons && (
-                        <div className="border-t border-slate-200 dark:border-slate-700 p-5 bg-slate-50 dark:bg-slate-800/50 rounded-b-xl">
-                          <div className="space-y-3">
-                            {chapter.lessons.map(lesson => (
-                              <div key={lesson._id} className="border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 overflow-hidden shadow-sm">
-                                <div 
-                                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-                                  onClick={() => toggleLesson(lesson._id)}
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-6 h-6 flex items-center justify-center bg-slate-100 dark:bg-slate-700 rounded-full">
-                                      {expandedLessons.has(lesson._id) ? 
-                                        <ChevronDown className="w-4 h-4 text-slate-500" /> : 
-                                        <ChevronRight className="w-4 h-4 text-slate-500" />
-                                      }
-                                    </div>
-                                    <span className="font-semibold text-slate-900 dark:text-white">{lesson.title}</span>
-                                    {lesson.isFree && !chapter.isUnlocked && (
-                                      <span className="text-xs px-2.5 py-1 bg-primary/10 text-primary rounded-full font-bold uppercase tracking-wider">Free</span>
-                                    )}
-                                  </div>
+
+                      <div>
+                        {chapter.isUnlocked ? (
+                          <span className="text-xs font-semibold bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">Unlocked</span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            disabled={unlockingChapter === chapter._id}
+                            onClick={e => { e.stopPropagation(); handleUnlockChapter(selectedCourse._id, chapter._id); }}
+                            className="rounded-xl text-xs"
+                          >
+                            {unlockingChapter === chapter._id
+                              ? <span className="flex items-center gap-1.5"><Loader2 size={13} className="animate-spin" /> Paying…</span>
+                              : `Unlock · $${chapter.price.toFixed(2)}`
+                            }
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {expandedChapters.has(chapter._id) && chapter.lessons && (
+                      <div className="border-t border-slate-200 bg-white">
+                        {chapter.lessons.map(lesson => (
+                          <div key={lesson._id} className="border-b border-slate-100 last:border-0">
+                            <div
+                              className="flex items-center justify-between px-6 py-3.5 cursor-pointer hover:bg-slate-50 transition-colors"
+                              onClick={() => toggleLesson(lesson._id)}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
+                                  {expandedLessons.has(lesson._id)
+                                    ? <ChevronDown size={11} className="text-slate-500" />
+                                    : <ChevronRight size={11} className="text-slate-500" />
+                                  }
                                 </div>
-                                {expandedLessons.has(lesson._id) && (
-                                  <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800">
-                                    <div className="prose dark:prose-invert max-w-none">
-                                      {lesson.content ? (
-                                        <div dangerouslySetInnerHTML={{ __html: lesson.content.replace(/\n/g, '<br/><br/>') }} />
-                                      ) : (
-                                        <p className="text-slate-500 italic">Content not available.</p>
-                                      )}
-                                    </div>
-                                  </div>
+                                <span className="text-sm font-medium text-slate-700">{lesson.title}</span>
+                                {lesson.isFree && !chapter.isUnlocked && (
+                                  <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full uppercase">Free</span>
                                 )}
                               </div>
-                            ))}
+                            </div>
+                            {expandedLessons.has(lesson._id) && (
+                              <div className="px-8 pb-5 pt-2 bg-white">
+                                <div className="prose prose-sm max-w-none text-slate-700">
+                                  {lesson.content
+                                    ? <div dangerouslySetInnerHTML={{ __html: lesson.content.replace(/\n/g, '<br/><br/>') }} />
+                                    : <p className="italic text-slate-400">Content not available.</p>
+                                  }
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         )}
-
-        {/* Empty State */}
-        {courses.length === 0 && !showForm && !isLoading && !selectedCourse && (
-          <div className="text-center py-16">
-            <BookOpen className="w-24 h-24 text-slate-300 dark:text-slate-600 mx-auto mb-6" />
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-              No courses yet
-            </h2>
-            <p className="text-slate-500 dark:text-slate-400 mb-6">
-              Start by creating your first custom course!
-            </p>
-            <Button onClick={() => setShowForm(true)}>
-              <Plus className="w-5 h-5 mr-2" />
-              Create Your First Course
-            </Button>
-          </div>
-        )}
       </div>
 
-      {/* Wallet Connect Modal */}
-      <ConnectWallet
-        openModal={walletModalOpen}
-        closeModal={() => setWalletModalOpen(false)}
-      />
+      {/* ── NEW COURSE MODAL ── */}
+      {showNewCourseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowNewCourseModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-lg w-full p-7 z-10">
+            <button onClick={() => setShowNewCourseModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 text-lg leading-none">✕</button>
+            <h2 className="text-lg font-bold text-slate-900 mb-1">New course</h2>
+            <p className="text-sm text-slate-400 mb-5">Describe a topic and we'll generate a full structured course.</p>
+            <form onSubmit={handleCreateCourse} className="space-y-4">
+              <input
+                type="text"
+                value={courseTopic}
+                onChange={e => setCourseTopic(e.target.value)}
+                placeholder="e.g. Machine Learning, React, System Design…"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 bg-slate-50 outline-none focus:border-slate-400 transition-colors"
+                disabled={isCreating}
+                autoFocus
+              />
+              <p className="text-xs text-slate-400">AI will generate chapters and lessons automatically.</p>
+              <div className="flex justify-end gap-3 pt-1">
+                <button type="button" onClick={() => setShowNewCourseModal(false)} className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-800 rounded-xl hover:bg-slate-100 transition-colors">Cancel</button>
+                <button
+                  type="submit"
+                  disabled={isCreating || !courseTopic.trim()}
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-700 disabled:opacity-40 text-white text-sm font-semibold rounded-xl transition-all flex items-center gap-2"
+                >
+                  {isCreating ? <><Loader2 size={14} className="animate-spin" /> Creating…</> : 'Create Course'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <ConnectWallet openModal={walletModalOpen} closeModal={() => setWalletModalOpen(false)} />
     </div>
   );
 };
