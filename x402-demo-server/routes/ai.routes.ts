@@ -46,7 +46,7 @@ router.post(
   authenticate,
   requireLearner,
   enforceWorkspacePayment({ priceUsd: 0.002, description: "Generate a structured explanation of a technical concept adapted to the requested learning style." }),
-  explainConceptMvp
+  explain
 );
 
 // 2. Doubt Solve ($0.002)
