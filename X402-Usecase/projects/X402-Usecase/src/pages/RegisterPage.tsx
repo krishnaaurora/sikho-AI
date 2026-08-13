@@ -291,7 +291,7 @@ const RegisterPage: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Target Role</label>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Target Role (Optional)</label>
                     <input
                       type="text"
                       value={registerData.targetRole}
@@ -316,7 +316,7 @@ const RegisterPage: React.FC = () => {
 
                 {/* Add dynamic lists for interests and current skills */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Interests</label>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Interests (Optional)</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
