@@ -20,6 +20,13 @@ export interface IUser extends Document {
   totalLearningHours: number;
   isVerified: boolean;
   isActive: boolean;
+  educationLevel?: string;
+  interests?: string[];
+  currentSkills?: string[];
+  targetRole?: string;
+  experienceLevel?: string;
+  preferredLanguage?: string;
+  whatAreYouHereToDo?: string[];
   lastLogin?: Date;
   isDeleted: boolean;
   deletedAt?: Date;
@@ -98,6 +105,40 @@ const UserSchema: Schema = new Schema(
       type: Boolean,
       default: true,
     },
+    educationLevel: {
+      type: String,
+      trim: true,
+    },
+    interests: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+    currentSkills: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+    targetRole: {
+      type: String,
+      trim: true,
+    },
+    experienceLevel: {
+      type: String,
+      trim: true,
+    },
+    preferredLanguage: {
+      type: String,
+      trim: true,
+    },
+    whatAreYouHereToDo: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
     lastLogin: {
       type: Date,
     },

@@ -74,7 +74,8 @@ export const getUserById = async (id: string): Promise<IUser | null> => {
 export const registerService = async (
   fullName: string,
   email: string,
-  password: string
+  password: string,
+  extraOnboarding: any = {}
 ) => {
   // Check if user already exists
   const existingUser = await User.findOne({ email, isDeleted: false });
@@ -88,6 +89,7 @@ export const registerService = async (
     email,
     password,
     role: UserRole.LEARNER,
+    ...extraOnboarding
   });
 
   // Generate tokens

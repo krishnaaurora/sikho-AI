@@ -58,9 +58,28 @@ const clearTokensCookies = (res: Response) => {
 
 export const register = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    const { fullName, email, password } = req.body;
+    const { 
+      fullName, 
+      email, 
+      password, 
+      educationLevel, 
+      interests, 
+      currentSkills, 
+      targetRole, 
+      experienceLevel, 
+      preferredLanguage, 
+      whatAreYouHereToDo 
+    } = req.body;
 
-    const result = await registerService(fullName, email, password);
+    const result = await registerService(fullName, email, password, {
+      educationLevel,
+      interests,
+      currentSkills,
+      targetRole,
+      experienceLevel,
+      preferredLanguage,
+      whatAreYouHereToDo
+    });
 
     // Set tokens in cookies
     setAccessTokenCookie(res, result.accessToken);

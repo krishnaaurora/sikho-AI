@@ -19,7 +19,19 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: { fullName: string; email: string; password: string; confirmPassword: string }) => Promise<void>;
+  register: (data: { 
+    fullName: string; 
+    email: string; 
+    password: string; 
+    confirmPassword: string;
+    educationLevel?: string;
+    interests?: string[];
+    currentSkills?: string[];
+    targetRole?: string;
+    experienceLevel?: string;
+    preferredLanguage?: string;
+    whatAreYouHereToDo?: string[];
+  }) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
 }
@@ -53,7 +65,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const register = async (data: { fullName: string; email: string; password: string; confirmPassword: string }) => {
+  const register = async (data: any) => {
     await authApi.register(data);
   };
 

@@ -176,23 +176,33 @@ const LearnerDashboard: React.FC = () => {
   return (
     <div className="pt-20 min-h-screen bg-slate-50 dark:bg-slate-900">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+        {/* Top greeting with Ask anything search box */}
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 mb-8 shadow-sm text-center max-w-4xl mx-auto space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-              Welcome back, {user?.fullName}!
+            <h1 className="text-3xl font-black text-slate-900">
+              Good morning, {user?.fullName?.split(" ")[0] || "Learner"} 👋
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-2">
-              Create and manage your custom courses
+            <p className="text-slate-500 text-sm font-semibold mt-1">
+              What are you working on today?
             </p>
           </div>
-          <Button
-            onClick={() => setShowForm(true)}
-            className="mt-4 md:mt-0"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Create New Course
-          </Button>
+          <form onSubmit={handleCreateCourse} className="max-w-2xl mx-auto relative">
+            <input
+              type="text"
+              value={courseTopic}
+              onChange={(e) => setCourseTopic(e.target.value)}
+              placeholder="Ask anything you want to learn..."
+              className="w-full pl-5 pr-36 py-4 border border-slate-200 rounded-2xl bg-slate-50 text-sm font-semibold text-slate-900 outline-none focus:border-blue-500 transition-all shadow-inner"
+              disabled={isCreating}
+            />
+            <button
+              type="submit"
+              disabled={isCreating || !courseTopic.trim()}
+              className="absolute right-2.5 top-2.5 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-xl text-xs font-bold transition-all shadow"
+            >
+              {isCreating ? 'Creating...' : 'Learn'}
+            </button>
+          </form>
         </div>
 
         {/* Course Creation Form (Inline for new users with no courses) */}
