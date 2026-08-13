@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Sparkles, BookOpen, Layers, Terminal, ListChecks, Cpu,
   Globe, Play, AlertCircle, Brain, Zap, Code2, Eye,
@@ -280,8 +281,13 @@ const STYLE_LABELS: Record<string, { label: string; desc: string; icon: React.Re
 };
 
 const ExplainPage: React.FC = () => {
-  const [query, setQuery] = useState('');
-  const [learningStyle, setLearningStyle] = useState<'academic' | 'visual' | 'practical' | 'interview' | 'beginner'>('academic');
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(() => searchParams.get('q') || '');
+  const [learningStyle, setLearningStyle] = useState<'academic' | 'visual' | 'practical' | 'interview' | 'beginner'>(() => {
+    const style = searchParams.get('style');
+    if (style === 'interview' || style === 'practical' || style === 'visual' || style === 'beginner') return style;
+    return 'academic';
+  });
   const depth = 'deep' as const;
   const examples = 'example-heavy' as const;
   const [language, setLanguage] = useState('English');

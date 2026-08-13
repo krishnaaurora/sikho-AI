@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
+import { useNavigate } from 'react-router-dom';
 import {
   BookOpen, Lock, Unlock, Loader2, AlertCircle,
   ChevronDown, ChevronRight, ArrowRight, Send,
   Sparkles, Code2, Compass, FlaskConical, PenLine,
-  Clock, RotateCcw, Plus
+  Clock, RotateCcw, Plus, Zap
 } from 'lucide-react';
 import { learnerApi } from '../utils/api';
 import { useWallet } from '@txnlab/use-wallet-react';
@@ -45,59 +46,8 @@ function getGreeting() {
   return 'Good evening';
 }
 
-const quickActions = [
-  {
-    id: 'learn',
-    label: 'Learn',
-    sub: 'AI explanations, deep dives & flashcards',
-    icon: BookOpen,
-    color: 'bg-blue-50 text-blue-600 border-blue-100',
-    dot: 'bg-blue-500',
-  },
-  {
-    id: 'build',
-    label: 'Build',
-    sub: 'Code editor, run & debug projects',
-    icon: Code2,
-    color: 'bg-violet-50 text-violet-600 border-violet-100',
-    dot: 'bg-violet-500',
-  },
-  {
-    id: 'career',
-    label: 'Career',
-    sub: 'Resume analysis & roadmap planner',
-    icon: Compass,
-    color: 'bg-amber-50 text-amber-600 border-amber-100',
-    dot: 'bg-amber-500',
-  },
-  {
-    id: 'research',
-    label: 'Research',
-    sub: 'Paper analysis & literature review',
-    icon: FlaskConical,
-    color: 'bg-rose-50 text-rose-600 border-rose-100',
-    dot: 'bg-rose-500',
-  },
-  {
-    id: 'create',
-    label: 'Create',
-    sub: 'Notes, mind maps & summaries',
-    icon: PenLine,
-    color: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-    dot: 'bg-emerald-500',
-  },
-  {
-    id: 'practice',
-    label: 'Practice',
-    sub: 'Mock tests & coding assessments',
-    icon: Sparkles,
-    color: 'bg-sky-50 text-sky-600 border-sky-100',
-    dot: 'bg-sky-500',
-  },
-];
-
 const quickPrompts = [
-  'Explain neural networks simply',
+  'Explain neural networks',
   'Create a study plan for DSA',
   'Summarize this concept',
   'Help me prepare for interviews',
@@ -106,6 +56,7 @@ const quickPrompts = [
 const LearnerDashboard: React.FC = () => {
   const { user } = useAuth();
   const { activeAddress, signTransactions } = useWallet();
+  const navigate = useNavigate();
 
   const [courseTopic, setCourseTopic] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -117,7 +68,10 @@ const LearnerDashboard: React.FC = () => {
   const [unlockingChapter, setUnlockingChapter] = useState<string | null>(null);
   const [unlockError, setUnlockError] = useState<string | null>(null);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
-  const [showNewCourseModal, setShowNewCourseModal] = useState(false);
+
+  // Intent router modal states
+  const [showRouterModal, setShowRouterModal] = useState(false);
+  const [routerTopic, setRouterTopic] = useState('');
 
   const toggleChapter = (chapterId: string, isUnlocked: boolean) => {
     if (!isUnlocked) return;
@@ -150,29 +104,42 @@ const LearnerDashboard: React.FC = () => {
     }
   };
 
-  useEffect(() => { fetchCourses(); }, []);
+  useEffect(() => {
+    fetchCourses();
+  }, []);
 
-  const handleCreateCourse = async (e?: React.FormEvent) => {
-    e?.preventDefault();
+  const handleAskSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     if (!courseTopic.trim()) return;
+    setRouterTopic(courseTopic);
+    setShowRouterModal(true);
+  };
+
+  const handleQuickPromptClick = (promptText: string) => {
+    setCourseTopic(promptText);
+    setRouterTopic(promptText);
+    setShowRouterModal(true);
+  };
+
+  const executeLearnNow = (style: string) => {
+    setShowRouterModal(false);
+    navigate(`/explain?q=${encodeURIComponent(routerTopic)}&style=${style}`);
+  };
+
+  const executeCreateCourse = async () => {
+    setShowRouterModal(false);
     setIsCreating(true);
     try {
-      const res = await learnerApi.createCourse(courseTopic);
+      const res = await learnerApi.createCourse(routerTopic);
       if (res.success) {
-        await fetchCourses();
         setCourseTopic('');
-        setShowNewCourseModal(false);
+        await fetchCourses();
       }
     } catch (err) {
       console.error('Failed to create course:', err);
     } finally {
       setIsCreating(false);
     }
-  };
-
-  const handlePromptClick = (p: string) => {
-    setCourseTopic(p);
-    setShowNewCourseModal(true);
   };
 
   const handleUnlockChapter = async (_courseId: string, chapterId: string) => {
@@ -208,77 +175,210 @@ const LearnerDashboard: React.FC = () => {
   const firstName = user?.fullName?.split(' ')[0] || 'Learner';
 
   return (
-    <div className="min-h-screen bg-[#f7f7f8]" style={{ paddingTop: '64px' }}>
-      <div className="max-w-6xl mx-auto px-5 py-10">
+    <div className="min-h-screen bg-[#F8FAFC]" style={{ paddingTop: '80px' }}>
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes float-hero-illustration {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-12px); }
+          100% { transform: translateY(0px); }
+        }
+        .animate-float-hero {
+          animation: float-hero-illustration 7s ease-in-out infinite;
+        }
+      `}} />
 
-        {/* ── GREETING ── */}
+      <div className="max-w-6xl mx-auto px-5 py-8">
+
+        {/* ── GREETING & HERO BLOCK ── */}
         {!selectedCourse && (
           <>
-            <div className="mb-8">
-              <p className="text-sm font-medium text-slate-400 mb-1 tracking-wide uppercase">{getGreeting()}</p>
-              <h1 className="text-4xl font-bold text-slate-900 tracking-tight">
-                {firstName} <span className="wave-emoji">👋</span>
-              </h1>
-              <p className="text-slate-500 mt-2 text-base">What do you want to work on today?</p>
-            </div>
+            {/* Top levitating banner */}
+            <div className="relative bg-white border border-slate-200/80 rounded-3xl p-8 mb-8 shadow-sm overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
+              <div className="flex-1 space-y-4 max-w-xl">
+                <div>
+                  <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1">{getGreeting()}</p>
+                  <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
+                    {firstName} 👋
+                  </h1>
+                </div>
+                <p className="text-slate-500 font-medium text-base">
+                  What will you learn or create today?
+                </p>
 
-            {/* ── ASK ANYTHING BAR ── */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-8 overflow-hidden">
-              <div className="px-6 pt-6 pb-4">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Ask anything</p>
-                <form onSubmit={handleCreateCourse} className="flex gap-3 items-center">
-                  <input
-                    type="text"
-                    value={courseTopic}
-                    onChange={e => setCourseTopic(e.target.value)}
-                    placeholder="Type a topic, concept, or question..."
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-slate-400 transition-colors"
-                    disabled={isCreating}
-                  />
+                {/* Search Bar */}
+                <form onSubmit={handleAskSubmit} className="flex gap-2 items-center pt-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={courseTopic}
+                      onChange={e => setCourseTopic(e.target.value)}
+                      placeholder="Ask anything... (e.g. Explain WebSockets, Create a study plan, Debug my code)"
+                      className="w-full bg-slate-50 border border-slate-200/80 rounded-2xl pl-4 pr-12 py-3.5 text-sm text-slate-800 font-semibold placeholder-slate-400 outline-none focus:bg-white focus:border-indigo-500 transition-all"
+                      disabled={isCreating}
+                    />
+                  </div>
                   <button
                     type="submit"
                     disabled={isCreating || !courseTopic.trim()}
-                    className="flex items-center gap-2 px-5 py-3 bg-slate-900 hover:bg-slate-700 disabled:opacity-40 text-white text-sm font-semibold rounded-xl transition-all"
+                    className="flex items-center gap-1.5 px-6 py-3.5 bg-indigo-650 hover:bg-indigo-700 disabled:opacity-40 text-white text-xs font-bold rounded-2xl transition-all shadow-md shadow-indigo-200"
                   >
-                    {isCreating ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-                    {isCreating ? 'Creating...' : 'Generate'}
+                    {isCreating ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                    <span>Generate</span>
                   </button>
                 </form>
+
+                {/* Quick Prompts */}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {quickPrompts.map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => handleQuickPromptClick(p)}
+                      className="text-xs bg-slate-100 hover:bg-slate-200/80 text-slate-500 font-bold px-3 py-1.5 rounded-full transition-colors border border-slate-200/60"
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="px-6 pb-5 flex flex-wrap gap-2">
-                {quickPrompts.map(p => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => handlePromptClick(p)}
-                    className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium px-3 py-1.5 rounded-full transition-colors border border-slate-200"
-                  >
-                    {p}
-                  </button>
-                ))}
+
+              {/* Levitation Image Container */}
+              <div className="relative w-56 h-56 flex-shrink-0 flex items-center justify-center animate-float-hero">
+                <div className="absolute inset-0 bg-indigo-50 rounded-full scale-95 opacity-80 blur-xl" />
+                <img
+                  src="/hero_illustration.png"
+                  alt="Student Levitation Illustration"
+                  className="relative z-10 w-full h-full object-contain select-none"
+                />
               </div>
             </div>
 
-            {/* ── QUICK ACTION TILES ── */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
-              {quickActions.map(a => {
-                const Icon = a.icon;
-                return (
-                  <div
-                    key={a.id}
-                    className={`bg-white border rounded-2xl p-5 cursor-pointer hover:shadow-md transition-all group ${a.color}`}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${a.color} border`}>
-                        <Icon size={18} />
-                      </div>
-                      <ArrowRight size={14} className="opacity-30 group-hover:opacity-70 group-hover:translate-x-0.5 transition-all mt-1" />
+            {/* ── 6-TILE ACTION GRID ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+              
+              {/* Tile 1: Learn */}
+              <div
+                onClick={() => { setRouterTopic('WebSockets'); setShowRouterModal(true); }}
+                className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all group relative flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-11 h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100/80">
+                      <BookOpen size={20} />
                     </div>
-                    <p className="font-semibold text-slate-800 text-sm mb-0.5">{a.label}</p>
-                    <p className="text-xs text-slate-400 leading-snug">{a.sub}</p>
+                    <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                      <ArrowRight size={12} />
+                    </div>
                   </div>
-                );
-              })}
+                  <h3 className="font-bold text-slate-800 text-sm mb-1">Learn</h3>
+                  <p className="text-xs text-slate-400 font-medium leading-relaxed">AI explanations, deep dives & flashcards</p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex gap-1.5">
+                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Explain</span>
+                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Understand</span>
+                </div>
+              </div>
+
+              {/* Tile 2: Build */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-violet-300 transition-all group relative flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-11 h-11 bg-violet-50 text-violet-600 rounded-xl flex items-center justify-center border border-violet-100/80">
+                      <Code2 size={20} />
+                    </div>
+                    <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-violet-50 group-hover:text-violet-600 transition-colors">
+                      <ArrowRight size={12} />
+                    </div>
+                  </div>
+                  <h3 className="font-bold text-slate-800 text-sm mb-1">Build</h3>
+                  <p className="text-xs text-slate-400 font-medium leading-relaxed">Code editor, run & debug projects</p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex gap-1.5">
+                  <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Code</span>
+                  <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Debug</span>
+                </div>
+              </div>
+
+              {/* Tile 3: Career */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-amber-300 transition-all group relative flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-11 h-11 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center border border-amber-100/80">
+                      <Compass size={20} />
+                    </div>
+                    <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-amber-50 group-hover:text-amber-600 transition-colors">
+                      <ArrowRight size={12} />
+                    </div>
+                  </div>
+                  <h3 className="font-bold text-slate-800 text-sm mb-1">Career</h3>
+                  <p className="text-xs text-slate-400 font-medium leading-relaxed">Resume analysis & roadmap planner</p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex gap-1.5">
+                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Plan</span>
+                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Prepare</span>
+                </div>
+              </div>
+
+              {/* Tile 4: Research */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-rose-300 transition-all group relative flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-11 h-11 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center border border-rose-100/80">
+                      <FlaskConical size={20} />
+                    </div>
+                    <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-rose-50 group-hover:text-rose-600 transition-colors">
+                      <ArrowRight size={12} />
+                    </div>
+                  </div>
+                  <h3 className="font-bold text-slate-800 text-sm mb-1">Research</h3>
+                  <p className="text-xs text-slate-400 font-medium leading-relaxed">Paper analysis & literature review</p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex gap-1.5">
+                  <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Analyze</span>
+                  <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Discover</span>
+                </div>
+              </div>
+
+              {/* Tile 5: Study (Renamed from Create) */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-emerald-300 transition-all group relative flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-11 h-11 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center border border-emerald-100/80">
+                      <PenLine size={20} />
+                    </div>
+                    <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
+                      <ArrowRight size={12} />
+                    </div>
+                  </div>
+                  <h3 className="font-bold text-slate-800 text-sm mb-1">Study</h3>
+                  <p className="text-xs text-slate-400 font-medium leading-relaxed">Notes, mind maps & summaries</p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex gap-1.5">
+                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Notes</span>
+                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Mindmaps</span>
+                </div>
+              </div>
+
+              {/* Tile 6: Practice */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-sky-300 transition-all group relative flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-11 h-11 bg-sky-50 text-sky-600 rounded-xl flex items-center justify-center border border-sky-100/80">
+                      <Sparkles size={20} />
+                    </div>
+                    <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-sky-50 group-hover:text-sky-600 transition-colors">
+                      <ArrowRight size={12} />
+                    </div>
+                  </div>
+                  <h3 className="font-bold text-slate-800 text-sm mb-1">Practice</h3>
+                  <p className="text-xs text-slate-400 font-medium leading-relaxed">Mock tests & coding assessments</p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex gap-1.5">
+                  <span className="text-[10px] font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full">Quiz</span>
+                  <span className="text-[10px] font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full">Test</span>
+                </div>
+              </div>
+
             </div>
 
             {/* ── MY COURSES ── */}
@@ -290,15 +390,15 @@ const LearnerDashboard: React.FC = () => {
             ) : courses.length > 0 ? (
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-semibold text-slate-800">My Courses</h2>
+                  <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">My Courses</h2>
                   <button
-                    onClick={() => setShowNewCourseModal(true)}
+                    onClick={() => { setRouterTopic(''); setShowRouterModal(true); }}
                     className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors border border-slate-200 rounded-xl px-3 py-1.5 bg-white hover:bg-slate-50"
                   >
-                    <Plus size={13} /> New
+                    <Plus size={13} /> New Course
                   </button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {courses.map(course => (
                     <div
                       key={course._id}
@@ -324,12 +424,12 @@ const LearnerDashboard: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-16">
+              <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl">
                 <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <BookOpen size={20} className="text-slate-400" />
                 </div>
                 <p className="text-slate-700 font-semibold text-sm mb-1">No courses yet</p>
-                <p className="text-slate-400 text-xs mb-5">Type something above to generate your first course.</p>
+                <p className="text-slate-400 text-xs mb-5">Type something in Ask anything to get started.</p>
               </div>
             )}
           </>
@@ -462,36 +562,77 @@ const LearnerDashboard: React.FC = () => {
         )}
       </div>
 
-      {/* ── NEW COURSE MODAL ── */}
-      {showNewCourseModal && (
+      {/* ── INTENT ROUTER MODAL ── */}
+      {showRouterModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowNewCourseModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-xl max-w-lg w-full p-7 z-10">
-            <button onClick={() => setShowNewCourseModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 text-lg leading-none">✕</button>
-            <h2 className="text-lg font-bold text-slate-900 mb-1">New course</h2>
-            <p className="text-sm text-slate-400 mb-5">Describe a topic and we'll generate a full structured course.</p>
-            <form onSubmit={handleCreateCourse} className="space-y-4">
-              <input
-                type="text"
-                value={courseTopic}
-                onChange={e => setCourseTopic(e.target.value)}
-                placeholder="e.g. Machine Learning, React, System Design…"
-                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 bg-slate-50 outline-none focus:border-slate-400 transition-colors"
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowRouterModal(false)} />
+          <div className="relative bg-white rounded-3xl shadow-xl max-w-lg w-full p-8 z-10 border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <button onClick={() => setShowRouterModal(false)} className="absolute top-5 right-5 text-slate-400 hover:text-slate-700 text-lg leading-none">✕</button>
+            
+            <p className="text-xs font-extrabold text-indigo-650 uppercase tracking-widest mb-1">Concept Detected</p>
+            <h2 className="text-2xl font-black text-slate-900 mb-2 leading-tight">"{routerTopic}"</h2>
+            <p className="text-sm text-slate-400 font-semibold mb-6">How would you like to explore this topic?</p>
+            
+            <div className="space-y-4">
+              {/* Option 1: Learn Now */}
+              <button
+                type="button"
+                onClick={() => executeLearnNow('academic')}
+                className="w-full flex items-center justify-between p-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-left transition-all group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100/50">
+                    <Zap size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800">Learn it now</h4>
+                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Get a focused structured explanation immediately</p>
+                  </div>
+                </div>
+                <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+
+              {/* Option 2: Guided Course */}
+              <button
+                type="button"
+                onClick={executeCreateCourse}
                 disabled={isCreating}
-                autoFocus
-              />
-              <p className="text-xs text-slate-400">AI will generate chapters and lessons automatically.</p>
-              <div className="flex justify-end gap-3 pt-1">
-                <button type="button" onClick={() => setShowNewCourseModal(false)} className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-800 rounded-xl hover:bg-slate-100 transition-colors">Cancel</button>
-                <button
-                  type="submit"
-                  disabled={isCreating || !courseTopic.trim()}
-                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-700 disabled:opacity-40 text-white text-sm font-semibold rounded-xl transition-all flex items-center gap-2"
-                >
-                  {isCreating ? <><Loader2 size={14} className="animate-spin" /> Creating…</> : 'Create Course'}
-                </button>
-              </div>
-            </form>
+                className="w-full flex items-center justify-between p-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-left transition-all group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100/50">
+                    <BookOpen size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800">Take a guided course</h4>
+                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Generate a full course with micro-paid chapters</p>
+                  </div>
+                </div>
+                {isCreating ? (
+                  <Loader2 size={14} className="animate-spin text-slate-400" />
+                ) : (
+                  <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                )}
+              </button>
+
+              {/* Option 3: Interview crash prep */}
+              <button
+                type="button"
+                onClick={() => executeLearnNow('interview')}
+                className="w-full flex items-center justify-between p-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-left transition-all group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center border border-amber-100/50">
+                    <Sparkles size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800">Prepare for interviews</h4>
+                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Quick crash answers + simulated follow-ups</p>
+                  </div>
+                </div>
+                <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
           </div>
         </div>
       )}
