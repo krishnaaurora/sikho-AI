@@ -111,163 +111,21 @@ const LearnerDashboard: React.FC = () => {
   const classifyAndRoute = async (input: string) => {
     const q = input.trim();
     if (!q) return;
-    const c = q.toLowerCase().replace(/[?.!,]/g, '').trim();
 
+    setIsCreating(true);
     setRoutingFor(q);
-
     try {
-      // First try to classify the intent via backend API
-      const res = await learnerApi.routeIntent(q);
-      if (res.success && res.data && !res.data.requiresClarification) {
-        const { intent, topic, endpoint } = res.data;
-        const targetTopic = topic || q;
-
-        setRoutingFor(null);
-
-        if (intent === 'COURSE_REQUEST') {
-          setIsCreating(true);
-          try {
-            const courseRes = await learnerApi.createCourse(targetTopic);
-            if (courseRes.success) { setCourseTopic(''); await fetchCourses(); }
-          } catch (err) { console.error('Failed to create course:', err); }
-          finally { setIsCreating(false); }
-          return;
-        }
-
-        if (intent === 'CONCEPT_EXPLANATION') {
-          navigate(`/explain?q=${encodeURIComponent(targetTopic)}`);
-          return;
-        }
-
-        if (intent === 'PRACTICE') {
-          navigate(`/explain?q=${encodeURIComponent(targetTopic)}&mode=quiz`);
-          return;
-        }
-
-        if (intent === 'CODE_REVIEW') {
-          navigate(`/explain?q=${encodeURIComponent(targetTopic)}&mode=code`);
-          return;
-        }
-
-        if (intent === 'DEBUG') {
-          navigate(`/explain?q=${encodeURIComponent(targetTopic)}&mode=code`);
-          return;
-        }
-
-        if (intent === 'MOCK_INTERVIEW') {
-          navigate(`/explain?q=${encodeURIComponent(targetTopic)}&mode=interview`);
-          return;
-        }
-
-        if (intent === 'CAREER') {
-          navigate(`/explain?q=${encodeURIComponent(targetTopic)}&mode=career`);
-          return;
-        }
-
-        if (intent === 'RESEARCH') {
-          navigate(`/explain?q=${encodeURIComponent(targetTopic)}&mode=research`);
-          return;
-        }
-
-        // For other endpoints like doubt-solve, interactive-lab, resume-analysis, etc., route to playground
-        if (endpoint) {
-          navigate(`/playground?path=${encodeURIComponent(endpoint)}&q=${encodeURIComponent(targetTopic)}`);
-          return;
-        }
+      const res = await learnerApi.createCourse(q);
+      if (res.success) {
+        setCourseTopic('');
+        await fetchCourses();
       }
-    } catch (error) {
-      console.error("Failed to route intent via backend, using fallback regex client side:", error);
-    }
-
-    // ── CLIENT-SIDE FALLBACK DETAILED INTENT CLASSIFIER ──
-    // ── COURSE_REQUEST ──
-    const coursePatterns = [
-      /^(i want to |i'd like to )?(study|learn|master|understand deeply) (.+)/,
-      /^teach me (.+) from scratch/,
-      /^create (a |an )?(complete |full |structured )?(course|curriculum|learning path) (on|for|about) (.+)/,
-      /^give me (a |an )?(complete |full |structured )?course (on|for|about) (.+)/,
-      /^(beginner to advanced|from scratch|step.?by.?step) (.+)/,
-      /^i want to (become|be) (a |an )?(.+)/,
-      /^build a (.+) course/,
-    ];
-    if (coursePatterns.some(p => p.test(c))) {
+    } catch (err) {
+      console.error('Failed to create course:', err);
+    } finally {
+      setIsCreating(false);
       setRoutingFor(null);
-      setIsCreating(true);
-      try {
-        const res = await learnerApi.createCourse(q);
-        if (res.success) { setCourseTopic(''); await fetchCourses(); }
-      } catch (err) { console.error('Failed to create course:', err); }
-      finally { setIsCreating(false); }
-      return;
     }
-
-    // ── CONCEPT_EXPLANATION ──
-    const explainPatterns = [
-      /^(what is|what are|what's) /,
-      /^(explain|describe|define|elaborate on|give me an? (overview|explanation|summary) of) /,
-      /^how does .+ work/,
-      /^why does .+ happen/,
-      /^how (do|does|did|can|should|would) /,
-      /^tell me about /,
-      /^i (need to |want to |would like to )?(understand|know about|learn about) (.+) (quickly|briefly|simply|in simple terms)/,
-    ];
-    if (explainPatterns.some(p => p.test(c))) {
-      setRoutingFor(null);
-      navigate(`/explain?q=${encodeURIComponent(q)}`);
-      return;
-    }
-
-    // ── PRACTICE / QUIZ ──
-    if (/^(give me (a |some )?quiz|test my|i want to practice|practice|quiz me on|test me on)/.test(c)) {
-      setRoutingFor(null);
-      navigate(`/explain?q=${encodeURIComponent(q)}&mode=quiz`);
-      return;
-    }
-
-    // ── CODE REVIEW / DEBUG ──
-    if (/(review my|check my|debug|fix (this|my)|why (am i|is it) getting (a |an |this )?error|code review)/.test(c)) {
-      setRoutingFor(null);
-      navigate(`/explain?q=${encodeURIComponent(q)}&mode=code`);
-      return;
-    }
-
-    // ── MOCK INTERVIEW ──
-    if (/(interview me|mock interview|prepare (me )?for (a |an )?interview|simulate (a |an )?interview|practice interview)/.test(c)) {
-      setRoutingFor(null);
-      navigate(`/explain?q=${encodeURIComponent(q)}&mode=interview`);
-      return;
-    }
-
-    // ── CAREER ──
-    if (/(career roadmap|how do i become|what should i learn to become|my career path|career advice)/.test(c)) {
-      setRoutingFor(null);
-      navigate(`/explain?q=${encodeURIComponent(q)}&mode=career`);
-      return;
-    }
-
-    // ── RESEARCH ──
-    if (/(analyze this (paper|research)|research paper|literature review|find the (research )?gap|summarize this paper)/.test(c)) {
-      setRoutingFor(null);
-      navigate(`/explain?q=${encodeURIComponent(q)}&mode=research`);
-      return;
-    }
-
-    // ── BROAD LEARNING GOAL → COURSE ──
-    // e.g. "I want to learn Java", "I want to learn machine learning"
-    if (/^(i want to |i'd like to )?learn (.+)/.test(c)) {
-      setRoutingFor(null);
-      setIsCreating(true);
-      try {
-        const res = await learnerApi.createCourse(q);
-        if (res.success) { setCourseTopic(''); await fetchCourses(); }
-      } catch (err) { console.error('Failed to create course:', err); }
-      finally { setIsCreating(false); }
-      return;
-    }
-
-    // ── FALLBACK: treat as concept explanation ──
-    setRoutingFor(null);
-    navigate(`/explain?q=${encodeURIComponent(q)}`);
   };
 
   const executeCreateCourse = async (topic: string) => {
