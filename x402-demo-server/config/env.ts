@@ -28,7 +28,7 @@ export const env = {
   ALGORAND_API_KEY: process.env.ALGORAND_API_KEY || "",
   ALGORAND_SERVER: process.env.ALGORAND_SERVER || "https://mainnet-api.algonode.cloud",
   X402_API_KEY: process.env.X402_API_KEY || "",
-  AVM_ADDRESS: process.env.AVM_ADDRESS || "",
+  AVM_ADDRESS: process.env.AVM_ADDRESS || "BE4IBKJSLUN2JHA7AWKZ5KRIIOMRZBQX4ROJGROW3VKXG7QNCLYGMUYWQM",
   FACILITATOR_URL: process.env.FACILITATOR_URL || "https://facilitator.goplausible.xyz",
   /**
    * Canonical public-facing URL for this merchant's site.
