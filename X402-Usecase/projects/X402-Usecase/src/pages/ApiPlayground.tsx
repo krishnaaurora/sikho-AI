@@ -178,7 +178,7 @@ const ApiPlayground: React.FC = () => {
       // Build mainnet/testnet atomic transfer transaction block
       const client = new algosdk.Algodv2(
         import.meta.env.VITE_ALGOD_TOKEN || "",
-        import.meta.env.VITE_ALGOD_SERVER || "https://testnet-api.algonode.cloud",
+        import.meta.env.VITE_ALGOD_SERVER || "https://mainnet-api.algonode.cloud",
         import.meta.env.VITE_ALGOD_PORT || ""
       );
 

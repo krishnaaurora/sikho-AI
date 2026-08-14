@@ -27,6 +27,10 @@ export interface IUser extends Document {
   experienceLevel?: string;
   preferredLanguage?: string;
   whatAreYouHereToDo?: string[];
+  resumeText?: string;
+  githubUrl?: string;
+  completedChapters?: string[];
+  previousResults?: Array<{ topic: string; score: number; date: Date }>;
   lastLogin?: Date;
   isDeleted: boolean;
   deletedAt?: Date;
@@ -137,6 +141,28 @@ const UserSchema: Schema = new Schema(
       {
         type: String,
         trim: true,
+      },
+    ],
+    resumeText: {
+      type: String,
+    },
+    githubUrl: {
+      type: String,
+      trim: true,
+    },
+    completedChapters: [
+      {
+        type: String,
+      },
+    ],
+    previousResults: [
+      {
+        topic: String,
+        score: Number,
+        date: {
+          type: Date,
+          default: Date.now,
+        },
       },
     ],
     lastLogin: {
