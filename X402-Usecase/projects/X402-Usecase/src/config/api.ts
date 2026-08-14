@@ -19,6 +19,7 @@ export const API_ENDPOINTS = {
   AUTH_RESET_PASSWORD: `${API_BASE_URL}/auth/reset-password`,
   LEARNER_COURSES: `${API_BASE_URL}/learners/courses`,
   LEARNER_UNLOCK_CHAPTER: `${API_BASE_URL}/learners/chapters/unlock`,
-  LEARNER_UNLOCK_CHAPTER_X402: (chapterId: string) => `${API_BASE_URL}/learners/chapters/${chapterId}/unlock`,
+  LEARNER_UNLOCK_CHAPTER_X402: (chapterId: string) => `${API_BASE_URL}/learners/chapters/unlock?chapterId=${chapterId}`,
   AI_EXPLAIN: `${API_BASE_URL}/ai/explain`,
+  AI_ROUTE_INTENT: `${API_BASE_URL}/ai/route-intent`,
 };

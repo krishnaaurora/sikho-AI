@@ -68,10 +68,7 @@ const LearnerDashboard: React.FC = () => {
   const [unlockingChapter, setUnlockingChapter] = useState<string | null>(null);
   const [unlockError, setUnlockError] = useState<string | null>(null);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
-
-  // Intent router modal states
-  const [showRouterModal, setShowRouterModal] = useState(false);
-  const [routerTopic, setRouterTopic] = useState('');
+  const [routingFor, setRoutingFor] = useState<string | null>(null); // shows a brief "Routing..." indicator
 
   const toggleChapter = (chapterId: string, isUnlocked: boolean) => {
     if (!isUnlocked) return;
@@ -108,38 +105,178 @@ const LearnerDashboard: React.FC = () => {
     fetchCourses();
   }, []);
 
-  const handleAskSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!courseTopic.trim()) return;
-    setRouterTopic(courseTopic);
-    setShowRouterModal(true);
+  // ── DETERMINISTIC INTENT CLASSIFIER ──────────────────────────────────────
+  // Classifies the user's free-text input and routes automatically.
+  // No modal. No user choice required.
+  const classifyAndRoute = async (input: string) => {
+    const q = input.trim();
+    if (!q) return;
+    const c = q.toLowerCase().replace(/[?.!,]/g, '').trim();
+
+    setRoutingFor(q);
+
+    try {
+      // First try to classify the intent via backend API
+      const res = await learnerApi.routeIntent(q);
+      if (res.success && res.data && !res.data.requiresClarification) {
+        const { intent, topic, endpoint } = res.data;
+        const targetTopic = topic || q;
+
+        setRoutingFor(null);
+
+        if (intent === 'COURSE_REQUEST') {
+          setIsCreating(true);
+          try {
+            const courseRes = await learnerApi.createCourse(targetTopic);
+            if (courseRes.success) { setCourseTopic(''); await fetchCourses(); }
+          } catch (err) { console.error('Failed to create course:', err); }
+          finally { setIsCreating(false); }
+          return;
+        }
+
+        if (intent === 'CONCEPT_EXPLANATION') {
+          navigate(`/explain?q=${encodeURIComponent(targetTopic)}`);
+          return;
+        }
+
+        if (intent === 'PRACTICE') {
+          navigate(`/explain?q=${encodeURIComponent(targetTopic)}&mode=quiz`);
+          return;
+        }
+
+        if (intent === 'CODE_REVIEW') {
+          navigate(`/explain?q=${encodeURIComponent(targetTopic)}&mode=code`);
+          return;
+        }
+
+        if (intent === 'DEBUG') {
+          navigate(`/explain?q=${encodeURIComponent(targetTopic)}&mode=code`);
+          return;
+        }
+
+        if (intent === 'MOCK_INTERVIEW') {
+          navigate(`/explain?q=${encodeURIComponent(targetTopic)}&mode=interview`);
+          return;
+        }
+
+        if (intent === 'CAREER') {
+          navigate(`/explain?q=${encodeURIComponent(targetTopic)}&mode=career`);
+          return;
+        }
+
+        if (intent === 'RESEARCH') {
+          navigate(`/explain?q=${encodeURIComponent(targetTopic)}&mode=research`);
+          return;
+        }
+
+        // For other endpoints like doubt-solve, interactive-lab, resume-analysis, etc., route to playground
+        if (endpoint) {
+          navigate(`/playground?path=${encodeURIComponent(endpoint)}&q=${encodeURIComponent(targetTopic)}`);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error("Failed to route intent via backend, using fallback regex client side:", error);
+    }
+
+    // ── CLIENT-SIDE FALLBACK DETAILED INTENT CLASSIFIER ──
+    // ── COURSE_REQUEST ──
+    const coursePatterns = [
+      /^(i want to |i'd like to )?(study|learn|master|understand deeply) (.+)/,
+      /^teach me (.+) from scratch/,
+      /^create (a |an )?(complete |full |structured )?(course|curriculum|learning path) (on|for|about) (.+)/,
+      /^give me (a |an )?(complete |full |structured )?course (on|for|about) (.+)/,
+      /^(beginner to advanced|from scratch|step.?by.?step) (.+)/,
+      /^i want to (become|be) (a |an )?(.+)/,
+      /^build a (.+) course/,
+    ];
+    if (coursePatterns.some(p => p.test(c))) {
+      setRoutingFor(null);
+      setIsCreating(true);
+      try {
+        const res = await learnerApi.createCourse(q);
+        if (res.success) { setCourseTopic(''); await fetchCourses(); }
+      } catch (err) { console.error('Failed to create course:', err); }
+      finally { setIsCreating(false); }
+      return;
+    }
+
+    // ── CONCEPT_EXPLANATION ──
+    const explainPatterns = [
+      /^(what is|what are|what's) /,
+      /^(explain|describe|define|elaborate on|give me an? (overview|explanation|summary) of) /,
+      /^how does .+ work/,
+      /^why does .+ happen/,
+      /^how (do|does|did|can|should|would) /,
+      /^tell me about /,
+      /^i (need to |want to |would like to )?(understand|know about|learn about) (.+) (quickly|briefly|simply|in simple terms)/,
+    ];
+    if (explainPatterns.some(p => p.test(c))) {
+      setRoutingFor(null);
+      navigate(`/explain?q=${encodeURIComponent(q)}`);
+      return;
+    }
+
+    // ── PRACTICE / QUIZ ──
+    if (/^(give me (a |some )?quiz|test my|i want to practice|practice|quiz me on|test me on)/.test(c)) {
+      setRoutingFor(null);
+      navigate(`/explain?q=${encodeURIComponent(q)}&mode=quiz`);
+      return;
+    }
+
+    // ── CODE REVIEW / DEBUG ──
+    if (/(review my|check my|debug|fix (this|my)|why (am i|is it) getting (a |an |this )?error|code review)/.test(c)) {
+      setRoutingFor(null);
+      navigate(`/explain?q=${encodeURIComponent(q)}&mode=code`);
+      return;
+    }
+
+    // ── MOCK INTERVIEW ──
+    if (/(interview me|mock interview|prepare (me )?for (a |an )?interview|simulate (a |an )?interview|practice interview)/.test(c)) {
+      setRoutingFor(null);
+      navigate(`/explain?q=${encodeURIComponent(q)}&mode=interview`);
+      return;
+    }
+
+    // ── CAREER ──
+    if (/(career roadmap|how do i become|what should i learn to become|my career path|career advice)/.test(c)) {
+      setRoutingFor(null);
+      navigate(`/explain?q=${encodeURIComponent(q)}&mode=career`);
+      return;
+    }
+
+    // ── RESEARCH ──
+    if (/(analyze this (paper|research)|research paper|literature review|find the (research )?gap|summarize this paper)/.test(c)) {
+      setRoutingFor(null);
+      navigate(`/explain?q=${encodeURIComponent(q)}&mode=research`);
+      return;
+    }
+
+    // ── BROAD LEARNING GOAL → COURSE ──
+    // e.g. "I want to learn Java", "I want to learn machine learning"
+    if (/^(i want to |i'd like to )?learn (.+)/.test(c)) {
+      setRoutingFor(null);
+      setIsCreating(true);
+      try {
+        const res = await learnerApi.createCourse(q);
+        if (res.success) { setCourseTopic(''); await fetchCourses(); }
+      } catch (err) { console.error('Failed to create course:', err); }
+      finally { setIsCreating(false); }
+      return;
+    }
+
+    // ── FALLBACK: treat as concept explanation ──
+    setRoutingFor(null);
+    navigate(`/explain?q=${encodeURIComponent(q)}`);
   };
 
-  const handleQuickPromptClick = (promptText: string) => {
-    setCourseTopic(promptText);
-    setRouterTopic(promptText);
-    setShowRouterModal(true);
-  };
-
-  const executeLearnNow = (style: string) => {
-    setShowRouterModal(false);
-    navigate(`/explain?q=${encodeURIComponent(routerTopic)}&style=${style}`);
-  };
-
-  const executeCreateCourse = async () => {
-    setShowRouterModal(false);
+  const executeCreateCourse = async (topic: string) => {
     setIsCreating(true);
     try {
-      const res = await learnerApi.createCourse(routerTopic);
-      if (res.success) {
-        setCourseTopic('');
-        await fetchCourses();
-      }
-    } catch (err) {
-      console.error('Failed to create course:', err);
-    } finally {
-      setIsCreating(false);
-    }
+      const res = await learnerApi.createCourse(topic);
+      if (res.success) { setCourseTopic(''); await fetchCourses(); }
+    } catch (err) { console.error('Failed to create course:', err); }
+    finally { setIsCreating(false); }
   };
 
   const handleUnlockChapter = async (_courseId: string, chapterId: string) => {
@@ -177,14 +314,16 @@ const LearnerDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC]" style={{ paddingTop: '80px' }}>
       <style dangerouslySetInnerHTML={{__html: `
-        @keyframes float-hero-illustration {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-12px); }
-          100% { transform: translateY(0px); }
-        }
-        .animate-float-hero {
-          animation: float-hero-illustration 7s ease-in-out infinite;
-        }
+        @keyframes float-card-1 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+        @keyframes float-card-2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+        @keyframes float-card-3 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+        @keyframes float-card-4 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+        @keyframes float-card-5 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
+        .dash-float-1{animation:float-card-1 5s ease-in-out infinite}
+        .dash-float-2{animation:float-card-2 6.5s ease-in-out 0.5s infinite}
+        .dash-float-3{animation:float-card-3 4.5s ease-in-out 1s infinite}
+        .dash-float-4{animation:float-card-4 7s ease-in-out 1.5s infinite}
+        .dash-float-5{animation:float-card-5 5.5s ease-in-out 2s infinite}
       `}} />
 
       <div className="max-w-6xl mx-auto px-5 py-8">
@@ -192,38 +331,38 @@ const LearnerDashboard: React.FC = () => {
         {/* ── GREETING & HERO BLOCK ── */}
         {!selectedCourse && (
           <>
-            {/* Top levitating banner */}
-            <div className="relative bg-white border border-slate-200/80 rounded-3xl p-8 mb-8 shadow-sm overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
-              <div className="flex-1 space-y-4 max-w-xl">
+            {/* Top banner — full width, no image */}
+            <div className="relative bg-white border border-slate-200/80 rounded-3xl p-8 mb-8 shadow-sm overflow-hidden">
+              <div className="max-w-2xl">
                 <div>
                   <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1">{getGreeting()}</p>
                   <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
                     {firstName} 👋
                   </h1>
                 </div>
-                <p className="text-slate-500 font-medium text-base">
-                  What will you learn or create today?
+                <p className="text-slate-500 font-medium text-base mt-3">
+                  What do you want to <span className="text-indigo-600 font-bold">learn</span> today?
                 </p>
 
                 {/* Search Bar */}
-                <form onSubmit={handleAskSubmit} className="flex gap-2 items-center pt-2">
+                <form onSubmit={e => { e.preventDefault(); classifyAndRoute(courseTopic); }} className="flex gap-2 items-center pt-4">
                   <div className="relative flex-1">
                     <input
                       type="text"
                       value={courseTopic}
                       onChange={e => setCourseTopic(e.target.value)}
-                      placeholder="Ask anything... (e.g. Explain WebSockets, Create a study plan, Debug my code)"
+                      placeholder="Ask anything... (e.g. Explain WebSockets, I want to learn Python, Debug my code)"
                       className="w-full bg-slate-50 border border-slate-200/80 rounded-2xl pl-4 pr-12 py-3.5 text-sm text-slate-800 font-semibold placeholder-slate-400 outline-none focus:bg-white focus:border-indigo-500 transition-all"
-                      disabled={isCreating}
+                      disabled={isCreating || !!routingFor}
                     />
                   </div>
                   <button
                     type="submit"
-                    disabled={isCreating || !courseTopic.trim()}
-                    className="flex items-center gap-1.5 px-6 py-3.5 bg-indigo-650 hover:bg-indigo-700 disabled:opacity-40 text-white text-xs font-bold rounded-2xl transition-all shadow-md shadow-indigo-200"
+                    disabled={isCreating || !!routingFor || !courseTopic.trim()}
+                    className="flex items-center gap-1.5 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-xs font-bold rounded-2xl transition-all shadow-md shadow-indigo-200"
                   >
-                    {isCreating ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                    <span>Generate</span>
+                    {(isCreating || routingFor) ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                    <span>{routingFor ? 'Routing…' : isCreating ? 'Creating…' : 'Ask'}</span>
                   </button>
                 </form>
 
@@ -233,23 +372,13 @@ const LearnerDashboard: React.FC = () => {
                     <button
                       key={p}
                       type="button"
-                      onClick={() => handleQuickPromptClick(p)}
+                      onClick={() => { setCourseTopic(p); classifyAndRoute(p); }}
                       className="text-xs bg-slate-100 hover:bg-slate-200/80 text-slate-500 font-bold px-3 py-1.5 rounded-full transition-colors border border-slate-200/60"
                     >
                       {p}
                     </button>
                   ))}
                 </div>
-              </div>
-
-              {/* Levitation Image Container */}
-              <div className="relative w-56 h-56 flex-shrink-0 flex items-center justify-center animate-float-hero">
-                <div className="absolute inset-0 bg-indigo-50 rounded-full scale-95 opacity-80 blur-xl" />
-                <img
-                  src="/hero_illustration.png"
-                  alt="Student Levitation Illustration"
-                  className="relative z-10 w-full h-full object-contain select-none"
-                />
               </div>
             </div>
 
@@ -258,7 +387,7 @@ const LearnerDashboard: React.FC = () => {
               
               {/* Tile 1: Learn */}
               <div
-                onClick={() => { setRouterTopic('WebSockets'); setShowRouterModal(true); }}
+                onClick={() => classifyAndRoute('Explain WebSockets')}
                 className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all group relative flex flex-col justify-between"
               >
                 <div>
@@ -392,7 +521,7 @@ const LearnerDashboard: React.FC = () => {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">My Courses</h2>
                   <button
-                    onClick={() => { setRouterTopic(''); setShowRouterModal(true); }}
+                    onClick={() => executeCreateCourse(courseTopic || 'Python Programming')}
                     className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors border border-slate-200 rounded-xl px-3 py-1.5 bg-white hover:bg-slate-50"
                   >
                     <Plus size={13} /> New Course
@@ -561,81 +690,6 @@ const LearnerDashboard: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* ── INTENT ROUTER MODAL ── */}
-      {showRouterModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowRouterModal(false)} />
-          <div className="relative bg-white rounded-3xl shadow-xl max-w-lg w-full p-8 z-10 border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
-            <button onClick={() => setShowRouterModal(false)} className="absolute top-5 right-5 text-slate-400 hover:text-slate-700 text-lg leading-none">✕</button>
-            
-            <p className="text-xs font-extrabold text-indigo-650 uppercase tracking-widest mb-1">Concept Detected</p>
-            <h2 className="text-2xl font-black text-slate-900 mb-2 leading-tight">"{routerTopic}"</h2>
-            <p className="text-sm text-slate-400 font-semibold mb-6">How would you like to explore this topic?</p>
-            
-            <div className="space-y-4">
-              {/* Option 1: Learn Now */}
-              <button
-                type="button"
-                onClick={() => executeLearnNow('academic')}
-                className="w-full flex items-center justify-between p-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-left transition-all group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100/50">
-                    <Zap size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-800">Learn it now</h4>
-                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Get a focused structured explanation immediately</p>
-                  </div>
-                </div>
-                <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-
-              {/* Option 2: Guided Course */}
-              <button
-                type="button"
-                onClick={executeCreateCourse}
-                disabled={isCreating}
-                className="w-full flex items-center justify-between p-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-left transition-all group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100/50">
-                    <BookOpen size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-800">Take a guided course</h4>
-                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Generate a full course with micro-paid chapters</p>
-                  </div>
-                </div>
-                {isCreating ? (
-                  <Loader2 size={14} className="animate-spin text-slate-400" />
-                ) : (
-                  <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                )}
-              </button>
-
-              {/* Option 3: Interview crash prep */}
-              <button
-                type="button"
-                onClick={() => executeLearnNow('interview')}
-                className="w-full flex items-center justify-between p-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-left transition-all group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center border border-amber-100/50">
-                    <Sparkles size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-800">Prepare for interviews</h4>
-                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Quick crash answers + simulated follow-ups</p>
-                  </div>
-                </div>
-                <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <ConnectWallet openModal={walletModalOpen} closeModal={() => setWalletModalOpen(false)} />
     </div>

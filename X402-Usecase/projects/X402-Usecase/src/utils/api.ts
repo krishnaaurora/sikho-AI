@@ -201,6 +201,13 @@ export const learnerApi = {
       body: JSON.stringify({ chapterId, transactionHash }),
     });
   },
+
+  async routeIntent(query: string) {
+    return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.AI_ROUTE_INTENT, {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+    });
+  },
 };
 
 export const adminApi = {
