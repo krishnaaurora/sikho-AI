@@ -3,14 +3,6 @@ import fs from "fs";
 import Groq from "groq-sdk";
 import { config } from "../config";
 
-// --- PDF Parser ---
-const getPdfParse = async (): Promise<(buffer: Buffer) => Promise<{ text: string }>> => {
-  // pdf-parse is CJS; use require for reliable loading
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require("pdf-parse");
-  return typeof mod === "function" ? mod : mod.default ?? mod;
-};
-
 // --- DOCX Parser (lazy-loaded) ---
 let mammoth: any = null;
 const getMammoth = async () => {
@@ -36,8 +28,26 @@ export async function extractRawText(filePath: string): Promise<string> {
   const buffer = fs.readFileSync(filePath);
 
   if (ext === ".pdf") {
-    const parse = await getPdfParse();
-    const result = await parse(buffer);
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pdfParseMod = require("pdf-parse");
+    
+    // Check if it's the new class-based TypeScript version
+    if (pdfParseMod.PDFParse) {
+      const parser = new pdfParseMod.PDFParse({ data: buffer });
+      try {
+        const textResult = await parser.getText();
+        return textResult.text || "";
+      } finally {
+        await parser.destroy().catch(() => {});
+      }
+    }
+    
+    // Fallback to the old CJS function version
+    const parseFunc = typeof pdfParseMod === "function" ? pdfParseMod : pdfParseMod.default ?? pdfParseMod;
+    if (typeof parseFunc !== "function") {
+      throw new Error("Could not load a valid pdf-parse function or class");
+    }
+    const result = await parseFunc(buffer);
     return result.text || "";
   }
 
