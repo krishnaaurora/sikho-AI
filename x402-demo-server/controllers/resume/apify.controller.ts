@@ -194,12 +194,21 @@ export const discoverJobs = asyncHandler(async (req: any, res: Response) => {
     searchQueries = searchQueries.map(q => `${q} in ${location}`);
   }
 
-  // Actor input for Google Jobs Scraper
-  const actorInput = {
-    searchQueries,
-    locations: [location || "India"],
-    maxItems: 20,
-  };
+  // Dynamically select Actor and build Input based on configuration
+  const actorId = (config as any).apifyLinkedInActor || "apify~google-jobs-scraper";
+  const isLinkedIn = actorId.includes("linkedin");
+
+  const actorInput = isLinkedIn
+    ? {
+        keywords: searchQueries[0] || career,
+        location: location || "India",
+        maxItems: 20,
+      }
+    : {
+        searchQueries,
+        locations: [location || "India"],
+        maxItems: 20,
+      };
 
   const webhookUrl =
     `${req.protocol}://${req.get("host")}/api/resume/webhook/apify?resumeId=${resumeId}`;
@@ -210,7 +219,7 @@ export const discoverJobs = asyncHandler(async (req: any, res: Response) => {
 
   try {
     const runResponse = await axios.post(
-      `https://api.apify.com/v2/acts/apify~google-jobs-scraper/runs?token=${token}`,
+      `https://api.apify.com/v2/acts/${actorId}/runs?token=${token}`,
       actorInput,
       { headers: { "Content-Type": "application/json" } }
     );
@@ -219,8 +228,7 @@ export const discoverJobs = asyncHandler(async (req: any, res: Response) => {
     if (!runId) {
       throw new Error("No run ID returned from Apify");
     }
-    const actorId = "apify~google-jobs-scraper";
-    console.log(`[ApifyDiscover] Started Actor run ${runId} for resume ${resumeId}`);
+    console.log(`[ApifyDiscover] Started Actor run ${runId} for resume ${resumeId} using actor ${actorId}`);
 
     // Track the run
     await ApifyRun.create({

@@ -14,7 +14,8 @@ export const config = {
   avmAddress: env.AVM_ADDRESS,
   facilitatorUrl: env.FACILITATOR_URL,
   groqApiKeys: env.GROQ_API_KEYS,
-  apifyApiToken: env.APIFY_API_TOKEN
+  apifyApiToken: env.APIFY_API_TOKEN,
+  apifyLinkedInActor: env.APIFY_LINKEDIN_ACTOR
 };
 
 export { appConfig } from './app.config';
