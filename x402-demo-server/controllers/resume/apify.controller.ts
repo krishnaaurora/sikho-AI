@@ -204,172 +204,60 @@ export const discoverJobs = asyncHandler(async (req: any, res: Response) => {
   const webhookUrl =
     `${req.protocol}://${req.get("host")}/api/resume/webhook/apify?resumeId=${resumeId}`;
 
-  // ── Attempt real Apify actor run ──
-  if (token) {
-    try {
-      const runResponse = await axios.post(
-        `https://api.apify.com/v2/acts/apify~google-jobs-scraper/runs?token=${token}`,
-        actorInput,
-        { headers: { "Content-Type": "application/json" } }
-      );
-
-      const runId: string = runResponse.data?.data?.id;
-      const actorId = "apify~google-jobs-scraper";
-      console.log(`[ApifyDiscover] Started Actor run ${runId} for resume ${resumeId}`);
-
-      // Track the run
-      await ApifyRun.create({
-        runId,
-        actorId,
-        searchQuery: searchQueries.join(", "),
-        status: "RUNNING",
-        startedAt: new Date(),
-        resumeId,
-      });
-
-      // Track the search
-      await JobSearch.create({
-        resumeId,
-        searchQuery: searchQueries.join(", "),
-        runId,
-      });
-
-      // Fire-and-forget background poll → simulate webhook when run finishes
-      setTimeout(async () => {
-        try {
-          console.log(`[ApifyDiscover] Background webhook trigger for run ${runId}`);
-          await axios.post(`${webhookUrl}&runId=${runId}`);
-        } catch (err: any) {
-          console.error("[ApifyDiscover] Background webhook trigger failed:", err.message);
-        }
-      }, 10_000);
-
-      return sendSuccessResponse(
-        res,
-        { resumeId, status: "DISCOVERING", runId, searchQueries, location, remote },
-        "Job discovery initiated"
-      );
-    } catch (err: any) {
-      console.error("[ApifyDiscover] Actor start failed:", err.message);
-    }
+  if (!token) {
+    throw new AppError("Apify API Token (APIFY_API_TOKEN) is not configured in .env file.", 400);
   }
 
-  // ── Fallback / Mock Ingestion pipeline with customized parameters matching search configuration ──
-  console.log(`[ApifyDiscover] Generating custom mock jobs for ${career} in ${formattedLocation} (${experienceLevel})`);
-  
-  const mockRunId = `mock_run_${Date.now()}`;
-  const mockActorId = "apify~google-jobs-scraper-fallback";
+  try {
+    const runResponse = await axios.post(
+      `https://api.apify.com/v2/acts/apify~google-jobs-scraper/runs?token=${token}`,
+      actorInput,
+      { headers: { "Content-Type": "application/json" } }
+    );
 
-  // Register tracker run & search
-  const apifyRun = await ApifyRun.create({
-    runId: mockRunId,
-    actorId: mockActorId,
-    searchQuery: searchQueries.join(", "),
-    status: "RUNNING",
-    startedAt: new Date(),
-    resumeId,
-  });
-
-  await JobSearch.create({
-    resumeId,
-    searchQuery: searchQueries.join(", "),
-    runId: mockRunId,
-  });
-
-  const mockRaw: RawApifyJob[] = [
-    { 
-      positionName: experienceLevel.includes("Senior") ? `Senior ${career}` : experienceLevel.includes("Intern") ? `${career} Intern` : `Junior ${career}`, 
-      companyName: "Google", 
-      location: `${formattedLocation}, India`, 
-      description: `Build and optimize ${career} models and systems. Collaborate with teams on data engineering and machine learning operations. Requirements include Python, SQL, and Git.`, 
-      requirements: ["Python", "SQL", "Machine Learning"], 
-      responsibilities: ["Build models", "Pipeline operations", "Collaborate on designs"], 
-      salary: "₹12–18 LPA", 
-      id: `mock_1_${Date.now()}` 
-    },
-    { 
-      positionName: experienceLevel.includes("Senior") ? `Lead ${career}` : experienceLevel.includes("Intern") ? `AI Research Intern` : career, 
-      companyName: "Sikho AI Solutions", 
-      location: `${formattedLocation}, India`, 
-      description: `Join us as a ${career} to implement modern models, run experiments, and deploy solutions to our cloud workspace.`, 
-      requirements: ["Python", "ML", "Cloud"], 
-      responsibilities: ["Model tuning", "Evaluation"], 
-      salary: "₹15–22 LPA", 
-      id: `mock_2_${Date.now() + 1}` 
-    },
-    { 
-      positionName: experienceLevel.includes("Senior") ? `Senior Staff ${career}` : experienceLevel.includes("Intern") ? `${career} Graduate Intern` : `Associate ${career}`, 
-      companyName: "Microsoft", 
-      location: remote ? "Remote" : `${formattedLocation}, India`, 
-      description: `Core ${career} role. Responsible for training algorithms, handling data pipelines, and integrating services with microservices.`, 
-      requirements: ["Python", "Docker", "PyTorch"], 
-      responsibilities: ["Build data feeds", "Train algorithms"], 
-      salary: "₹18–28 LPA", 
-      id: `mock_3_${Date.now() + 2}` 
-    },
-    { 
-      positionName: experienceLevel.includes("Senior") ? `Principal ${career}` : experienceLevel.includes("Intern") ? `${career} Trainee` : `${career} Specialist`, 
-      companyName: "Amazon", 
-      location: `${formattedLocation}, India`, 
-      description: `Exciting opportunity for a ${career} specializing in production MLOps, containerization, and backend microservices.`, 
-      requirements: ["Python", "MLOps", "Docker", "Kubernetes"], 
-      responsibilities: ["Automate deployments", "Monitor drift"], 
-      salary: "₹20–35 LPA", 
-      id: `mock_4_${Date.now() + 3}` 
+    const runId: string = runResponse.data?.data?.id;
+    if (!runId) {
+      throw new Error("No run ID returned from Apify");
     }
-  ];
+    const actorId = "apify~google-jobs-scraper";
+    console.log(`[ApifyDiscover] Started Actor run ${runId} for resume ${resumeId}`);
 
-  // Ingest fallback jobs into Database
-  const ingestionResult = await ingestApifyJobs(mockRaw, "apify-fallback-intent");
-  console.log(`[ApifyDiscover] Fallback ingestion — ingested=${ingestionResult.ingested} dupes=${ingestionResult.duplicates}`);
-
-  // Create JobSource and JobSnapshot records for fallback jobs
-  for (let i = 0; i < ingestionResult.jobs.length; i++) {
-    const job = ingestionResult.jobs[i];
-    const rawJob = mockRaw[i] || {};
-    
-    await JobSource.create({
-      jobId: job._id,
-      runId: mockRunId,
+    // Track the run
+    await ApifyRun.create({
+      runId,
+      actorId,
+      searchQuery: searchQueries.join(", "),
+      status: "RUNNING",
+      startedAt: new Date(),
       resumeId,
     });
 
-    await JobSnapshot.create({
-      jobId: job._id,
-      runId: mockRunId,
-      data: rawJob,
+    // Track the search
+    await JobSearch.create({
+      resumeId,
+      searchQuery: searchQueries.join(", "),
+      runId,
     });
+
+    // Fire-and-forget background poll → simulate webhook when run finishes
+    setTimeout(async () => {
+      try {
+        console.log(`[ApifyDiscover] Background webhook trigger for run ${runId}`);
+        await axios.post(`${webhookUrl}&runId=${runId}`);
+      } catch (err: any) {
+        console.error("[ApifyDiscover] Background webhook trigger failed:", err.message);
+      }
+    }, 10_000);
+
+    return sendSuccessResponse(
+      res,
+      { resumeId, status: "DISCOVERING", runId, searchQueries, location, remote },
+      "Job discovery initiated"
+    );
+  } catch (err: any) {
+    console.error("[ApifyDiscover] Actor start failed:", err.message);
+    throw new AppError(`Failed to trigger job discovery via Apify: ${err.response?.data?.error?.message || err.message}`, 500);
   }
-
-  // Create matches and calculate scores (simulated match percent in discovery, real matching logic evaluates in matchAll)
-  const jobSummaries = ingestionResult.jobs.slice(0, 15).map((job) => ({
-    title: job.title,
-    company: job.company,
-    location: job.location,
-    matchPercent: Math.round(50 + Math.random() * 45),
-    jobId: (job._id as any).toString(),
-    description: job.description,
-    requiredSkills: [],
-    missingSkills: [],
-  }));
-
-  await Resume.findByIdAndUpdate(resumeId, {
-    status: "READY",
-    autoJobMatches: bucketJobs(jobSummaries),
-  });
-
-  // Track completed mock run
-  apifyRun.status = "SUCCEEDED";
-  apifyRun.datasetId = "mock_dataset_id";
-  apifyRun.completedAt = new Date();
-  apifyRun.jobCount = mockRaw.length;
-  await apifyRun.save();
-
-  return sendSuccessResponse(
-    res,
-    { resumeId, status: "READY", fallback: true, ingested: ingestionResult.ingested, searchQueries, location: formattedLocation, remote, runId: mockRunId },
-    "Job discovery complete (fallback — customized jobs ingested and tracked)"
-  );
 });
 
 

@@ -214,28 +214,8 @@ Resume: ${currentResumeText}`;
     const parsed = JSON.parse(resultText.trim());
     return Array.isArray(parsed) ? parsed : parsed.suggestions || Object.values(parsed)[0] || [];
   } catch (err: any) {
-    console.error("[GroqImprovement] Live improvement generation failed, using fallback:", err.message);
-    const focusLabel = userPrompt.toLowerCase().includes("project") ? "Project Section" : "Experience Section";
-    return [
-      {
-        id: 0,
-        title: `1. ML Churn Predictor (${focusLabel})`,
-        impact: "High Impact",
-        color: "bg-red-50 text-red-600 border border-red-100",
-        before: "Built a ML model for predicting churn.",
-        after: "Architected a real-time Churn Prediction system using Python, Scikit-learn, and FastAPI, improving precision to 89% and recovering $12k in monthly revenue.",
-        badges: ["Added Impact", "Quantified", "Tools Added"]
-      },
-      {
-        id: 1,
-        title: `2. Recommendations API (${focusLabel})`,
-        impact: "Medium Impact",
-        color: "bg-amber-50 text-amber-600 border border-amber-100",
-        before: "Collaborated on recommended product algorithms.",
-        after: "Built a collaborative filtering recommender with cosine similarity in Python, achieving a 27% click-through-rate boost across products.",
-        badges: ["Quantified", "Outcome Added"]
-      }
-    ];
+    console.error("[GroqImprovement] Live improvement generation failed:", err.message);
+    throw new Error(`Failed to generate optimized suggestions: ${err.message}`);
   }
 }
 
@@ -286,34 +266,8 @@ Current Resume: ${currentResumeText}`;
     const resultText = chatCompletion.choices[0]?.message?.content || "";
     return JSON.parse(resultText.trim());
   } catch (err: any) {
-    console.error("[GroqProject] Project recommendations generation failed, using fallback:", err.message);
-    return {
-      projectName: "Production ML Deployment Platform",
-      rationale: "This project directly addresses the missing MLOps, Docker, AWS, and FastAPI requirements in the selected job description.",
-      missingSkills: ["Docker", "AWS", "FastAPI", "MLOps"],
-      requirementsMetCount: 17,
-      architecture: "FastAPI inference service containerized with Docker, deployed on AWS ECS with auto-scaling and Prometheus monitoring.",
-      techStack: ["FastAPI", "Docker", "AWS ECS", "Prometheus", "Python"],
-      milestones: [
-        "Develop FastAPI inference endpoints for model serving",
-        "Containerize the application using multi-stage Docker builds",
-        "Deploy ECS services behind ALB using Terraform",
-        "Configure Prometheus metrics and Grafana alerts dashboard"
-      ],
-      tasks: [
-        "Create app.py exposing POST /predict and GET /health endpoints",
-        "Write robust Dockerfile optimizing footprint size",
-        "Write task definition JSON configuration file for AWS ECS task scheduler",
-        "Setup Prometheus scrape config target configuration"
-      ],
-      apis: [
-        "POST /predict: Serves low-latency classifier predictions",
-        "GET /health: Endpoint for active target group container health checks"
-      ],
-      deployment: "AWS ECS container service provisioned automatically via Terraform Cloud.",
-      resumeBullet: "Engineered and containerized high-performance model deployment platform handling 1.2M weekly inference predictions using FastAPI, Docker, and AWS ECS.",
-      readme: "# Production ML Deployment Platform\n\n## Setup\n`docker compose up -d`\n\n## Tech Stack\nFastAPI, ECS, Docker."
-    };
+    console.error("[GroqProject] Project recommendations generation failed:", err.message);
+    throw new Error(`Failed to generate custom project recommendation: ${err.message}`);
   }
 }
 
@@ -407,76 +361,7 @@ Current Resume: ${currentResumeText}`;
     const resultText = chatCompletion.choices[0]?.message?.content || "";
     return JSON.parse(resultText.trim());
   } catch (err: any) {
-    console.error("[GroqActionPlan] Career action plan generation failed, using fallback:", err.message);
-    return {
-      targetCareer,
-      overview: "A structured 30-day transition roadmap targeting core gap closures, hands-on projects, and technical screening preparation.",
-      weeks: [
-        {
-          weekNumber: 1,
-          focus: "Core Skills Baseline & Environment Setup",
-          days: [
-            { day: 1, task: "Baseline Python OOP & standard library concepts" },
-            { day: 2, task: "Familiarize with FastAPI async routes & database session handling" },
-            { day: 3, task: "Install Docker, configure docker-compose for local testing" },
-            { day: 4, task: "Review container registry systems (Docker Hub, AWS ECR)" },
-            { day: 5, task: "Practice SQL aggregate queries & indices" },
-            { day: 6, task: "Read clean code conventions & structure app directory" },
-            { day: 7, task: "Refactor existing script into multi-file Python module" }
-          ]
-        },
-        {
-          weekNumber: 2,
-          focus: "Hands-on Project & API Construction",
-          days: [
-            { day: 8, task: "Design API endpoints for ML serving gateway" },
-            { day: 9, task: "Implement core route handlers & mock model load" },
-            { day: 10, task: "Write unit tests for predictor logic" },
-            { day: 11, task: "Setup Dockerfile multi-stage builds" },
-            { day: 12, task: "Test container deployment locally with mocked payload" },
-            { day: 13, task: "Profile application memory footprint" },
-            { day: 14, task: "Commit code to GitHub, tag release v1.0" }
-          ]
-        },
-        {
-          weekNumber: 3,
-          focus: "Cloud Deployment & MLOps Pipelines",
-          days: [
-            { day: 15, task: "Familiarize with AWS IAM, ECS, and ECR consoles" },
-            { day: 16, task: "Write ECS task definition JSON configs" },
-            { day: 17, task: "Deploy container manually to ECR" },
-            { day: 18, task: "Configure ALB (Application Load Balancer) routing rules" },
-            { day: 19, task: "Automate build & push via GitHub Actions CI/CD" },
-            { day: 20, task: "Monitor ECS logs using AWS CloudWatch" },
-            { day: 21, task: "Benchmark endpoint performance under concurrency" }
-          ]
-        },
-        {
-          weekNumber: 4,
-          focus: "Resume Updates & Interview Simulation",
-          days: [
-            { day: 22, task: "Tailor projects section using quantified bullet points" },
-            { day: 23, task: "Synchronize LinkedIn profile highlights" },
-            { day: 24, task: "Familiarize with ML system design case studies" },
-            { day: 25, task: "Mock interview: explaining architecture and trade-offs" },
-            { day: 26, task: "Mock interview: live coding practice (LeetCode)" },
-            { day: 27, task: "Submit target job applications" },
-            { day: 28, task: "Follow up with matching job posters" },
-            { day: 29, task: "Final resume polish & PDF export" },
-            { day: 30, task: "Ready for screening rounds" }
-          ]
-        }
-      ],
-      learningResources: [
-        "FastAPI official user guide documentation",
-        "AWS ECS deployment whitepapers",
-        "Designing Machine Learning Systems by Chip Huyen"
-      ],
-      interviewPrep: [
-        "Be ready to explain how Triton/gRPC scales prediction throughput.",
-        "Practice drawing architectural diagrams showing load balancers and container tasks.",
-        "Focus on quantifying project bullets: use the X-Y-Z formula (Achieved X, as measured by Y, by doing Z)."
-      ]
-    };
+    console.error("[GroqActionPlan] Career action plan generation failed:", err.message);
+    throw new Error(`Failed to generate transition action plan: ${err.message}`);
   }
 }
