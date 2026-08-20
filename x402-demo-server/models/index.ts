@@ -14,6 +14,9 @@ export { default as Analytics } from "./Analytics.model";
 export { LearningSource } from "./LearningSource.model";
 export { LearningSession } from "./LearningSession.model";
 export { LearningVersion } from "./LearningVersion.model";
+export { default as Job } from "./Job.model";
+export { default as ResumeJobMatch } from "./ResumeJobMatch.model";
+export * from "./ApifyTracker.model";
 
 export * from "./User.model";
 export * from "./Category.model";
@@ -31,3 +34,7 @@ export * from "./Analytics.model";
 export * from "./LearningSource.model";
 export * from "./LearningSession.model";
 export * from "./LearningVersion.model";
+export * from "./Job.model";
+export { default as X402Service } from "./X402Service.model";
+export { default as X402Transaction } from "./X402Transaction.model";
+

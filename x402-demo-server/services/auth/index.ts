@@ -233,7 +233,7 @@ export const changePasswordService = async (
 
 export const updateProfileService = async (
   userId: string,
-  updateData: { fullName?: string; bio?: string; profileImage?: string }
+  updateData: any
 ) => {
   const user = await User.findByIdAndUpdate(
     userId,

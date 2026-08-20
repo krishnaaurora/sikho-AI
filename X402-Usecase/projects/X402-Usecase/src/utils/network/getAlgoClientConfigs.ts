@@ -2,19 +2,19 @@ import { AlgoViteClientConfig, AlgoViteKMDConfig } from '../../interfaces/networ
 
 export function getAlgodConfigFromViteEnvironment(): AlgoViteClientConfig {
   return {
-    server: import.meta.env.VITE_ALGOD_SERVER || 'https://testnet-api.algonode.cloud',
+    server: import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud',
     port: import.meta.env.VITE_ALGOD_PORT || '',
     token: import.meta.env.VITE_ALGOD_TOKEN || '',
-    network: import.meta.env.VITE_ALGOD_NETWORK || 'testnet',
+    network: import.meta.env.VITE_ALGOD_NETWORK || 'mainnet',
   }
 }
 
 export function getIndexerConfigFromViteEnvironment(): AlgoViteClientConfig {
   return {
-    server: import.meta.env.VITE_INDEXER_SERVER || 'https://testnet-idx.algonode.cloud',
+    server: import.meta.env.VITE_INDEXER_SERVER || 'https://mainnet-idx.algonode.cloud',
     port: import.meta.env.VITE_INDEXER_PORT || '',
     token: import.meta.env.VITE_INDEXER_TOKEN || '',
-    network: import.meta.env.VITE_ALGOD_NETWORK || 'testnet',
+    network: import.meta.env.VITE_ALGOD_NETWORK || 'mainnet',
   }
 }
 

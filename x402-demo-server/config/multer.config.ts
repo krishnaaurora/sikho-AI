@@ -1,6 +1,8 @@
 import multer from "multer";
 import path from "path";
 
+import fs from "fs";
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
@@ -12,6 +14,12 @@ const storage = multer.diskStorage({
     } else if ([".pdf", ".doc", ".docx", ".txt"].includes(ext)) {
       destDir = "uploads/documents";
     }
+    
+    // Ensure directory exists
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+    
     cb(null, destDir);
   },
   filename: (req, file, cb) => {

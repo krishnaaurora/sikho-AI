@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import path from "path";
 import { morganMiddleware } from "./config/logger.config";
 import routes from "./routes";
+import resumeRouter from "./routes/resume.routes";
 import { notFoundHandler } from "./middlewares/notFound.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
 import { appConfig } from "./config/app.config";
@@ -162,6 +163,7 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 // API routes
+app.use("/api/resume", resumeRouter);
 app.use(appConfig.apiPrefix, routes);
 
 // Error handling middlewares

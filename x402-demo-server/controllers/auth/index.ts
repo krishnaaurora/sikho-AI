@@ -214,13 +214,7 @@ export const updateProfile = asyncHandler(
       return;
     }
 
-    const { fullName, bio, profileImage } = req.body;
-
-    const updatedUser = await updateProfileService(req.user._id.toString(), {
-      fullName,
-      bio,
-      profileImage,
-    });
+    const updatedUser = await updateProfileService(req.user._id.toString(), req.body);
 
     sendSuccessResponse(
       res,

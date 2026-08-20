@@ -27,11 +27,38 @@ export interface IUser extends Document {
   experienceLevel?: string;
   preferredLanguage?: string;
   whatAreYouHereToDo?: string[];
+  resumeText?: string;
+  githubUrl?: string;
+  completedChapters?: string[];
+  previousResults?: Array<{ topic: string; score: number; date: Date }>;
   lastLogin?: Date;
   isDeleted: boolean;
   deletedAt?: Date;
   resetPasswordToken?: string;
   resetPasswordExpire?: Date;
+  collegeUniversity?: string;
+  degree?: string;
+  graduationYear?: string;
+  currentYearSemester?: string;
+  careerJourneyState?: string;
+  preferredIndustry?: string;
+  targetCompanies?: string[];
+  projects?: any;
+  internships?: any;
+  hackathons?: any;
+  certifications?: any;
+  achievements?: any;
+  learningTimePerDay?: string;
+  preferredLearningTime?: string;
+  country?: string;
+  onboardingCompleted?: boolean;
+  specialization?: string;
+  preferredLocations?: string[];
+  targetTimeline?: string;
+  expectedSalary?: string;
+  careerDiscoveryAnswers?: any;
+  openSource?: any;
+  skillProficiencies?: any;
   comparePassword: (candidatePassword: string) => Promise<boolean>;
 }
 
@@ -139,6 +166,28 @@ const UserSchema: Schema = new Schema(
         trim: true,
       },
     ],
+    resumeText: {
+      type: String,
+    },
+    githubUrl: {
+      type: String,
+      trim: true,
+    },
+    completedChapters: [
+      {
+        type: String,
+      },
+    ],
+    previousResults: [
+      {
+        topic: String,
+        score: Number,
+        date: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
     lastLogin: {
       type: Date,
     },
@@ -155,6 +204,29 @@ const UserSchema: Schema = new Schema(
     resetPasswordExpire: {
       type: Date,
     },
+    collegeUniversity: { type: String, trim: true },
+    degree: { type: String, trim: true },
+    graduationYear: { type: String, trim: true },
+    currentYearSemester: { type: String, trim: true },
+    careerJourneyState: { type: String, trim: true },
+    preferredIndustry: { type: String, trim: true },
+    targetCompanies: [{ type: String, trim: true }],
+    projects: { type: Schema.Types.Mixed },
+    internships: { type: Schema.Types.Mixed },
+    hackathons: { type: Schema.Types.Mixed },
+    certifications: { type: Schema.Types.Mixed },
+    achievements: { type: Schema.Types.Mixed },
+    learningTimePerDay: { type: String, trim: true },
+    preferredLearningTime: { type: String, trim: true },
+    country: { type: String, trim: true },
+    onboardingCompleted: { type: Boolean, default: false },
+    specialization: { type: String, trim: true },
+    preferredLocations: [{ type: String, trim: true }],
+    targetTimeline: { type: String, trim: true },
+    expectedSalary: { type: String, trim: true },
+    careerDiscoveryAnswers: { type: Schema.Types.Mixed },
+    openSource: { type: Schema.Types.Mixed },
+    skillProficiencies: { type: Schema.Types.Mixed },
   },
   {
     timestamps: true,

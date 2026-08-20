@@ -58,7 +58,7 @@ Output a valid JSON object matching this structure EXACTLY:
         { role: "system", content: systemPrompt },
         { role: "user", content: `Compare Version 1 and Version 2 for: ${topic}` }
       ],
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       temperature: 0.3,
       response_format: { type: "json_object" }
     });

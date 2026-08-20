@@ -15,6 +15,7 @@ router.get("/courses", authenticate, requireLearner, getLearnerCourses);
 router.post("/chapters/unlock", authenticate, requireLearner, unlockChapter);
 
 /** X402 payment-gated unlock: GET returns 402 publicly, GET with X-PAYMENT/X-PAYMENT-SIGNATURE performs auth & unlock */
+router.get("/chapters/unlock", unlockChapterX402);
 router.get("/chapters/:chapterId/unlock", unlockChapterX402);
 
 export default router;

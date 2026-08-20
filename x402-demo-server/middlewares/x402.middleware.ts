@@ -3,6 +3,7 @@ import { buildWorkspacePaymentRequired, verifyX402Payment } from "../services/pa
 // @ts-ignore
 import { encodePaymentRequiredHeader } from "@x402/core/http";
 import { logger } from "../utils/logger";
+import X402Transaction from "../models/X402Transaction.model";
 
 export interface PaidEndpointConfig {
   priceUsd: number;
@@ -24,6 +25,34 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
     const forwardedHost = String(req.headers["x-forwarded-host"] || req.get("host") || "");
     const requestUrl = `${forwardedProto}://${forwardedHost}${req.originalUrl}`;
 
+    // Derive service identity and unique operation resource targets
+    let serviceId = "job_analysis";
+    if (config.description.toLowerCase().includes("improvement")) {
+      serviceId = "resume_improvement";
+    } else if (config.description.toLowerCase().includes("project")) {
+      serviceId = "project_generation";
+    }
+
+    const resourceId = req.params.jobId || req.params.resumeId || req.body.jobId || req.body.resumeId || req.path;
+    const userId = (req as any).user?._id?.toString() || "user_01";
+
+    // ─── Idempotency Check ───
+    try {
+      const existingTx = await X402Transaction.findOne({
+        userId,
+        serviceId,
+        resourceId,
+        status: "Success"
+      });
+
+      if (existingTx) {
+        logger.info(`✓ Idempotency Check: Existing transaction found for user=${userId} service=${serviceId} resource=${resourceId}. Bypassing payment.`);
+        return next();
+      }
+    } catch (dbErr: any) {
+      logger.warn(`Idempotency database lookup failed, continuing checkout workflow: ${dbErr.message}`);
+    }
+
     // Build requirement metadata mapping
     const paymentRequired = buildWorkspacePaymentRequired(
       req.path,
@@ -44,8 +73,21 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
     try {
       logger.info(`Verifying pay-per-use x402 payment for endpoint ${req.path} (USDC ${config.priceUsd})`);
       // Verify payment with GoPlausible facilitator
-      await verifyX402Payment(paymentHeader, paymentRequired);
+      const { transactionHash, payer } = await verifyX402Payment(paymentHeader, paymentRequired);
       logger.info(`✓ x402 payment verified successfully for ${req.path}`);
+
+      // Log transaction as settled to enforce future idempotency check approvals
+      await X402Transaction.create({
+        userId,
+        serviceId,
+        resourceId,
+        amount: config.priceUsd,
+        currency: "USDC",
+        walletAddress: payer || "0xPayerWalletAddress",
+        txHash: transactionHash || `tx_${Date.now()}`,
+        status: "Success"
+      });
+
       next();
     } catch (err: any) {
       logger.error(`x402 payment verification failed: ${err.message}`);
