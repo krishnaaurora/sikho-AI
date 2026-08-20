@@ -59,7 +59,7 @@ const Navbar = () => {
             
             {/* Brand Logo with dynamic sparkle badge */}
             <Link to="/" className="flex items-center gap-2 group">
-              <div className="relative">
+              <div className="relative flex items-center gap-2">
                 <img src="/logo.png" alt="Logo" className={`${user ? 'h-12' : 'h-10'} w-auto object-contain rounded-xl`} />
                 <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <Sparkles className="h-3.5 w-3.5 text-indigo-550 animate-bounce" />
@@ -118,31 +118,6 @@ const Navbar = () => {
                         </Button>
                       )}
 
-                      {/* ChatGPT-style Nav upload */}
-                      <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl cursor-pointer text-xs font-bold transition-all">
-                        <Upload className="h-4 w-4 text-blue-500" />
-                        <span className="hidden sm:inline">Ground PDF</span>
-                        <input 
-                          type="file" 
-                          accept=".pdf,.txt" 
-                          className="hidden" 
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const event = new CustomEvent("navbar-pdf-upload", { detail: { file } });
-                              window.dispatchEvent(event);
-                            }
-                          }}
-                        />
-                      </label>
-
-                      <Button
-                        variant="ghost"
-                        className="p-2 rounded-xl text-slate-650 hover:text-indigo-650 hover:bg-slate-100 flex items-center gap-1.5 font-bold"
-                        asChild
-                      >
-                        <Link to="/playground">API Playground</Link>
-                      </Button>
 
                       <button className="p-2 rounded-xl text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition-all relative">
                         <Bell className="h-5 w-5" />
@@ -188,15 +163,19 @@ const Navbar = () => {
               <>
                 <div className="hidden md:flex items-center gap-8">
                   {[
-                    { name: "How It Works", href: "#how-it-works", color: "hover:after:bg-orange-500" },
-                    { name: "Learn", href: "#learning-experience", color: "hover:after:bg-blue-500" },
-                    { name: "Labs", href: "#labs", color: "hover:after:bg-orange-500" },
-                    { name: "Career", href: "#career", color: "hover:after:bg-blue-500" },
-                    { name: "Research", href: "#research", color: "hover:after:bg-orange-500" }
+                    { name: "AI Tools", href: "#ai-tools", color: "hover:after:bg-blue-500" },
+                    { name: "Workflow Demo", href: "#workflow-demo", color: "hover:after:bg-purple-500" }
                   ].map((link) => (
                     <a 
                       key={link.name} 
-                      href={link.href} 
+                      href={link.href}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const element = document.querySelector(link.href);
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }}
                       className={`relative text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors duration-200 after:absolute after:-bottom-1 after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:transition-all after:duration-300 ${link.color}`}
                     >
                       {link.name}
@@ -331,11 +310,8 @@ const Navbar = () => {
                 ) : (
                   <>
                     <div className="space-y-2 flex flex-col pt-2 pb-4">
-                      <a href="#how-it-works" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm font-semibold text-slate-650 hover:text-indigo-650 transition-all">How It Works</a>
-                      <a href="#learning-experience" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm font-semibold text-slate-650 hover:text-indigo-650 transition-all">Learn</a>
-                      <a href="#labs" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm font-semibold text-slate-650 hover:text-indigo-650 transition-all">Labs</a>
-                      <a href="#career" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm font-semibold text-slate-650 hover:text-indigo-650 transition-all">Career</a>
-                      <a href="#research" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm font-semibold text-slate-650 hover:text-indigo-650 transition-all">Research</a>
+                      <a href="#ai-tools" onClick={(e) => { e.preventDefault(); setIsOpen(false); document.querySelector('#ai-tools')?.scrollIntoView({ behavior: 'smooth' }); }} className="px-3 py-2 text-sm font-semibold text-slate-650 hover:text-indigo-650 transition-all">AI Tools</a>
+                      <a href="#workflow-demo" onClick={(e) => { e.preventDefault(); setIsOpen(false); document.querySelector('#workflow-demo')?.scrollIntoView({ behavior: 'smooth' }); }} className="px-3 py-2 text-sm font-semibold text-slate-650 hover:text-indigo-650 transition-all">Workflow Demo</a>
                       <div className="border-t border-slate-200 pt-2 flex flex-col gap-2">
                         <Button variant="ghost" className="w-full rounded-xl font-bold" asChild onClick={() => setIsOpen(false)}>
                           <Link to="/login">Sign In</Link>
