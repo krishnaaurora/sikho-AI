@@ -26,9 +26,15 @@ function Home() {
 
   return (
     <div className="min-h-screen bg-white text-[#0F172A] selection:bg-blue-100 selection:text-blue-900 relative font-sans">
-      <Hero />
-      <FeaturesSection />
-      <WorkflowSection />
+      <div id="how-it-works">
+        <Hero />
+      </div>
+      <div id="ai-tools">
+        <FeaturesSection />
+      </div>
+      <div id="workflow-demo">
+        <WorkflowSection />
+      </div>
       <Footer />
     </div>
   );

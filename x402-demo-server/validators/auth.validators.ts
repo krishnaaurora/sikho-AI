@@ -66,4 +66,4 @@ export const updateProfileValidator = z.object({
     .optional(),
   bio: z.string().trim().optional(),
   profileImage: z.string().optional(),
-});
+}).passthrough();

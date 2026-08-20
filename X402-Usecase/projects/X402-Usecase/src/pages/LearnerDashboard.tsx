@@ -252,6 +252,30 @@ const LearnerDashboard: React.FC = () => {
                 />
               </div>
             </div>
+            {/* Resume Intelligence Callout Banner for incomplete profile users */}
+            {(!user?.resumeText || !user?.onboardingCompleted || !user?.currentSkills || user.currentSkills.length === 0) && (
+              <div className="bg-gradient-to-r from-indigo-50/60 to-purple-50/60 border border-indigo-150 rounded-3xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-indigo-100 text-indigo-750 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">FEATURED</span>
+                    <span className="text-xs text-indigo-650 font-bold flex items-center gap-1">
+                      <Sparkles size={13} /> Highly Recommended
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 leading-tight">Unlock Resume Intelligence 🚀</h3>
+                  <p className="text-slate-500 text-xs font-semibold leading-relaxed max-w-2xl">
+                    Compare your profile against target roles and live market demands, identify experience gaps, get tailored project recommendations, and optimize your resume.
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => navigate('/resume-intelligence')}
+                  className="bg-indigo-600 hover:bg-indigo-755 text-white text-xs font-black py-3 px-6 rounded-2xl shadow-md flex items-center gap-1.5 flex-shrink-0"
+                >
+                  <span>Launch Resume Intelligence</span>
+                  <ArrowRight size={13} />
+                </Button>
+              </div>
+            )}
 
             {/* ── 6-TILE ACTION GRID ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
@@ -300,7 +324,10 @@ const LearnerDashboard: React.FC = () => {
               </div>
 
               {/* Tile 3: Career */}
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-amber-300 transition-all group relative flex flex-col justify-between">
+              <div 
+                onClick={() => navigate('/resume-intelligence')}
+                className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-amber-300 transition-all group relative flex flex-col justify-between"
+              >
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-11 h-11 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center border border-amber-100/80">

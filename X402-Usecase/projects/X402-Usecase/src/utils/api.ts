@@ -91,6 +91,12 @@ export const authApi = {
   async getCurrentUser() {
     return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.AUTH_ME);
   },
+  async updateProfile(data: any) {
+    return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.AUTH_PROFILE_UPDATE, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 export const courseApi = {

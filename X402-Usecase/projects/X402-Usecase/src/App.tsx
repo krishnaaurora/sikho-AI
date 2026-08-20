@@ -13,6 +13,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ExplainPage from './pages/ExplainPage'
 import ApiPlayground from './pages/ApiPlayground'
+import ResumeIntelligence from './pages/ResumeIntelligence'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { getAlgodConfigFromViteEnvironment, getKmdConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
 
@@ -122,6 +123,11 @@ function AppContent() {
             <Route path="/dashboard/learner" element={
               <ProtectedRoute requiredRole="learner">
                 <LearnerDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/resume-intelligence" element={
+              <ProtectedRoute>
+                <ResumeIntelligence />
               </ProtectedRoute>
             } />
             <Route path="/dashboard/admin" element={

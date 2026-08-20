@@ -22,7 +22,7 @@ export const createCustomCourseService = async (userId: string, topic: string) =
   }
 
   // Generate AI course structure
-  const aiCourse = await generateCourseChapters(topic, 15);
+  const aiCourse = await generateCourseChapters(topic, 5);
 
   // Create the course
   // @ts-ignore

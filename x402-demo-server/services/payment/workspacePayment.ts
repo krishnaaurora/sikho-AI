@@ -1,7 +1,7 @@
 import { env } from "../../config/env";
 import { ALGORAND_MAINNET_CAIP2, USDC_MAINNET_ASA_ID, usdToUSDCAtomicStr } from "./index";
 // @ts-ignore
-import { declareDiscoveryExtension } from "@x402/core/http";
+import { declareDiscoveryExtension } from "@x402-avm/extensions/bazaar";
 
 export interface X402EndpointConfig {
   path: string;

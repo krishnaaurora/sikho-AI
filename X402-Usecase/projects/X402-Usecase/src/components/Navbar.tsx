@@ -163,15 +163,19 @@ const Navbar = () => {
               <>
                 <div className="hidden md:flex items-center gap-8">
                   {[
-                    { name: "How It Works", href: "#how-it-works", color: "hover:after:bg-orange-500" },
-                    { name: "Learn", href: "#learning-experience", color: "hover:after:bg-blue-500" },
-                    { name: "Labs", href: "#labs", color: "hover:after:bg-orange-500" },
-                    { name: "Career", href: "#career", color: "hover:after:bg-blue-500" },
-                    { name: "Research", href: "#research", color: "hover:after:bg-orange-500" }
+                    { name: "AI Tools", href: "#ai-tools", color: "hover:after:bg-blue-500" },
+                    { name: "Workflow Demo", href: "#workflow-demo", color: "hover:after:bg-purple-500" }
                   ].map((link) => (
                     <a 
                       key={link.name} 
-                      href={link.href} 
+                      href={link.href}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const element = document.querySelector(link.href);
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }}
                       className={`relative text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors duration-200 after:absolute after:-bottom-1 after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:transition-all after:duration-300 ${link.color}`}
                     >
                       {link.name}
@@ -306,11 +310,8 @@ const Navbar = () => {
                 ) : (
                   <>
                     <div className="space-y-2 flex flex-col pt-2 pb-4">
-                      <a href="#how-it-works" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm font-semibold text-slate-650 hover:text-indigo-650 transition-all">How It Works</a>
-                      <a href="#learning-experience" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm font-semibold text-slate-650 hover:text-indigo-650 transition-all">Learn</a>
-                      <a href="#labs" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm font-semibold text-slate-650 hover:text-indigo-650 transition-all">Labs</a>
-                      <a href="#career" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm font-semibold text-slate-650 hover:text-indigo-650 transition-all">Career</a>
-                      <a href="#research" onClick={() => setIsOpen(false)} className="px-3 py-2 text-sm font-semibold text-slate-650 hover:text-indigo-650 transition-all">Research</a>
+                      <a href="#ai-tools" onClick={(e) => { e.preventDefault(); setIsOpen(false); document.querySelector('#ai-tools')?.scrollIntoView({ behavior: 'smooth' }); }} className="px-3 py-2 text-sm font-semibold text-slate-650 hover:text-indigo-650 transition-all">AI Tools</a>
+                      <a href="#workflow-demo" onClick={(e) => { e.preventDefault(); setIsOpen(false); document.querySelector('#workflow-demo')?.scrollIntoView({ behavior: 'smooth' }); }} className="px-3 py-2 text-sm font-semibold text-slate-650 hover:text-indigo-650 transition-all">Workflow Demo</a>
                       <div className="border-t border-slate-200 pt-2 flex flex-col gap-2">
                         <Button variant="ghost" className="w-full rounded-xl font-bold" asChild onClick={() => setIsOpen(false)}>
                           <Link to="/login">Sign In</Link>

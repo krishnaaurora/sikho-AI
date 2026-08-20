@@ -8,6 +8,8 @@ import paymentRoutes from "./payment.routes";
 import walletRoutes from "./wallet.routes";
 import aiRoutes from "./ai.routes";
 import analyticsRoutes from "./analytics.routes";
+import resumeRoutes from "./resume.routes";
+import x402Routes from "./x402.routes";
 
 const router = express.Router();
 
@@ -20,5 +22,7 @@ router.use("/payments", paymentRoutes);
 router.use("/wallets", walletRoutes);
 router.use("/ai", aiRoutes);
 router.use("/analytics", analyticsRoutes);
+router.use("/resume", resumeRoutes);
+router.use("/x402", x402Routes);
 
 export default router;
