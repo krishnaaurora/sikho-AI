@@ -2,6 +2,10 @@ import path from "path";
 import fs from "fs";
 import Groq from "groq-sdk";
 import { config } from "../config";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
 
 // --- DOCX Parser (lazy-loaded) ---
 let mammoth: any = null;
@@ -25,6 +29,21 @@ const getGroqClient = (): Groq => {
 // ─────────────────────────────────────────────────────────────────
 export async function extractRawText(filePath: string): Promise<string> {
   const ext = path.extname(filePath).toLowerCase();
+
+  // Try parsing using IBM Docling (python helper script) first
+  try {
+    const scriptPath = path.join(__dirname, "../scripts/extract_docling.py");
+    // Run python script with path wrapped in quotes to handle spaces
+    const { stdout } = await execAsync(`python "${scriptPath}" "${filePath}"`);
+    if (stdout && stdout.trim().length > 0) {
+      console.log(`[Docling] Successfully extracted ${stdout.length} characters`);
+      return stdout;
+    }
+  } catch (err: any) {
+    console.warn(`[Docling] Failed, falling back to local Node parsers. Error:`, err.message || err);
+  }
+
+  // Fallback to traditional parser if Docling fails or is not available
   const buffer = fs.readFileSync(filePath);
 
   if (ext === ".pdf") {
