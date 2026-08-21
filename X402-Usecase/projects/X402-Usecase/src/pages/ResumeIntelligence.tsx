@@ -20,7 +20,7 @@ const ResumeIntelligence: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { activeAddress, signTransactions } = useWallet();
-  const backendOrigin = API_BASE_URL.split('/api/v1')[0];
+  const backendOrigin = API_BASE_URL.split('/api/v1')[0].replace('localhost', window.location.hostname);
 
   // State management
   const [hasResume, setHasResume] = useState(false);
@@ -178,7 +178,7 @@ const ResumeIntelligence: React.FC = () => {
       setPipelineStatus(s => ({ ...s, extraction: 'running' }));
       let isReady = false;
       let attempts = 0;
-      while (!isReady && attempts < 30) {
+      while (!isReady && attempts < 100) {
         const statusRes = await apiFetch(`/api/resume/${rid}/status`);
         if (statusRes.success && statusRes.data?.status === 'READY') {
           isReady = true;
