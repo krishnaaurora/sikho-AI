@@ -171,8 +171,28 @@ const ResumeIntelligence: React.FC = () => {
 
   // ─── Full pipeline trigger after upload (9 Steps of Resume Intelligence) ──────────────────────────
   const runFullPipeline = useCallback(async (rid: string) => {
-    // Step 1: Extract Resume (already done on upload)
-    setPipelineStatus(s => ({ ...s, extraction: 'done' }));
+    // Step 1: Extract Resume (Wait/poll until status is READY)
+    try {
+      setPipelineStatus(s => ({ ...s, extraction: 'running' }));
+      let isReady = false;
+      let attempts = 0;
+      while (!isReady && attempts < 30) {
+        const statusRes = await apiFetch(`/api/resume/${rid}/status`);
+        if (statusRes.success && statusRes.data?.status === 'READY') {
+          isReady = true;
+          setExtractedData(statusRes.data);
+        } else if (statusRes.success && statusRes.data?.status === 'FAILED') {
+          throw new Error(statusRes.data.processingError || 'Extraction failed');
+        } else {
+          await new Promise(r => setTimeout(r, 1500));
+        }
+        attempts++;
+      }
+      setPipelineStatus(s => ({ ...s, extraction: 'done' }));
+    } catch (e) {
+      console.warn('[Pipeline] Extraction polling failed:', e);
+      setPipelineStatus(s => ({ ...s, extraction: 'done' }));
+    }
 
     // Step 2: ATS Analysis
     try {
@@ -548,7 +568,7 @@ const ResumeIntelligence: React.FC = () => {
   const startAnalysis = (rid?: string | null) => {
     setIsAnalyzing(true);
     setPipelineStatus({
-      extraction: 'done', // Resume extraction complete from the upload call
+      extraction: 'running',
       atsAnalysis: 'idle',
       bestFitRoles: 'idle',
       searchQueries: 'idle',
