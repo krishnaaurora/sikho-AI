@@ -26,6 +26,7 @@ const ResumeIntelligence: React.FC = () => {
   const [hasResume, setHasResume] = useState(false);
   const [extractedData, setExtractedData] = useState<any | null>(null);
   const [currentView, setCurrentView] = useState<'overview' | 'quality' | 'skills' | 'career' | 'discovery' | 'experience' | 'gaps' | 'market' | 'projects' | 'target' | 'targetmatch' | 'improve' | 'match' | 'action' | 'versions' | 'progress' | 'jobdisc' | 'jobintel' | 'payment' | 'rematch' | 'projectplan'>('overview');
+  const [activeTab, setActiveTab] = useState<string>('Personal Info');
   const [jobAnalysisPaid, setJobAnalysisPaid] = useState<Record<number, boolean>>({});
   const [paymentStep, setPaymentStep] = useState<'paywall' | '402' | 'wallet' | 'verifying' | 'complete' | null>(null);
   const [payingJobIdx, setPayingJobIdx] = useState<number | null>(null);
@@ -1035,26 +1036,32 @@ const ResumeIntelligence: React.FC = () => {
                           )}
                         </div>
                       ) : (
-                        // Skeleton preview while extraction loads
-                        <div className="space-y-6 animate-pulse">
-                          <div className="space-y-2">
-                            <div className="h-6 w-48 bg-slate-200 rounded" />
-                            <div className="h-4 w-32 bg-slate-100 rounded" />
-                            <div className="flex gap-2">
-                              <div className="h-3 w-20 bg-slate-100 rounded" />
-                              <div className="h-3 w-20 bg-slate-100 rounded" />
+                        // Show the uploaded resume details on the left side before extraction completes
+                        <div className="flex flex-col items-center justify-center py-20 px-4 text-center h-full min-h-[400px]">
+                          <div className="relative mb-6">
+                            <div className="w-20 h-20 rounded-2xl bg-indigo-50 border-2 border-indigo-100 flex items-center justify-center text-indigo-600 shadow-md">
+                              <FileText size={40} className="animate-pulse" />
+                            </div>
+                            <div className="absolute -top-2 -right-2 bg-indigo-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow animate-bounce">
+                              DOCLING
                             </div>
                           </div>
-                          <div className="space-y-2">
-                            <div className="h-3 w-full bg-slate-200 rounded" />
-                            <div className="h-3 w-full bg-slate-200 rounded" />
-                            <div className="h-3 w-2/3 bg-slate-200 rounded" />
+                          
+                          <div className="space-y-2 max-w-[280px]">
+                            <h3 className="text-base font-black text-slate-800 truncate" title={fileName || 'Resume.pdf'}>
+                              {fileName || 'Resume.pdf'}
+                            </h3>
+                            <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                              IBM Docling AI is analyzing the document structure and parsing tables, layouts, and key segments...
+                            </p>
                           </div>
-                          <div className="space-y-2">
-                            <div className="h-3 w-32 bg-slate-100 rounded" />
-                            <div className="h-5 w-full bg-slate-200 rounded" />
-                            <div className="h-5 w-full bg-slate-200 rounded" />
+
+                          <div className="w-full max-w-[220px] bg-slate-200 h-2 rounded-full overflow-hidden mt-6 relative">
+                            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 h-full rounded-full animate-pulse" style={{ width: `${Math.max(currentProgress, 25)}%` }} />
                           </div>
+                          <span className="text-[10px] text-indigo-600 font-bold mt-2">
+                            Progress: {currentProgress}%
+                          </span>
                         </div>
                       )}
 
@@ -1101,26 +1108,224 @@ const ResumeIntelligence: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Personal Info Details */}
+                  {/* Tabs headers */}
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden">
-                    <div className="p-4 space-y-2.5">
-                      {[
-                        { label: 'Full Name',     value: extractedData?.structuredData?.personal?.name || 'N/A',             ready: !!extractedData },
-                        { label: 'Current Role',  value: extractedData?.structuredData?.experience?.[0]?.role || 'N/A',      ready: !!extractedData },
-                        { label: 'Email',         value: extractedData?.structuredData?.personal?.email || 'N/A',             ready: !!extractedData },
-                        { label: 'Phone',         value: extractedData?.structuredData?.personal?.phone || 'N/A',             ready: !!extractedData },
-                        { label: 'Location',      value: extractedData?.structuredData?.personal?.location || 'N/A',          ready: !!extractedData },
-                        { label: 'LinkedIn',      value: extractedData?.structuredData?.personal?.linkedin || 'N/A',          ready: !!extractedData },
-                      ].map(({ label, value, ready }) => (
-                        <div key={label} className="flex items-center justify-between py-1.5 border-b border-slate-50">
-                          <span className="text-xs font-bold text-slate-700 w-28 flex-shrink-0">{label}</span>
-                          {ready ? (
-                            <span className="text-xs text-slate-600 text-right truncate">{value}</span>
+                    <div className="flex overflow-x-auto border-b border-slate-100 px-3 pt-3 gap-1 scrollbar-thin">
+                      {['Personal Info', 'Professional Summary', 'Experience', 'Education', 'Skills', 'Projects', 'Others'].map(tab => (
+                        <button
+                          key={tab}
+                          onClick={() => setActiveTab(tab)}
+                          className={`flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-t-lg border-b-2 transition-colors ${
+                            tab === activeTab
+                              ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50'
+                              : 'border-transparent text-slate-500 hover:text-slate-700'
+                          }`}
+                        >
+                          {tab}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="p-4 space-y-2.5 min-h-[220px]">
+                      {activeTab === 'Personal Info' && (
+                        <>
+                          {[
+                            { label: 'Full Name',     value: extractedData?.structuredData?.personal?.name || 'N/A',             ready: !!extractedData },
+                            { label: 'Current Role',  value: extractedData?.structuredData?.experience?.[0]?.role || 'N/A',      ready: !!extractedData },
+                            { label: 'Email',         value: extractedData?.structuredData?.personal?.email || 'N/A',             ready: !!extractedData },
+                            { label: 'Phone',         value: extractedData?.structuredData?.personal?.phone || 'N/A',             ready: !!extractedData },
+                            { label: 'Location',      value: extractedData?.structuredData?.personal?.location || 'N/A',          ready: !!extractedData },
+                            { label: 'LinkedIn',      value: extractedData?.structuredData?.personal?.linkedin || 'N/A',          ready: !!extractedData },
+                          ].map(({ label, value, ready }) => (
+                            <div key={label} className="flex items-center justify-between py-1.5 border-b border-slate-50">
+                              <span className="text-xs font-bold text-slate-700 w-28 flex-shrink-0">{label}</span>
+                              {ready ? (
+                                <span className="text-xs text-slate-600 text-right truncate">{value}</span>
+                              ) : (
+                                <div className="h-3 w-32 bg-slate-100 rounded animate-pulse" />
+                              )}
+                            </div>
+                          ))}
+                        </>
+                      )}
+
+                      {activeTab === 'Professional Summary' && (
+                        <div className="text-xs text-slate-600 leading-relaxed">
+                          {extractedData ? (
+                            extractedData.structuredData?.personal?.summary || 'No professional summary extracted.'
                           ) : (
-                            <div className="h-3 w-32 bg-slate-100 rounded animate-pulse" />
+                            <div className="space-y-2 animate-pulse">
+                              <div className="h-3 bg-slate-100 rounded w-full" />
+                              <div className="h-3 bg-slate-100 rounded w-full" />
+                              <div className="h-3 bg-slate-100 rounded w-2/3" />
+                            </div>
                           )}
                         </div>
-                      ))}
+                      )}
+
+                      {activeTab === 'Experience' && (
+                        <div className="space-y-3">
+                          {extractedData ? (
+                            extractedData.structuredData?.experience?.length > 0 ? (
+                              extractedData.structuredData.experience.map((exp: any, idx: number) => (
+                                <div key={idx} className="border-b border-slate-50 pb-2 last:border-0 last:pb-0">
+                                  <div className="flex justify-between">
+                                    <span className="text-xs font-bold text-slate-800">{exp.role}</span>
+                                    <span className="text-[10px] text-slate-400">{exp.startDate} – {exp.endDate || 'Present'}</span>
+                                  </div>
+                                  <p className="text-[10px] text-slate-500 font-semibold">{exp.company}</p>
+                                  <p className="text-[10.5px] text-slate-600 mt-1 leading-normal">{exp.description}</p>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-xs text-slate-400 italic">No experience extracted.</p>
+                            )
+                          ) : (
+                            <div className="space-y-3 animate-pulse">
+                              {[1, 2].map(n => (
+                                <div key={n} className="space-y-2">
+                                  <div className="h-3 bg-slate-100 rounded w-1/3" />
+                                  <div className="h-3 bg-slate-100 rounded w-full" />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {activeTab === 'Education' && (
+                        <div className="space-y-3">
+                          {extractedData ? (
+                            extractedData.structuredData?.education?.length > 0 ? (
+                              extractedData.structuredData.education.map((edu: any, idx: number) => (
+                                <div key={idx} className="border-b border-slate-50 pb-2 last:border-0 last:pb-0">
+                                  <div className="flex justify-between">
+                                    <span className="text-xs font-bold text-slate-800">{edu.degree} in {edu.field}</span>
+                                    <span className="text-[10px] text-slate-400">{edu.endYear}</span>
+                                  </div>
+                                  <p className="text-[10px] text-slate-500 font-semibold">{edu.institution}</p>
+                                  {edu.gpa && <p className="text-[10px] text-slate-400 font-bold">GPA: {edu.gpa}</p>}
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-xs text-slate-400 italic">No education details extracted.</p>
+                            )
+                          ) : (
+                            <div className="space-y-3 animate-pulse">
+                              <div className="space-y-2">
+                                <div className="h-3 bg-slate-100 rounded w-1/2" />
+                                <div className="h-3 bg-slate-100 rounded w-1/4" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {activeTab === 'Skills' && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {extractedData ? (
+                            extractedData.structuredData?.skills?.length > 0 ? (
+                              extractedData.structuredData.skills.map((skill: string) => (
+                                <span key={skill} className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100/50 rounded-lg px-2.5 py-1">
+                                  {skill}
+                                </span>
+                              ))
+                            ) : (
+                              <p className="text-xs text-slate-400 italic">No skills extracted.</p>
+                            )
+                          ) : (
+                            <div className="flex flex-wrap gap-2 animate-pulse">
+                              {[1, 2, 3, 4, 5].map(n => (
+                                <div key={n} className="h-6 w-12 bg-slate-100 rounded-lg" />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {activeTab === 'Projects' && (
+                        <div className="space-y-3">
+                          {extractedData ? (
+                            extractedData.structuredData?.projects?.length > 0 ? (
+                              extractedData.structuredData.projects.map((proj: any, idx: number) => (
+                                <div key={idx} className="border-b border-slate-50 pb-2 last:border-0 last:pb-0">
+                                  <div className="flex justify-between items-start">
+                                    <span className="text-xs font-bold text-slate-800">{proj.name}</span>
+                                    {proj.url && (
+                                      <a href={proj.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-600 font-bold hover:underline flex items-center gap-0.5">
+                                        Link <ExternalLink size={8} />
+                                      </a>
+                                    )}
+                                  </div>
+                                  <p className="text-[10.5px] text-slate-600 mt-1 leading-normal">{proj.description}</p>
+                                  {proj.technologies?.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1.5">
+                                      {proj.technologies.map((t: string) => (
+                                        <span key={t} className="text-[8.5px] font-bold text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">
+                                          {t}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-xs text-slate-400 italic">No projects extracted.</p>
+                            )
+                          ) : (
+                            <div className="space-y-3 animate-pulse">
+                              <div className="space-y-2">
+                                <div className="h-3 bg-slate-100 rounded w-1/3" />
+                                <div className="h-3 bg-slate-100 rounded w-full" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {activeTab === 'Others' && (
+                        <div className="space-y-3.5">
+                          {extractedData ? (
+                            <>
+                              {/* Certifications */}
+                              <div>
+                                <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-0.5 mb-1.5">Certifications</h4>
+                                {extractedData.structuredData?.certifications?.length > 0 ? (
+                                  <ul className="list-disc pl-4 space-y-1">
+                                    {extractedData.structuredData.certifications.map((cert: any, idx: number) => (
+                                      <li key={idx} className="text-[10.5px] text-slate-600">
+                                        <span className="font-bold text-slate-700">{cert.name}</span>
+                                        {cert.issuer && ` — ${cert.issuer}`}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-[10px] text-slate-400 italic">None extracted.</p>
+                                )}
+                              </div>
+
+                              {/* Achievements */}
+                              <div>
+                                <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-0.5 mb-1.5">Achievements</h4>
+                                {extractedData.structuredData?.achievements?.length > 0 ? (
+                                  <ul className="list-disc pl-4 space-y-1">
+                                    {extractedData.structuredData.achievements.map((ach: string, idx: number) => (
+                                      <li key={idx} className="text-[10.5px] text-slate-600">{ach}</li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-[10px] text-slate-400 italic">None extracted.</p>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="space-y-3 animate-pulse">
+                              <div className="h-3 bg-slate-100 rounded w-1/4" />
+                              <div className="h-3 bg-slate-100 rounded w-full" />
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
