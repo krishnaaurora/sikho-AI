@@ -14,11 +14,13 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWallet } from '@txnlab/use-wallet-react';
 import { createX402Fetch } from '../utils/x402';
+import { API_BASE_URL } from '../config/api';
 
 const ResumeIntelligence: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { activeAddress, signTransactions } = useWallet();
+  const backendOrigin = API_BASE_URL.split('/api/v1')[0];
 
   // State management
   const [hasResume, setHasResume] = useState(false);
@@ -120,7 +122,8 @@ const ResumeIntelligence: React.FC = () => {
     const token = localStorage.getItem('token') || document.cookie.split('; ').find(row => row.startsWith('accessToken='))?.split('=')[1];
     const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(options.headers as any) };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(path, { ...options, headers });
+    const targetUrl = path.startsWith('/api') ? `${backendOrigin}${path}` : path;
+    const res = await fetch(targetUrl, { ...options, headers });
     let data: any = {};
     const text = await res.text();
     if (text) {
@@ -132,7 +135,7 @@ const ResumeIntelligence: React.FC = () => {
     }
     if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
     return data;
-  }, []);
+  }, [backendOrigin]);
   // ─── Fetch match distribution (Phase 10) ─────────────────────────
   const fetchDistribution = useCallback(async (rid: string) => {
     try {
@@ -474,7 +477,7 @@ const ResumeIntelligence: React.FC = () => {
 
     const xhr = new XMLHttpRequest();
     // Supports fallback root route and apiPrefix route
-    xhr.open('POST', '/api/resume/upload');
+    xhr.open('POST', `${backendOrigin}/api/resume/upload`);
 
     // Track upload progress percentage
     xhr.upload.addEventListener('progress', (e) => {
