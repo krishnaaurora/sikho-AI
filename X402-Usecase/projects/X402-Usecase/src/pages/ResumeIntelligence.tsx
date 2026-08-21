@@ -333,7 +333,7 @@ const ResumeIntelligence: React.FC = () => {
       fetchMatchedJobs(rid),
       fetchImprovements(rid),
     ]);
-  }, [apiFetch, fetchDistribution, fetchMatchedJobs, fetchImprovements]);
+  }, [apiFetch, fetchDistribution, fetchMatchedJobs, fetchImprovements, targetRole]);
 
   // ─── Re-fetch when resumeId changes ──────────────────────────────
   useEffect(() => {
@@ -1025,27 +1025,59 @@ const ResumeIntelligence: React.FC = () => {
                         <span className="text-sm font-black text-slate-805 tracking-tight uppercase">Resume Intelligence</span>
                       </div>
                       <span className="text-sm font-black text-indigo-600">
-                        {pipelineStatus.extraction === 'done' ? '100%' : `${Math.max(currentProgress, 5)}%`}
+                        {`${Math.max(currentProgress, 5)}%`}
                       </span>
                     </div>
 
                     <div className="space-y-1">
                       <p className="text-xs font-semibold text-slate-500">
-                        {pipelineStatus.extraction === 'done' ? 'Resume extraction complete.' : 'Resume extraction is in progress...'}
+                        {currentProgress >= 100
+                          ? 'All 9 steps complete.'
+                          : pipelineStatus.extraction !== 'done'
+                            ? 'Resume extraction is in progress...'
+                            : 'Running analysis pipeline...'}
                       </p>
                       
                       <div className="flex items-center gap-2 mt-2">
-                        {pipelineStatus.extraction === 'done' ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-emerald-500 text-[13px] font-black">✓</span>
-                            <span className="text-xs font-bold text-slate-800">Resume extracted</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="text-indigo-600 text-[13px] animate-spin inline-block font-black font-sans">⟳</span>
-                            <span className="text-xs font-bold text-indigo-650 animate-pulse">Extracting your resume...</span>
-                          </div>
-                        )}
+                        {(() => {
+                          // Show the currently-running step name, or the last completed one
+                          const steps = [
+                            { key: 'extraction',    label: '1. Extracting resume',               status: pipelineStatus.extraction },
+                            { key: 'atsAnalysis',   label: '2. Running ATS analysis',            status: pipelineStatus.atsAnalysis },
+                            { key: 'bestFitRoles',  label: '3. Detecting best-fit roles',        status: pipelineStatus.bestFitRoles },
+                            { key: 'searchQueries', label: '4. Generating job search queries',   status: pipelineStatus.searchQueries },
+                            { key: 'apifyScraping', label: '5. Discovering real jobs',           status: pipelineStatus.apifyScraping },
+                            { key: 'normalization', label: '6. Normalising & deduplicating',     status: pipelineStatus.normalization },
+                            { key: 'matching',      label: '7. Matching resume ↔ jobs',          status: pipelineStatus.matching },
+                            { key: 'skillGaps',     label: '8. Analysing skill gaps',            status: pipelineStatus.skillGaps },
+                            { key: 'improvements',  label: '9. Generating improvements',         status: pipelineStatus.improvements },
+                          ];
+                          const running = steps.find(s => s.status === 'running');
+                          const allDone = steps.every(s => s.status === 'done');
+                          if (allDone) {
+                            return (
+                              <div className="flex items-center gap-2">
+                                <span className="text-emerald-500 text-[13px] font-black">✓</span>
+                                <span className="text-xs font-bold text-slate-800">All steps complete — Resume Intelligence ready</span>
+                              </div>
+                            );
+                          }
+                          if (running) {
+                            return (
+                              <div className="flex items-center gap-2">
+                                <span className="text-indigo-600 text-[13px] animate-spin inline-block font-black font-sans">⟳</span>
+                                <span className="text-xs font-bold text-indigo-600 animate-pulse">{running.label}…</span>
+                              </div>
+                            );
+                          }
+                          // Extraction hasn't started or is queued
+                          return (
+                            <div className="flex items-center gap-2">
+                              <span className="text-indigo-600 text-[13px] animate-spin inline-block font-black font-sans">⟳</span>
+                              <span className="text-xs font-bold text-indigo-600 animate-pulse">Extracting your resume…</span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
