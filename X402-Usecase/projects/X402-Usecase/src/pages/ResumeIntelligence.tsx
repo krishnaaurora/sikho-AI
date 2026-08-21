@@ -32,6 +32,11 @@ const ResumeIntelligence: React.FC = () => {
   })();
 
   // State management
+  const [targetRole, setTargetRole] = useState('Machine Learning Engineer');
+  const [targetLocation, setTargetLocation] = useState('Hyderabad / Remote');
+  const [experienceLevel, setExperienceLevel] = useState('Entry Level');
+  const [useProfileData, setUseProfileData] = useState(true);
+  const [noTargetGoal, setNoTargetGoal] = useState(false);
   const [hasResume, setHasResume] = useState(false);
   const [extractedData, setExtractedData] = useState<any | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
@@ -362,12 +367,7 @@ const ResumeIntelligence: React.FC = () => {
     fetchX402Data();
   }, [fetchX402Data, currentView]);
   
-  // Upload and parsing states
-  const [targetRole, setTargetRole] = useState('Machine Learning Engineer');
-  const [targetLocation, setTargetLocation] = useState('Hyderabad / Remote');
-  const [experienceLevel, setExperienceLevel] = useState('Entry Level');
-  const [useProfileData, setUseProfileData] = useState(true);
-  const [noTargetGoal, setNoTargetGoal] = useState(false);
+
 
   // ─── Phase 13: AI Career Prompt state ────────────────────────────
   const [careerPrompt, setCareerPrompt] = useState('');
