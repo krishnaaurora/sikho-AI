@@ -13,12 +13,12 @@ try {
   decodePaymentSignatureHeader = (header: string) => header;
 }import { declareDiscoveryExtension } from "@x402-avm/extensions/bazaar";
 
-/** CAIP-2 for Algorand MainNet */
+/** CAIP-2 for Algorand TestNet (mapped to MainNet constant for compatibility) */
 export const ALGORAND_MAINNET_CAIP2 =
-  "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
+  "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=";
 
-/** USDC ASA on Algorand MainNet */
-export const USDC_MAINNET_ASA_ID = "31566704";
+/** USDC ASA on Algorand TestNet (mapped to MainNet constant for compatibility) */
+export const USDC_MAINNET_ASA_ID = "10458941";
 
 /** Decimal places for USDC */
 const USDC_DECIMALS = 6;
