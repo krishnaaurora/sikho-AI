@@ -952,139 +952,35 @@ const ResumeIntelligence: React.FC = () => {
               </div>
 
               {/* ── Main two-column layout ── */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {/* ── Main split layout ── */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-                {/* LEFT: Resume document preview */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden">
-                  <div className="relative">
-                    <div className="bg-slate-50 p-6 font-serif" style={{ fontFamily: 'Georgia, serif', minHeight: '460px' }}>
-                      {extractedData ? (
-                        <div className="space-y-4">
-                          <div>
-                            <h2 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'Georgia, serif' }}>
-                              {extractedData.structuredData?.personal?.name || 'Your Name'}
-                            </h2>
-                            <p className="text-indigo-600 font-semibold text-sm">
-                              {extractedData.structuredData?.personal?.summary ? 
-                                (extractedData.structuredData.personal.summary.substring(0, 50) + '...') : 
-                                (extractedData.structuredData?.experience?.[0]?.role || 'Resume Profile')}
-                            </p>
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[10px] text-slate-600">
-                              {extractedData.structuredData?.personal?.phone && (
-                                <span>📞 {extractedData.structuredData.personal.phone}</span>
-                              )}
-                              {extractedData.structuredData?.personal?.email && (
-                                <span>✉ {extractedData.structuredData.personal.email}</span>
-                              )}
-                              {extractedData.structuredData?.personal?.location && (
-                                <span>📍 {extractedData.structuredData.personal.location}</span>
-                              )}
-                            </div>
-                            {extractedData.structuredData?.personal?.linkedin && (
-                              <p className="text-[10px] text-indigo-600 mt-1">
-                                🔗 {extractedData.structuredData.personal.linkedin}
-                              </p>
-                            )}
-                          </div>
-
-                          {extractedData.structuredData?.personal?.summary && (
-                            <div>
-                              <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1 border-b border-indigo-200 pb-0.5">PROFESSIONAL SUMMARY</p>
-                              <p className="text-[10px] text-slate-600 leading-relaxed">
-                                {extractedData.structuredData.personal.summary}
-                              </p>
-                            </div>
-                          )}
-
-                          {extractedData.structuredData?.experience?.length > 0 && (
-                            <div>
-                              <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1 border-b border-indigo-200 pb-0.5">EXPERIENCE</p>
-                              <div className="space-y-2">
-                                {extractedData.structuredData.experience.slice(0, 2).map((exp: any, idx: number) => (
-                                  <div key={idx}>
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <span className="text-[10px] font-bold text-slate-800">{exp.role}</span>
-                                        <span className="text-[10px] text-slate-400"> · {exp.company}</span>
-                                      </div>
-                                      <span className="text-[9px] text-slate-400">{exp.startDate} – {exp.endDate || 'Present'}</span>
-                                    </div>
-                                    <p className="text-[9.5px] text-slate-600 leading-normal mt-0.5">
-                                      {exp.description ? (exp.description.substring(0, 180) + '...') : ''}
-                                    </p>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {extractedData.structuredData?.education?.length > 0 && (
-                            <div>
-                              <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1 border-b border-indigo-200 pb-0.5">EDUCATION</p>
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <p className="text-[10px] font-bold text-slate-800">
-                                    {extractedData.structuredData.education[0].degree} in {extractedData.structuredData.education[0].field}
-                                  </p>
-                                  <p className="text-[9px] text-slate-500">{extractedData.structuredData.education[0].institution}</p>
-                                </div>
-                                <span className="text-[9px] text-slate-400">
-                                  {extractedData.structuredData.education[0].endYear}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        // Show the uploaded resume details on the left side before extraction completes
-                        <div className="flex flex-col items-center justify-center py-20 px-4 text-center h-full min-h-[400px]">
-                          <div className="relative mb-6">
-                            <div className="w-20 h-20 rounded-2xl bg-indigo-50 border-2 border-indigo-100 flex items-center justify-center text-indigo-600 shadow-md">
-                              <FileText size={40} className="animate-pulse" />
-                            </div>
-                            <div className="absolute -top-2 -right-2 bg-indigo-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow animate-bounce">
-                              DOCLING
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-2 max-w-[280px]">
-                            <h3 className="text-base font-black text-slate-800 truncate" title={fileName || 'Resume.pdf'}>
-                              {fileName || 'Resume.pdf'}
-                            </h3>
-                            <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                              IBM Docling AI is analyzing the document structure and parsing tables, layouts, and key segments...
-                            </p>
-                          </div>
-
-                          <div className="w-full max-w-[220px] bg-slate-200 h-2 rounded-full overflow-hidden mt-6 relative">
-                            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 h-full rounded-full animate-pulse" style={{ width: `${Math.max(currentProgress, 25)}%` }} />
-                          </div>
-                          <span className="text-[10px] text-indigo-600 font-bold mt-2">
-                            Progress: {currentProgress}%
-                          </span>
-                        </div>
-                      )}
-
-                      {currentProgress < 100 && (
-                        <div
-                          className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-70 transition-all duration-300 animate-pulse"
-                          style={{ top: `${(currentProgress / 100) * 90 + 5}%` }}
-                        />
-                      )}
+                {/* LEFT: Original PDF Resume Viewer */}
+                <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[780px] lg:sticky lg:top-24">
+                  <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700">Original Resume Viewer</span>
+                    <div className="flex items-center gap-1.5 text-[10px] text-slate-500 bg-white border border-slate-200 rounded-lg px-2.5 py-1">
+                      <span>📄 Exact PDF Formatting</span>
                     </div>
                   </div>
-
-                  <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center gap-2">
-                    <ShieldCheck size={12} className="text-indigo-500" />
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-700">Your data is secure and confidential.</p>
-                      <p className="text-[9px] text-slate-400">We never share your information without your permission.</p>
-                    </div>
+                  <div className="flex-1 w-full h-full bg-slate-100 relative">
+                    {extractedData?.fileUrl || resumeId ? (
+                      <iframe
+                        src={`${backendOrigin}${extractedData?.fileUrl || `/uploads/documents/${resumeId}.pdf`}`}
+                        className="w-full h-full border-0"
+                        title="Original Resume PDF Viewer"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full text-slate-455 space-y-2">
+                        <div className="w-10 h-10 border-2 border-indigo-650 border-t-transparent rounded-full animate-spin" />
+                        <span className="text-xs font-semibold">Loading PDF Viewer...</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* RIGHT: Extraction results panel */}
-                <div className="space-y-4">
+                {/* RIGHT: Resume Intelligence panel */}
+                <div className="lg:col-span-7 space-y-6">
 
                   {currentProgress >= 100 ? (
                     <div className="bg-white rounded-2xl border border-emerald-200 p-4 flex items-start gap-3 shadow-[0_4px_16px_rgba(0,0,0,0.03)]">
@@ -1364,9 +1260,36 @@ const ResumeIntelligence: React.FC = () => {
             CASE 3: MAIN WORKSPACE LAYOUT (AFTER ANALYSIS)
            ======================================================== */}
         {hasResume && !isAnalyzing && (
-          <>
-            {!resumeIntelUnlocked ? (
-              <div className="max-w-2xl mx-auto bg-white border border-slate-200 rounded-3xl p-8 shadow-xl text-center space-y-6 my-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start my-4 w-full">
+            
+            {/* LEFT: Original PDF Resume Viewer */}
+            <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[780px] lg:sticky lg:top-24">
+              <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700">Original Resume Viewer</span>
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-500 bg-white border border-slate-200 rounded-lg px-2.5 py-1">
+                  <span>📄 Exact PDF Formatting</span>
+                </div>
+              </div>
+              <div className="flex-1 w-full h-full bg-slate-100 relative">
+                {extractedData?.fileUrl || resumeId ? (
+                  <iframe
+                    src={`${backendOrigin}${extractedData?.fileUrl || `/uploads/documents/${resumeId}.pdf`}`}
+                    className="w-full h-full border-0"
+                    title="Original Resume PDF Viewer"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-slate-455 space-y-2">
+                    <div className="w-10 h-10 border-2 border-indigo-650 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs font-semibold">Loading PDF Viewer...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT: Resume Intelligence Dashboard */}
+            <div className="lg:col-span-7 space-y-6 w-full">
+              {!resumeIntelUnlocked ? (
+                <div className="w-full bg-white border border-slate-200 rounded-3xl p-8 shadow-xl text-center space-y-6">
                 <div className="w-16 h-16 rounded-3xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-3xl mx-auto animate-bounce">
                   ✨
                 </div>
@@ -5969,8 +5892,9 @@ curl -X POST http://localhost:8000/api/v1/predict -d @payload.json
             </div>
           </div>
         )}
-      </>
-    )}
+                  </div>
+          </div>
+        )}
 
       {/* x402 Payment Flow Modal (Phase 22) */}
       <AnimatePresence>
