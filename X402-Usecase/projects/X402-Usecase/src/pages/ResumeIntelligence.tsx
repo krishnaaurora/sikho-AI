@@ -1133,7 +1133,7 @@ const ResumeIntelligence: React.FC = () => {
                 >
                   Unlock Resume Intelligence Pass
                 </button>
-                <span className="text-[10px] text-slate-400 font-bold block">Secure micro-payment validated on Algorand TestNet</span>
+                <span className="text-[10px] text-slate-400 font-bold block">Secure micro-payment validated on Algorand MainNet</span>
               </div>
             ) : (
               <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
@@ -5582,7 +5582,7 @@ curl -X POST http://localhost:8000/api/v1/predict -d @payload.json
                               </span>
                               <span className="text-[8.5px] text-emerald-650 font-bold flex items-center gap-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                                Algorand Testnet
+                                 Algorand Mainnet
                               </span>
                             </div>
                           </div>
@@ -5800,7 +5800,7 @@ curl -X POST http://localhost:8000/api/v1/predict -d @payload.json
                     <div className="space-y-1">
                       <h4 className="text-sm font-black text-slate-900">Sign in Wallet</h4>
                       <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">
-                        Confirming transactions on Algorand TestNet via wallet provider...
+                        Confirming transactions on Algorand MainNet via wallet provider...
                       </p>
                     </div>
                   </div>
@@ -5963,7 +5963,7 @@ curl -X POST http://localhost:8000/api/v1/predict -d @payload.json
                     <div className="space-y-1">
                       <h4 className="text-sm font-black text-slate-900">Sign in Wallet</h4>
                       <p className="text-[10px] text-slate-550 font-semibold leading-relaxed">
-                        Confirming transactions on Algorand TestNet via wallet provider...
+                        Confirming transactions on Algorand MainNet via wallet provider...
                       </p>
                     </div>
                   </div>
@@ -6126,7 +6126,7 @@ curl -X POST http://localhost:8000/api/v1/predict -d @payload.json
                     <div className="space-y-1">
                       <h4 className="text-sm font-black text-slate-900">Sign in Wallet</h4>
                       <p className="text-[10px] text-slate-550 font-semibold leading-relaxed">
-                        Confirming transactions on Algorand TestNet via wallet provider...
+                        Confirming transactions on Algorand MainNet via wallet provider...
                       </p>
                     </div>
                   </div>

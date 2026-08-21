@@ -1,5 +1,5 @@
 import { x402Client, wrapFetchWithPayment } from '@x402-avm/fetch'
-import { ALGORAND_TESTNET_CAIP2, createAlgodClient } from '@x402-avm/avm'
+import { ALGORAND_MAINNET_CAIP2, createAlgodClient } from '@x402-avm/avm'
 import type { ClientAvmSigner } from '@x402-avm/avm'
 import { ExactAvmScheme } from '@x402-avm/avm/exact/client'
 
@@ -7,8 +7,8 @@ export async function createX402Fetch(walletSigner: any) {
   console.log('createX402Fetch: initializing for address', walletSigner.address)
   const client = new x402Client()
 
-  // Create algod client for TestNet and intercept suggestedParams to enforce min fee
-  const algodClient = createAlgodClient(ALGORAND_TESTNET_CAIP2, 'https://testnet-api.algonode.cloud')
+  // Create algod client for MainNet and intercept suggestedParams to enforce min fee
+  const algodClient = createAlgodClient(ALGORAND_MAINNET_CAIP2, 'https://mainnet-api.algonode.cloud')
   const originalSuggestedParams = algodClient.suggestedParams.bind(algodClient)
   algodClient.suggestedParams = async () => {
     const params = await originalSuggestedParams()
@@ -77,8 +77,8 @@ export async function createX402Fetch(walletSigner: any) {
     },
   }
 
-  client.register(ALGORAND_TESTNET_CAIP2, new ExactAvmScheme(x402Signer, { algodClient }))
-  console.log('x402 client registered for TestNet')
+  client.register(ALGORAND_MAINNET_CAIP2, new ExactAvmScheme(x402Signer, { algodClient }))
+  console.log('x402 client registered for MainNet')
 
   return wrapFetchWithPayment(fetch, client)
 }

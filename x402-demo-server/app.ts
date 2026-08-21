@@ -28,7 +28,7 @@ const MERCHANT = {
   /** x402 discovery tags */
   tag: "x402-global-challenge",
   category: "education",
-  network: "Algorand TestNet",
+  network: "Algorand MainNet",
 };
 
 /**
