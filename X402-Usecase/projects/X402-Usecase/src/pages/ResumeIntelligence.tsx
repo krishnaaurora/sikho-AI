@@ -612,7 +612,7 @@ const ResumeIntelligence: React.FC = () => {
         <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
           <div>
             <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-              Resume <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Intelligence</span>
+              Resume <span className="text-indigo-600">Intelligence</span>
               <Sparkles size={18} className="text-indigo-600" />
             </h1>
             <p className="text-slate-400 text-xs font-semibold mt-1">Turn your resume into a personalized career strategy.</p>
@@ -656,7 +656,7 @@ const ResumeIntelligence: React.FC = () => {
                 <h2 className="text-3xl font-black text-slate-900 leading-tight mb-3">
                   Upload your resume,<br />
                   unlock{' '}
-                  <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  <span className="text-indigo-600">
                     better opportunities
                   </span>
                 </h2>
