@@ -25,6 +25,7 @@ const ResumeIntelligence: React.FC = () => {
   // State management
   const [hasResume, setHasResume] = useState(false);
   const [extractedData, setExtractedData] = useState<any | null>(null);
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<'overview' | 'quality' | 'skills' | 'career' | 'discovery' | 'experience' | 'gaps' | 'market' | 'projects' | 'target' | 'targetmatch' | 'improve' | 'match' | 'action' | 'versions' | 'progress' | 'jobdisc' | 'jobintel' | 'payment' | 'rematch' | 'projectplan'>('overview');
   const [activeTab, setActiveTab] = useState<string>('Personal Info');
   const [jobAnalysisPaid, setJobAnalysisPaid] = useState<Record<number, boolean>>({});
@@ -195,28 +196,44 @@ const ResumeIntelligence: React.FC = () => {
       setPipelineStatus(s => ({ ...s, extraction: 'done' }));
     }
 
-    // Step 2: ATS Analysis
-    try {
-      setPipelineStatus(s => ({ ...s, atsAnalysis: 'running' }));
-      await apiFetch(`/api/resume/${rid}/quality`, { method: 'POST' });
-      setPipelineStatus(s => ({ ...s, atsAnalysis: 'done' }));
-    } catch (e) {
-      console.warn('[Pipeline] ATS Analysis failed:', e);
-      setPipelineStatus(s => ({ ...s, atsAnalysis: 'done' }));
-    }
-
-    // Step 3: Determine Best-Fit Roles
-    try {
-      setPipelineStatus(s => ({ ...s, bestFitRoles: 'running' }));
-      const extractionRes = await apiFetch(`/api/resume/${rid}/extraction`);
-      if (extractionRes.success && extractionRes.data) {
-        setExtractedData(extractionRes.data);
+    // Step 2, 3, 9 in parallel!
+    const runAtsAnalysis = async () => {
+      try {
+        setPipelineStatus(s => ({ ...s, atsAnalysis: 'running' }));
+        await apiFetch(`/api/resume/${rid}/quality`, { method: 'POST' });
+        setPipelineStatus(s => ({ ...s, atsAnalysis: 'done' }));
+      } catch (e) {
+        console.warn('[Pipeline] ATS Analysis failed:', e);
+        setPipelineStatus(s => ({ ...s, atsAnalysis: 'done' }));
       }
-      setPipelineStatus(s => ({ ...s, bestFitRoles: 'done' }));
-    } catch (e) {
-      console.warn('[Pipeline] Determine Best-Fit Roles failed:', e);
-      setPipelineStatus(s => ({ ...s, bestFitRoles: 'done' }));
-    }
+    };
+
+    const runBestFitRoles = async () => {
+      try {
+        setPipelineStatus(s => ({ ...s, bestFitRoles: 'running' }));
+        const extractionRes = await apiFetch(`/api/resume/${rid}/extraction`);
+        if (extractionRes.success && extractionRes.data) {
+          setExtractedData(extractionRes.data);
+        }
+        setPipelineStatus(s => ({ ...s, bestFitRoles: 'done' }));
+      } catch (e) {
+        console.warn('[Pipeline] Determine Best-Fit Roles failed:', e);
+        setPipelineStatus(s => ({ ...s, bestFitRoles: 'done' }));
+      }
+    };
+
+    const runResumeImprovements = async () => {
+      try {
+        setPipelineStatus(s => ({ ...s, improvements: 'running' }));
+        await apiFetch(`/api/resume/${rid}/improvements`);
+        setPipelineStatus(s => ({ ...s, improvements: 'done' }));
+      } catch (e) {
+        console.warn('[Pipeline] Improvements failed:', e);
+        setPipelineStatus(s => ({ ...s, improvements: 'done' }));
+      }
+    };
+
+    await Promise.all([runAtsAnalysis(), runBestFitRoles(), runResumeImprovements()]);
 
     // Step 4: Generate Job Search Queries
     try {
@@ -241,7 +258,6 @@ const ResumeIntelligence: React.FC = () => {
     // Step 6: Normalize + Deduplicate
     try {
       setPipelineStatus(s => ({ ...s, normalization: 'running' }));
-      // Give Apify crawler and webhook callback a 5s window to process in background
       await new Promise(r => setTimeout(r, 5000));
       setPipelineStatus(s => ({ ...s, normalization: 'done' }));
     } catch (e) {
@@ -249,35 +265,30 @@ const ResumeIntelligence: React.FC = () => {
       setPipelineStatus(s => ({ ...s, normalization: 'done' }));
     }
 
-    // Step 7: Resume ↔ Job Matching
-    try {
-      setPipelineStatus(s => ({ ...s, matching: 'running' }));
-      await apiFetch(`/api/resume/${rid}/match-all`, { method: 'POST' });
-      setPipelineStatus(s => ({ ...s, matching: 'done' }));
-    } catch (e) {
-      console.warn('[Pipeline] Job matching failed:', e);
-      setPipelineStatus(s => ({ ...s, matching: 'done' }));
-    }
+    // Step 7 & 8 in parallel!
+    const runMatching = async () => {
+      try {
+        setPipelineStatus(s => ({ ...s, matching: 'running' }));
+        await apiFetch(`/api/resume/${rid}/match-all`, { method: 'POST' });
+        setPipelineStatus(s => ({ ...s, matching: 'done' }));
+      } catch (e) {
+        console.warn('[Pipeline] Job matching failed:', e);
+        setPipelineStatus(s => ({ ...s, matching: 'done' }));
+      }
+    };
 
-    // Step 8: Skill Gap Against Actual Jobs
-    try {
-      setPipelineStatus(s => ({ ...s, skillGaps: 'running' }));
-      await apiFetch(`/api/resume/${rid}/improvements/analyze`, { method: 'POST' });
-      setPipelineStatus(s => ({ ...s, skillGaps: 'done' }));
-    } catch (e) {
-      console.warn('[Pipeline] Gaps analysis failed:', e);
-      setPipelineStatus(s => ({ ...s, skillGaps: 'done' }));
-    }
+    const runSkillGaps = async () => {
+      try {
+        setPipelineStatus(s => ({ ...s, skillGaps: 'running' }));
+        await apiFetch(`/api/resume/${rid}/improvements/analyze`, { method: 'POST' });
+        setPipelineStatus(s => ({ ...s, skillGaps: 'done' }));
+      } catch (e) {
+        console.warn('[Pipeline] Gaps analysis failed:', e);
+        setPipelineStatus(s => ({ ...s, skillGaps: 'done' }));
+      }
+    };
 
-    // Step 9: Resume Improvements
-    try {
-      setPipelineStatus(s => ({ ...s, improvements: 'running' }));
-      await apiFetch(`/api/resume/${rid}/improvements`);
-      setPipelineStatus(s => ({ ...s, improvements: 'done' }));
-    } catch (e) {
-      console.warn('[Pipeline] Improvements failed:', e);
-      setPipelineStatus(s => ({ ...s, improvements: 'done' }));
-    }
+    await Promise.all([runMatching(), runSkillGaps()]);
 
     // Fetch live data for the UI
     await Promise.allSettled([
@@ -521,6 +532,9 @@ const ResumeIntelligence: React.FC = () => {
             const newResumeId = res.data.resumeId || res.data._id || res.data.resume?._id;
             if (newResumeId) {
               setResumeId(newResumeId);
+            }
+            if (res.data.fileUrl) {
+              setFileUrl(res.data.fileUrl);
             }
             setUploadStatus('parsing');
             // Seed newly uploaded version
@@ -929,27 +943,7 @@ const ResumeIntelligence: React.FC = () => {
           return (
             <div className="space-y-4 w-full">
 
-              {/* ── Top scanning bar ── */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-4 shadow-[0_4px_16px_rgba(0,0,0,0.03)]">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center flex-shrink-0">
-                  <FileText className="h-5 w-5 text-indigo-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black text-slate-800 mb-1">
-                    {currentProgress >= 100 ? 'Analysis Complete' : 'Analyzing Resume...'}
-                  </p>
-                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      style={{ width: `${currentProgress}%` }}
-                      className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-300"
-                    />
-                  </div>
-                  <p className="text-[10px] text-slate-400 font-medium mt-1">
-                    {currentProgress < 100 ? 'Executing AI Resume Intelligence Pipeline, please wait.' : 'All analysis pipeline steps completed successfully.'}
-                  </p>
-                </div>
-                <span className="text-xl font-black text-indigo-600 flex-shrink-0">{currentProgress}%</span>
-              </div>
+
 
               {/* ── Main two-column layout ── */}
                 {/* ── Main split layout ── */}
@@ -966,7 +960,7 @@ const ResumeIntelligence: React.FC = () => {
                   <div className="flex-1 w-full h-full bg-slate-100 relative">
                     {extractedData?.fileUrl || resumeId ? (
                       <iframe
-                        src={`${backendOrigin}${extractedData?.fileUrl || `/uploads/documents/${resumeId}.pdf`}`}
+                        src={`${backendOrigin}${fileUrl || extractedData?.fileUrl || `/uploads/documents/${resumeId}.pdf`}`}
                         className="w-full h-full border-0"
                         title="Original Resume PDF Viewer"
                       />
@@ -982,27 +976,52 @@ const ResumeIntelligence: React.FC = () => {
                 {/* RIGHT: Resume Intelligence panel */}
                 <div className="lg:col-span-7 space-y-6">
 
-                  {currentProgress >= 100 ? (
-                    <div className="bg-white rounded-2xl border border-emerald-200 p-4 flex items-start gap-3 shadow-[0_4px_16px_rgba(0,0,0,0.03)]">
-                      <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Check size={16} className="text-white" />
+                  <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.03)] space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                        {currentProgress >= 100 ? (
+                          <Check size={16} className="text-emerald-600" />
+                        ) : (
+                          <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                        )}
                       </div>
-                      <div>
-                        <p className="text-sm font-black text-slate-900">Analysis Complete</p>
-                        <p className="text-xs text-slate-500 mt-0.5">We've successfully executed all 9 pipeline steps for your resume.</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black text-slate-900">
+                          {currentProgress >= 100 ? 'Resume Intelligence Complete' : 'Resume Intelligence is working'}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {currentProgress < 100 ? 'Sikho AI is analyzing your career path in the background.' : 'All analysis pipeline steps completed successfully.'}
+                        </p>
                       </div>
+                      <span className="text-xl font-black text-indigo-650 flex-shrink-0">{currentProgress}%</span>
                     </div>
-                  ) : (
-                    <div className="bg-white rounded-2xl border border-indigo-100 p-4 flex items-start gap-3 shadow-[0_4px_16px_rgba(0,0,0,0.03)]">
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-black text-slate-900">Processing Pipeline...</p>
-                        <p className="text-xs text-slate-500 mt-0.5">Executing AI jobs matching, ATS scoring & quality analysis.</p>
-                      </div>
+
+                    <div className="border-t border-slate-100 pt-3 space-y-2">
+                      {[
+                        { label: 'Resume extracted',            status: pipelineStatus.extraction === 'done' ? 'done' : pipelineStatus.extraction === 'running' ? 'active' : 'pending' },
+                        { label: 'Resume profile analyzed',     status: pipelineStatus.bestFitRoles === 'done' ? 'done' : (pipelineStatus.extraction === 'done' && pipelineStatus.bestFitRoles === 'running') ? 'active' : (pipelineStatus.extraction === 'done' ? 'done' : 'pending') },
+                        { label: 'ATS compatibility checked',   status: pipelineStatus.atsAnalysis === 'done' ? 'done' : (pipelineStatus.bestFitRoles === 'done' && pipelineStatus.atsAnalysis === 'running') ? 'active' : (pipelineStatus.bestFitRoles === 'done' ? 'done' : 'pending') },
+                        { label: 'Finding jobs matching profile',status: pipelineStatus.apifyScraping === 'done' ? 'done' : (pipelineStatus.atsAnalysis === 'done' && pipelineStatus.apifyScraping === 'running') ? 'active' : (pipelineStatus.atsAnalysis === 'done' ? 'done' : 'pending') },
+                        { label: 'Matching your skills to jobs', status: pipelineStatus.matching === 'done' ? 'done' : (pipelineStatus.apifyScraping === 'done' && pipelineStatus.matching === 'running') ? 'active' : (pipelineStatus.apifyScraping === 'done' ? 'done' : 'pending') },
+                        { label: 'Building skill-gap report',    status: pipelineStatus.skillGaps === 'done' ? 'done' : (pipelineStatus.matching === 'done' && pipelineStatus.skillGaps === 'running') ? 'active' : (pipelineStatus.matching === 'done' ? 'done' : 'pending') },
+                      ].map((step, idx) => (
+                        <div key={idx} className="flex items-center gap-2.5 text-xs font-bold text-slate-655 font-sans">
+                          {step.status === 'done' && (
+                            <span className="text-emerald-500 text-[13px] font-black font-sans">✓</span>
+                          )}
+                          {step.status === 'active' && (
+                            <span className="text-indigo-600 text-[13px] animate-spin inline-block font-black font-sans">⟳</span>
+                          )}
+                          {step.status === 'pending' && (
+                            <span className="text-slate-300 text-[13px] font-black font-sans">○</span>
+                          )}
+                          <span className={step.status === 'done' ? 'text-slate-800' : step.status === 'active' ? 'text-indigo-650 font-black' : 'text-slate-400 font-medium'}>
+                            {step.label}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  )}
+                  </div>
 
                   {/* Tabs headers */}
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden">
@@ -1273,7 +1292,7 @@ const ResumeIntelligence: React.FC = () => {
               <div className="flex-1 w-full h-full bg-slate-100 relative">
                 {extractedData?.fileUrl || resumeId ? (
                   <iframe
-                    src={`${backendOrigin}${extractedData?.fileUrl || `/uploads/documents/${resumeId}.pdf`}`}
+                    src={`${backendOrigin}${fileUrl || extractedData?.fileUrl || `/uploads/documents/${resumeId}.pdf`}`}
                     className="w-full h-full border-0"
                     title="Original Resume PDF Viewer"
                   />
