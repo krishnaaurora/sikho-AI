@@ -1,5 +1,5 @@
 import { env } from "../../config/env";
-import { ALGORAND_MAINNET_CAIP2, USDC_MAINNET_ASA_ID, usdToUSDCAtomicStr } from "./index";
+import { ALGORAND_TESTNET_CAIP2, USDC_TESTNET_ASA_ID, usdToUSDCAtomicStr } from "./index";
 // @ts-ignore
 import { declareDiscoveryExtension } from "@x402-avm/extensions/bazaar";
 
@@ -48,10 +48,10 @@ export function buildWorkspacePaymentRequired(
     accepts: [
       {
         scheme: "exact",
-        network: ALGORAND_MAINNET_CAIP2,
+        network: ALGORAND_TESTNET_CAIP2,
         payTo,
         amount: amountStr,
-        asset: USDC_MAINNET_ASA_ID,
+        asset: USDC_TESTNET_ASA_ID,
         extra: {
           name: "USDC",
           version: "1",

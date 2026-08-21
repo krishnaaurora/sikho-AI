@@ -13,12 +13,12 @@ try {
   decodePaymentSignatureHeader = (header: string) => header;
 }import { declareDiscoveryExtension } from "@x402-avm/extensions/bazaar";
 
-/** CAIP-2 for Algorand TestNet (mapped to MainNet constant for compatibility) */
-export const ALGORAND_MAINNET_CAIP2 =
+/** CAIP-2 for Algorand TestNet */
+export const ALGORAND_TESTNET_CAIP2 =
   "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=";
 
-/** USDC ASA on Algorand TestNet (mapped to MainNet constant for compatibility) */
-export const USDC_MAINNET_ASA_ID = "10458941";
+/** USDC ASA on Algorand TestNet */
+export const USDC_TESTNET_ASA_ID = "10458941";
 
 /** Decimal places for USDC */
 const USDC_DECIMALS = 6;
@@ -102,10 +102,10 @@ export function buildPaymentRequired(
     accepts: [
       {
         scheme: "exact",
-        network: ALGORAND_MAINNET_CAIP2,
+        network: ALGORAND_TESTNET_CAIP2,
         payTo,
         amount: amountStr,
-        asset: USDC_MAINNET_ASA_ID,
+        asset: USDC_TESTNET_ASA_ID,
         extra: {
           name: "USDC",
           version: "1",
