@@ -1335,11 +1335,10 @@ const ResumeIntelligence: React.FC = () => {
                       variant="outline"
                       onClick={clearFile}
                       className="flex-1 rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50 gap-2"
-                      disabled={currentProgress < 100}
                     >
                       <UploadCloud size={14} /> Upload Another
                     </Button>
-                    {currentProgress >= 100 && (
+                    {extractedData && (
                       <Button
                         onClick={() => {
                           setIsAnalyzing(false);
