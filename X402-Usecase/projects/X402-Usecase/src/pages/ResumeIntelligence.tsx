@@ -190,10 +190,14 @@ const ResumeIntelligence: React.FC = () => {
         }
         attempts++;
       }
+      if (!isReady) {
+        throw new Error('Extraction timed out');
+      }
       setPipelineStatus(s => ({ ...s, extraction: 'done' }));
     } catch (e) {
       console.warn('[Pipeline] Extraction polling failed:', e);
       setPipelineStatus(s => ({ ...s, extraction: 'done' }));
+      return;
     }
 
     // Step 2, 3, 9 in parallel!
@@ -976,50 +980,35 @@ const ResumeIntelligence: React.FC = () => {
                 {/* RIGHT: Resume Intelligence panel */}
                 <div className="lg:col-span-7 space-y-6">
 
-                  <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.03)] space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                        {currentProgress >= 100 ? (
-                          <Check size={16} className="text-emerald-600" />
-                        ) : (
-                          <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                        )}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-[0_4px_16px_rgba(0,0,0,0.03)] space-y-4 font-sans">
+                    <div className="flex items-center justify-between border-b pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🧠</span>
+                        <span className="text-sm font-black text-slate-805 tracking-tight uppercase">Resume Intelligence</span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-black text-slate-900">
-                          {currentProgress >= 100 ? 'Resume Intelligence Complete' : 'Resume Intelligence is working'}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {currentProgress < 100 ? 'Sikho AI is analyzing your career path in the background.' : 'All analysis pipeline steps completed successfully.'}
-                        </p>
-                      </div>
-                      <span className="text-xl font-black text-indigo-650 flex-shrink-0">{currentProgress}%</span>
+                      <span className="text-sm font-black text-indigo-600">
+                        {pipelineStatus.extraction === 'done' ? '100%' : `${Math.max(currentProgress, 5)}%`}
+                      </span>
                     </div>
 
-                    <div className="border-t border-slate-100 pt-3 space-y-2">
-                      {[
-                        { label: 'Resume extracted',            status: pipelineStatus.extraction === 'done' ? 'done' : pipelineStatus.extraction === 'running' ? 'active' : 'pending' },
-                        { label: 'Resume profile analyzed',     status: pipelineStatus.bestFitRoles === 'done' ? 'done' : (pipelineStatus.extraction === 'done' && pipelineStatus.bestFitRoles === 'running') ? 'active' : (pipelineStatus.extraction === 'done' ? 'done' : 'pending') },
-                        { label: 'ATS compatibility checked',   status: pipelineStatus.atsAnalysis === 'done' ? 'done' : (pipelineStatus.bestFitRoles === 'done' && pipelineStatus.atsAnalysis === 'running') ? 'active' : (pipelineStatus.bestFitRoles === 'done' ? 'done' : 'pending') },
-                        { label: 'Finding jobs matching profile',status: pipelineStatus.apifyScraping === 'done' ? 'done' : (pipelineStatus.atsAnalysis === 'done' && pipelineStatus.apifyScraping === 'running') ? 'active' : (pipelineStatus.atsAnalysis === 'done' ? 'done' : 'pending') },
-                        { label: 'Matching your skills to jobs', status: pipelineStatus.matching === 'done' ? 'done' : (pipelineStatus.apifyScraping === 'done' && pipelineStatus.matching === 'running') ? 'active' : (pipelineStatus.apifyScraping === 'done' ? 'done' : 'pending') },
-                        { label: 'Building skill-gap report',    status: pipelineStatus.skillGaps === 'done' ? 'done' : (pipelineStatus.matching === 'done' && pipelineStatus.skillGaps === 'running') ? 'active' : (pipelineStatus.matching === 'done' ? 'done' : 'pending') },
-                      ].map((step, idx) => (
-                        <div key={idx} className="flex items-center gap-2.5 text-xs font-bold text-slate-655 font-sans">
-                          {step.status === 'done' && (
-                            <span className="text-emerald-500 text-[13px] font-black font-sans">✓</span>
-                          )}
-                          {step.status === 'active' && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold text-slate-500">
+                        {pipelineStatus.extraction === 'done' ? 'Resume extraction complete.' : 'Resume extraction is in progress...'}
+                      </p>
+                      
+                      <div className="flex items-center gap-2 mt-2">
+                        {pipelineStatus.extraction === 'done' ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-500 text-[13px] font-black">✓</span>
+                            <span className="text-xs font-bold text-slate-800">Resume extracted</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
                             <span className="text-indigo-600 text-[13px] animate-spin inline-block font-black font-sans">⟳</span>
-                          )}
-                          {step.status === 'pending' && (
-                            <span className="text-slate-300 text-[13px] font-black font-sans">○</span>
-                          )}
-                          <span className={step.status === 'done' ? 'text-slate-800' : step.status === 'active' ? 'text-indigo-650 font-black' : 'text-slate-400 font-medium'}>
-                            {step.label}
-                          </span>
-                        </div>
-                      ))}
+                            <span className="text-xs font-bold text-indigo-650 animate-pulse">Extracting your resume...</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 

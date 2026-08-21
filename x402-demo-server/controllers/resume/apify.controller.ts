@@ -203,6 +203,7 @@ export const discoverJobs = asyncHandler(async (req: any, res: Response) => {
         keywords: searchQueries[0] || career,
         location: location || "India",
         maxItems: 20,
+        jobsToFetch: 20,
       }
     : {
         searchQueries,
