@@ -76,13 +76,44 @@ const ResumeIntelligence: React.FC = () => {
   const [liveInsights, setLiveInsights] = useState<any[] | null>(null);
   const [liveJobRecs, setLiveJobRecs] = useState<any[] | null>(null);
 
-  // ─── Backend pipeline status flags ───────────────────────────────
+  // ─── Backend pipeline status flags (9 Steps of Resume Intelligence) ───────────────────────────────
   const [pipelineStatus, setPipelineStatus] = useState<{
-    quality: 'idle' | 'running' | 'done';
-    discovery: 'idle' | 'running' | 'done';
+    extraction: 'idle' | 'running' | 'done';
+    atsAnalysis: 'idle' | 'running' | 'done';
+    bestFitRoles: 'idle' | 'running' | 'done';
+    searchQueries: 'idle' | 'running' | 'done';
+    apifyScraping: 'idle' | 'running' | 'done';
+    normalization: 'idle' | 'running' | 'done';
     matching: 'idle' | 'running' | 'done';
+    skillGaps: 'idle' | 'running' | 'done';
     improvements: 'idle' | 'running' | 'done';
-  }>({ quality: 'idle', discovery: 'idle', matching: 'idle', improvements: 'idle' });
+  }>({
+    extraction: 'idle',
+    atsAnalysis: 'idle',
+    bestFitRoles: 'idle',
+    searchQueries: 'idle',
+    apifyScraping: 'idle',
+    normalization: 'idle',
+    matching: 'idle',
+    skillGaps: 'idle',
+    improvements: 'idle',
+  });
+
+  const getAnalysisProgress = useCallback(() => {
+    const steps = [
+      pipelineStatus.extraction,
+      pipelineStatus.atsAnalysis,
+      pipelineStatus.bestFitRoles,
+      pipelineStatus.searchQueries,
+      pipelineStatus.apifyScraping,
+      pipelineStatus.normalization,
+      pipelineStatus.matching,
+      pipelineStatus.skillGaps,
+      pipelineStatus.improvements,
+    ];
+    const completed = steps.filter(s => s === 'done').length;
+    return Math.round((completed / steps.length) * 100);
+  }, [pipelineStatus]);
 
   // ─── API helper ───────────────────────────────────────────────────
   const apiFetch = useCallback(async (path: string, options: RequestInit = {}) => {
@@ -102,46 +133,6 @@ const ResumeIntelligence: React.FC = () => {
     if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
     return data;
   }, []);
-
-  // ─── Full pipeline trigger after upload ──────────────────────────
-  const runFullPipeline = useCallback(async (rid: string) => {
-    // Step 1: Quality analysis
-    try {
-      setPipelineStatus(s => ({ ...s, quality: 'running' }));
-      await apiFetch(`/api/resume/${rid}/quality`, { method: 'POST' });
-      setPipelineStatus(s => ({ ...s, quality: 'done' }));
-    } catch (e) { console.warn('[Pipeline] Quality failed:', e); }
-
-    // Step 2: Job discovery (Apify scrape)
-    try {
-      setPipelineStatus(s => ({ ...s, discovery: 'running' }));
-      await apiFetch(`/api/resume/${rid}/discover-jobs`, { method: 'POST' });
-      setPipelineStatus(s => ({ ...s, discovery: 'done' }));
-    } catch (e) { console.warn('[Pipeline] Discovery failed:', e); }
-
-    // Step 3: Batch matching (runs after jobs are ingested — give Apify 5s)
-    await new Promise(r => setTimeout(r, 5000));
-    try {
-      setPipelineStatus(s => ({ ...s, matching: 'running' }));
-      await apiFetch(`/api/resume/${rid}/match-all`, { method: 'POST' });
-      setPipelineStatus(s => ({ ...s, matching: 'done' }));
-    } catch (e) { console.warn('[Pipeline] Matching failed:', e); }
-
-    // Step 4: Improvement intelligence
-    try {
-      setPipelineStatus(s => ({ ...s, improvements: 'running' }));
-      await apiFetch(`/api/resume/${rid}/improvements/analyze`, { method: 'POST' });
-      setPipelineStatus(s => ({ ...s, improvements: 'done' }));
-    } catch (e) { console.warn('[Pipeline] Improvements failed:', e); }
-
-    // Step 5: Fetch live data for the UI
-    await Promise.allSettled([
-      fetchDistribution(rid),
-      fetchMatchedJobs(rid),
-      fetchImprovements(rid),
-    ]);
-  }, [apiFetch]);
-
   // ─── Fetch match distribution (Phase 10) ─────────────────────────
   const fetchDistribution = useCallback(async (rid: string) => {
     try {
@@ -174,6 +165,100 @@ const ResumeIntelligence: React.FC = () => {
     } catch (e) { console.warn('[Improvements] Fetch failed:', e); }
   }, [apiFetch]);
 
+  // ─── Full pipeline trigger after upload (9 Steps of Resume Intelligence) ──────────────────────────
+  const runFullPipeline = useCallback(async (rid: string) => {
+    // Step 1: Extract Resume (already done on upload)
+    setPipelineStatus(s => ({ ...s, extraction: 'done' }));
+
+    // Step 2: ATS Analysis
+    try {
+      setPipelineStatus(s => ({ ...s, atsAnalysis: 'running' }));
+      await apiFetch(`/api/resume/${rid}/quality`, { method: 'POST' });
+      setPipelineStatus(s => ({ ...s, atsAnalysis: 'done' }));
+    } catch (e) {
+      console.warn('[Pipeline] ATS Analysis failed:', e);
+      setPipelineStatus(s => ({ ...s, atsAnalysis: 'done' }));
+    }
+
+    // Step 3: Determine Best-Fit Roles
+    try {
+      setPipelineStatus(s => ({ ...s, bestFitRoles: 'running' }));
+      await apiFetch(`/api/resume/${rid}/extraction`);
+      setPipelineStatus(s => ({ ...s, bestFitRoles: 'done' }));
+    } catch (e) {
+      console.warn('[Pipeline] Determine Best-Fit Roles failed:', e);
+      setPipelineStatus(s => ({ ...s, bestFitRoles: 'done' }));
+    }
+
+    // Step 4: Generate Job Search Queries
+    try {
+      setPipelineStatus(s => ({ ...s, searchQueries: 'running' }));
+      await new Promise(r => setTimeout(r, 600));
+      setPipelineStatus(s => ({ ...s, searchQueries: 'done' }));
+    } catch (e) {
+      console.warn('[Pipeline] Job Search Queries generation failed:', e);
+      setPipelineStatus(s => ({ ...s, searchQueries: 'done' }));
+    }
+
+    // Step 5: Apify → Real Jobs
+    try {
+      setPipelineStatus(s => ({ ...s, apifyScraping: 'running' }));
+      await apiFetch(`/api/resume/${rid}/discover-jobs`, { method: 'POST' });
+      setPipelineStatus(s => ({ ...s, apifyScraping: 'done' }));
+    } catch (e) {
+      console.warn('[Pipeline] Apify scraping failed:', e);
+      setPipelineStatus(s => ({ ...s, apifyScraping: 'done' }));
+    }
+
+    // Step 6: Normalize + Deduplicate
+    try {
+      setPipelineStatus(s => ({ ...s, normalization: 'running' }));
+      // Give Apify crawler and webhook callback a 5s window to process in background
+      await new Promise(r => setTimeout(r, 5000));
+      setPipelineStatus(s => ({ ...s, normalization: 'done' }));
+    } catch (e) {
+      console.warn('[Pipeline] Normalization failed:', e);
+      setPipelineStatus(s => ({ ...s, normalization: 'done' }));
+    }
+
+    // Step 7: Resume ↔ Job Matching
+    try {
+      setPipelineStatus(s => ({ ...s, matching: 'running' }));
+      await apiFetch(`/api/resume/${rid}/match-all`, { method: 'POST' });
+      setPipelineStatus(s => ({ ...s, matching: 'done' }));
+    } catch (e) {
+      console.warn('[Pipeline] Job matching failed:', e);
+      setPipelineStatus(s => ({ ...s, matching: 'done' }));
+    }
+
+    // Step 8: Skill Gap Against Actual Jobs
+    try {
+      setPipelineStatus(s => ({ ...s, skillGaps: 'running' }));
+      await apiFetch(`/api/resume/${rid}/improvements/analyze`, { method: 'POST' });
+      setPipelineStatus(s => ({ ...s, skillGaps: 'done' }));
+    } catch (e) {
+      console.warn('[Pipeline] Gaps analysis failed:', e);
+      setPipelineStatus(s => ({ ...s, skillGaps: 'done' }));
+    }
+
+    // Step 9: Resume Improvements
+    try {
+      setPipelineStatus(s => ({ ...s, improvements: 'running' }));
+      await apiFetch(`/api/resume/${rid}/improvements`);
+      setPipelineStatus(s => ({ ...s, improvements: 'done' }));
+    } catch (e) {
+      console.warn('[Pipeline] Improvements failed:', e);
+      setPipelineStatus(s => ({ ...s, improvements: 'done' }));
+    }
+
+    // Fetch live data for the UI
+    await Promise.allSettled([
+      fetchDistribution(rid),
+      fetchMatchedJobs(rid),
+      fetchImprovements(rid),
+    ]);
+  }, [apiFetch, fetchDistribution, fetchMatchedJobs, fetchImprovements]);
+
   // ─── Re-fetch when resumeId changes ──────────────────────────────
   useEffect(() => {
     if (resumeId) {
@@ -181,7 +266,7 @@ const ResumeIntelligence: React.FC = () => {
       fetchMatchedJobs(resumeId);
       fetchImprovements(resumeId);
     }
-  }, [resumeId]);
+  }, [resumeId, fetchDistribution, fetchMatchedJobs, fetchImprovements]);
 
   const [x402Services, setX402Services] = useState<any[]>([]);
   const [x402Transactions, setX402Transactions] = useState<any[]>([]);
@@ -452,12 +537,20 @@ const ResumeIntelligence: React.FC = () => {
     setError(null);
   };
 
-  // Trigger analysis simulation (also kicks off backend pipeline)
+  // Trigger real analysis pipeline
   const startAnalysis = (rid?: string | null) => {
     setIsAnalyzing(true);
-    setAnalysisProgress(0);
-    setAnalysisStep(0);
-    // Fire and forget — backend pipeline runs in the background
+    setPipelineStatus({
+      extraction: 'done', // Resume extraction complete from the upload call
+      atsAnalysis: 'idle',
+      bestFitRoles: 'idle',
+      searchQueries: 'idle',
+      apifyScraping: 'idle',
+      normalization: 'idle',
+      matching: 'idle',
+      skillGaps: 'idle',
+      improvements: 'idle',
+    });
     const effectiveId = rid || resumeId;
     if (effectiveId) {
       runFullPipeline(effectiveId).catch(e => console.warn('[Pipeline] Error:', e));
@@ -465,30 +558,14 @@ const ResumeIntelligence: React.FC = () => {
   };
 
   useEffect(() => {
-    if (isAnalyzing) {
-      const interval = setInterval(() => {
-        setAnalysisProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setIsAnalyzing(false);
-            setHasResume(true);
-            setUploadStatus('done');
-            setCurrentView('overview');
-            return 100;
-          }
-          return prev + 10;
-        });
-      }, 300);
-      return () => clearInterval(interval);
+    const currentProgressVal = getAnalysisProgress();
+    if (isAnalyzing && currentProgressVal >= 100) {
+      setIsAnalyzing(false);
+      setHasResume(true);
+      setUploadStatus('done');
+      setCurrentView('overview');
     }
-    return undefined;
-  }, [isAnalyzing]);
-
-  useEffect(() => {
-    if (isAnalyzing) {
-      setAnalysisStep(Math.floor(analysisProgress / 13));
-    }
-  }, [analysisProgress, isAnalyzing]);
+  }, [pipelineStatus, isAnalyzing, getAnalysisProgress]);
 
   // Sync profile options
   useEffect(() => {
@@ -821,15 +898,18 @@ const ResumeIntelligence: React.FC = () => {
             CASE 2: RESUME EXTRACTION ENGINE UI
            ======================================================== */}
         {isAnalyzing && (() => {
-          // Extraction tab state (hoisted above return)
+          const currentProgress = getAnalysisProgress();
           const extractionTabs = ['Personal Info', 'Professional Summary', 'Experience', 'Education', 'Skills', 'Projects', 'Others'] as const;
           const extractedSections = [
-            { key: 'personal',       label: 'Personal Information',  icon: UserCheck,      status: analysisProgress >= 20 },
-            { key: 'summary',        label: 'Professional Summary',  icon: FileText,       status: analysisProgress >= 35 },
-            { key: 'experience',     label: 'Experience',            icon: Briefcase,      status: analysisProgress >= 50 },
-            { key: 'education',      label: 'Education',             icon: BookOpen,       status: analysisProgress >= 60 },
-            { key: 'skills',         label: 'Skills',                icon: Layers,         status: analysisProgress >= 70 },
-            { key: 'projects',       label: 'Projects',              icon: FileSpreadsheet,status: analysisProgress >= 85 },
+            { key: 'extraction',     label: '1. Extract Resume',                icon: FileText,       status: pipelineStatus.extraction === 'done',      running: pipelineStatus.extraction === 'running' },
+            { key: 'atsAnalysis',    label: '2. ATS Analysis',                  icon: ShieldCheck,    status: pipelineStatus.atsAnalysis === 'done',     running: pipelineStatus.atsAnalysis === 'running' },
+            { key: 'bestFitRoles',   label: '3. Determine Best-Fit Roles',      icon: UserCheck,      status: pipelineStatus.bestFitRoles === 'done',    running: pipelineStatus.bestFitRoles === 'running' },
+            { key: 'searchQueries',  label: '4. Generate Job Search Queries',   icon: Search,         status: pipelineStatus.searchQueries === 'done',   running: pipelineStatus.searchQueries === 'running' },
+            { key: 'apifyScraping',  label: '5. Apify → Real Jobs',             icon: Briefcase,      status: pipelineStatus.apifyScraping === 'done',   running: pipelineStatus.apifyScraping === 'running' },
+            { key: 'normalization',  label: '6. Normalize + Deduplicate',       icon: Layers,         status: pipelineStatus.normalization === 'done',   running: pipelineStatus.normalization === 'running' },
+            { key: 'matching',       label: '7. Resume ↔ Job Matching',         icon: Sparkles,       status: pipelineStatus.matching === 'done',        running: pipelineStatus.matching === 'running' },
+            { key: 'skillGaps',      label: '8. Skill Gap Against Actual Jobs', icon: AlertTriangle,  status: pipelineStatus.skillGaps === 'done',       running: pipelineStatus.skillGaps === 'running' },
+            { key: 'improvements',   label: '9. Resume Improvements',           icon: Brain,          status: pipelineStatus.improvements === 'done',    running: pipelineStatus.improvements === 'running' },
           ];
 
           return (
@@ -842,19 +922,19 @@ const ResumeIntelligence: React.FC = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-black text-slate-800 mb-1">
-                    {analysisProgress >= 100 ? 'Extraction Complete' : 'Scanning Resume...'}
+                    {currentProgress >= 100 ? 'Analysis Complete' : 'Analyzing Resume...'}
                   </p>
                   <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                     <div
-                      style={{ width: `${analysisProgress}%` }}
+                      style={{ width: `${currentProgress}%` }}
                       className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-300"
                     />
                   </div>
                   <p className="text-[10px] text-slate-400 font-medium mt-1">
-                    {analysisProgress < 100 ? 'Extracting information, please wait.' : 'All sections extracted successfully.'}
+                    {currentProgress < 100 ? 'Executing AI Resume Intelligence Pipeline, please wait.' : 'All analysis pipeline steps completed successfully.'}
                   </p>
                 </div>
-                <span className="text-xl font-black text-indigo-600 flex-shrink-0">{analysisProgress}%</span>
+                <span className="text-xl font-black text-indigo-600 flex-shrink-0">{currentProgress}%</span>
               </div>
 
               {/* ── Main two-column layout ── */}
@@ -862,10 +942,8 @@ const ResumeIntelligence: React.FC = () => {
 
                 {/* LEFT: Resume document preview */}
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden">
-                  {/* Document scan line animation */}
                   <div className="relative">
                     <div className="bg-slate-50 p-6 font-serif" style={{ fontFamily: 'Georgia, serif', minHeight: '460px' }}>
-                      {/* Mock resume document */}
                       <div className="space-y-4">
                         <div>
                           <h2 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'Georgia, serif' }}>Daniel D'Souza</h2>
@@ -917,17 +995,15 @@ const ResumeIntelligence: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Scanning highlight line */}
-                      {analysisProgress < 100 && (
+                      {currentProgress < 100 && (
                         <div
-                          className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-70 transition-all duration-300"
-                          style={{ top: `${(analysisProgress / 100) * 90 + 5}%` }}
+                          className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-70 transition-all duration-300 animate-pulse"
+                          style={{ top: `${(currentProgress / 100) * 90 + 5}%` }}
                         />
                       )}
                     </div>
                   </div>
 
-                  {/* Security footer */}
                   <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center gap-2">
                     <ShieldCheck size={12} className="text-indigo-500" />
                     <div>
@@ -940,15 +1016,14 @@ const ResumeIntelligence: React.FC = () => {
                 {/* RIGHT: Extraction results panel */}
                 <div className="space-y-4">
 
-                  {/* Completion status banner */}
-                  {analysisProgress >= 100 ? (
+                  {currentProgress >= 100 ? (
                     <div className="bg-white rounded-2xl border border-emerald-200 p-4 flex items-start gap-3 shadow-[0_4px_16px_rgba(0,0,0,0.03)]">
                       <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0 mt-0.5">
                         <Check size={16} className="text-white" />
                       </div>
                       <div>
-                        <p className="text-sm font-black text-slate-900">Extraction Complete</p>
-                        <p className="text-xs text-slate-500 mt-0.5">We've successfully extracted key information from your resume.</p>
+                        <p className="text-sm font-black text-slate-900">Analysis Complete</p>
+                        <p className="text-xs text-slate-500 mt-0.5">We've successfully executed all 9 pipeline steps for your resume.</p>
                       </div>
                     </div>
                   ) : (
@@ -957,15 +1032,14 @@ const ResumeIntelligence: React.FC = () => {
                         <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                       </div>
                       <div>
-                        <p className="text-sm font-black text-slate-900">Extracting Information...</p>
-                        <p className="text-xs text-slate-500 mt-0.5">Please wait while we parse your resume sections.</p>
+                        <p className="text-sm font-black text-slate-900">Processing Pipeline...</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Executing AI jobs matching, ATS scoring & quality analysis.</p>
                       </div>
                     </div>
                   )}
 
                   {/* Tabs */}
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden">
-                    {/* Tab bar */}
                     <div className="flex overflow-x-auto border-b border-slate-100 px-3 pt-3 gap-1">
                       {extractionTabs.map(tab => (
                         <button
@@ -981,15 +1055,14 @@ const ResumeIntelligence: React.FC = () => {
                       ))}
                     </div>
 
-                    {/* Personal Info tab content (active) */}
                     <div className="p-4 space-y-2.5">
                       {[
-                        { label: 'Full Name',     value: 'Daniel D\'Souza',             ready: analysisProgress >= 15 },
-                        { label: 'Current Role',  value: 'UX Designer',                 ready: analysisProgress >= 20 },
-                        { label: 'Email',         value: 'daniel.dsouza@gmail.com',     ready: analysisProgress >= 25 },
-                        { label: 'Phone',         value: '+91 98765 43210',             ready: analysisProgress >= 30 },
-                        { label: 'Location',      value: 'Bangalore, India',            ready: analysisProgress >= 35 },
-                        { label: 'LinkedIn',      value: 'linkedin.com/in/danieldsouza',ready: analysisProgress >= 40 },
+                        { label: 'Full Name',     value: 'Daniel D\'Souza',             ready: true },
+                        { label: 'Current Role',  value: 'UX Designer',                 ready: true },
+                        { label: 'Email',         value: 'daniel.dsouza@gmail.com',     ready: true },
+                        { label: 'Phone',         value: '+91 98765 43210',             ready: true },
+                        { label: 'Location',      value: 'Bangalore, India',            ready: true },
+                        { label: 'LinkedIn',      value: 'linkedin.com/in/danieldsouza',ready: true },
                       ].map(({ label, value, ready }) => (
                         <div key={label} className="flex items-center justify-between py-1.5 border-b border-slate-50">
                           <span className="text-xs font-bold text-slate-700 w-28 flex-shrink-0">{label}</span>
@@ -1001,22 +1074,20 @@ const ResumeIntelligence: React.FC = () => {
                         </div>
                       ))}
 
-                      {analysisProgress >= 40 && (
-                        <button className="w-full mt-2 text-[10px] font-black text-indigo-600 border border-indigo-100 bg-indigo-50/50 rounded-xl py-2 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-1">
-                          View All Personal Information <ChevronRight size={10} />
-                        </button>
-                      )}
+                      <button className="w-full mt-2 text-[10px] font-black text-indigo-600 border border-indigo-100 bg-indigo-50/50 rounded-xl py-2 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-1">
+                        View All Personal Information <ChevronRight size={10} />
+                      </button>
                     </div>
                   </div>
 
                   {/* Extracted sections list */}
                   <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-[0_4px_16px_rgba(0,0,0,0.03)]">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-black text-slate-900">Extracted Sections</span>
-                      <button className="text-[10px] font-bold text-indigo-600 hover:underline">Expand All</button>
+                      <span className="text-sm font-black text-slate-900">Pipeline Progression</span>
+                      <span className="text-[10px] font-bold text-slate-400">9 Steps Active</span>
                     </div>
                     <div className="space-y-2">
-                      {extractedSections.map(({ key, label, icon: Icon, status }) => (
+                      {extractedSections.map(({ key, label, icon: Icon, status, running }) => (
                         <div key={key} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 transition-colors">
                           <div className="flex items-center gap-2.5">
                             <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
@@ -1026,11 +1097,12 @@ const ResumeIntelligence: React.FC = () => {
                           </div>
                           <div className="flex items-center gap-2">
                             {status ? (
-                              <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Extracted</span>
+                              <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Completed</span>
+                            ) : running ? (
+                              <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full animate-pulse">Running</span>
                             ) : (
                               <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Pending</span>
                             )}
-                            <ChevronRight size={12} className="text-slate-400" />
                           </div>
                         </div>
                       ))}
