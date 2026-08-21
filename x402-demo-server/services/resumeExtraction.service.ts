@@ -1,5 +1,6 @@
 import path from "path";
 import fs from "fs";
+import axios from "axios";
 import Groq from "groq-sdk";
 import { config } from "../config";
 import { exec } from "child_process";
@@ -156,6 +157,47 @@ Rules:
 - Extract all links (GitHub, LinkedIn, portfolio, etc.).`;
 
 export async function extractStructuredData(rawText: string): Promise<Record<string, any>> {
+  const geminiKey = (config as any).geminiApiKey;
+  if (geminiKey) {
+    try {
+      console.log(`[ExtractionService] Trying structured extraction via Gemini API`);
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+      const response = await axios.post(
+        url,
+        {
+          contents: [
+            {
+              parts: [
+                {
+                  text: `${EXTRACTION_PROMPT}\n\nExtract information from this resume:\n\n${rawText.substring(0, 15000)}`
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            responseMimeType: "application/json"
+          }
+        },
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      const content = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (content) {
+        const cleaned = content
+          .replace(/^```json\s*/i, "")
+          .replace(/^```\s*/i, "")
+          .replace(/\s*```$/i, "")
+          .trim();
+        const parsed = JSON.parse(cleaned);
+        console.log(`[ExtractionService] ✓ Successfully parsed structured data using Gemini`);
+        return parsed;
+      }
+    } catch (geminiError: any) {
+      console.warn(`[ExtractionService] Gemini extraction failed, falling back to Groq. Error:`, geminiError.message || geminiError);
+    }
+  }
+
+  console.log(`[ExtractionService] Running structured extraction via Groq (Llama-3.3)`);
   const groq = getGroqClient();
 
   const completion = await groq.chat.completions.create({

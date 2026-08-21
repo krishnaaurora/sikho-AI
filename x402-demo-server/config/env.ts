@@ -48,6 +48,7 @@ export const env = {
   FACILITATOR_URL: process.env.FACILITATOR_URL || "https://facilitator.goplausible.xyz",
   APIFY_API_TOKEN: process.env.APIFY_API_TOKEN || "",
   APIFY_LINKEDIN_ACTOR: process.env.APIFY_LINKEDIN_ACTOR || "crawlworks~linkedin-jobs-scraper",
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || "AIzaSyAZTTsW72ILNQgzFkV_u_9I7vaw4Og9BYE",
   /**
    * Canonical public-facing URL for this merchant's site.
    * Used in x402 `resource` field and OG tags so the GoPlausible facilitator

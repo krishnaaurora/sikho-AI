@@ -15,7 +15,8 @@ export const config = {
   facilitatorUrl: env.FACILITATOR_URL,
   groqApiKeys: env.GROQ_API_KEYS,
   apifyApiToken: env.APIFY_API_TOKEN,
-  apifyLinkedInActor: env.APIFY_LINKEDIN_ACTOR
+  apifyLinkedInActor: env.APIFY_LINKEDIN_ACTOR,
+  geminiApiKey: env.GEMINI_API_KEY
 };
 
 export { appConfig } from './app.config';
