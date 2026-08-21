@@ -108,6 +108,23 @@ app.use(
     },
   })
 );
+
+// ---------------------------------------------------------------------------
+// Static serving of uploaded files (resumes, images, documents)
+// Required so the frontend PDF viewer can display uploaded resumes via iframe.
+// __dirname is dist/ in compiled mode, or src/ with ts-node.
+// Multer saves to process.cwd()/uploads, so we resolve from project root.
+// ---------------------------------------------------------------------------
+const uploadsDir = path.resolve(process.cwd(), "uploads");
+app.use(
+  "/uploads",
+  express.static(uploadsDir, {
+    setHeaders(res) {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Cache-Control", "no-cache");
+    },
+  })
+);
 const allowedOrigins = appConfig.corsOrigin === "*"
   ? []
   : appConfig.corsOrigin.split(",").map(o => o.trim());

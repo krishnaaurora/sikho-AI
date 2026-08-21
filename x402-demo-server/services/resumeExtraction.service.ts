@@ -105,7 +105,7 @@ Schema:
       "degree": "string",
       "field": "string",
       "startYear": "string",
-      "endYear": string",
+      "endYear": "string",
       "gpa": "string"
     }
   ],

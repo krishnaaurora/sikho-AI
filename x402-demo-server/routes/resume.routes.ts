@@ -38,6 +38,8 @@ import {
   applyResumeImprovements,
   generateProjectPlan,
 } from "../controllers/resume/resumeImprovement.controller";
+import { runCareerFit, getCareerFit } from "../controllers/resume/careerFit.controller";
+import { runSkillGap } from "../controllers/resume/skillGap.controller";
 import { enforceWorkspacePayment } from "../middlewares/x402.middleware";
 
 const router = express.Router();
@@ -92,6 +94,15 @@ router.post("/:resumeId/quality", optionalAuthenticate, runQualityAnalysis);
 
 // GET   /api/resume/:resumeId/quality     — Fetch analyzed quality metrics
 router.get("/:resumeId/quality", optionalAuthenticate, getQualityAnalysis);
+
+// POST  /api/resume/:resumeId/career-fit  — Trigger career fit analysis
+router.post("/:resumeId/career-fit", optionalAuthenticate, runCareerFit);
+
+// GET   /api/resume/:resumeId/career-fit  — Get cached career fit data
+router.get("/:resumeId/career-fit", optionalAuthenticate, getCareerFit);
+
+// POST  /api/resume/:resumeId/skill-gap   — Trigger skill gap analysis
+router.post("/:resumeId/skill-gap", optionalAuthenticate, runSkillGap);
 
 // POST  /api/resume/:resumeId/intent        — Extract target career parameters from prompt
 router.post("/:resumeId/intent", optionalAuthenticate, extractIntent);

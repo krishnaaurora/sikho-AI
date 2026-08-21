@@ -20,7 +20,16 @@ const ResumeIntelligence: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { activeAddress, signTransactions } = useWallet();
-  const backendOrigin = API_BASE_URL.split('/api/v1')[0].replace('localhost', window.location.hostname);
+  // Derive the backend origin — strip any /api/v1 or /api suffix, keep protocol+host+port intact.
+  // API_BASE_URL is e.g. "http://localhost:4021/api/v1" → "http://localhost:4021"
+  const backendOrigin = (() => {
+    try {
+      const url = new URL(API_BASE_URL);
+      return `${url.protocol}//${url.host}`;   // protocol + host preserves the port
+    } catch {
+      return API_BASE_URL.replace(/\/api.*$/, '').replace(/\/$/, '');
+    }
+  })();
 
   // State management
   const [hasResume, setHasResume] = useState(false);
@@ -125,7 +134,8 @@ const ResumeIntelligence: React.FC = () => {
     const token = localStorage.getItem('token') || document.cookie.split('; ').find(row => row.startsWith('accessToken='))?.split('=')[1];
     const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(options.headers as any) };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const targetUrl = path.startsWith('/api') ? `${backendOrigin}${path}` : path;
+    // All resume API calls go to backendOrigin (port 4021), x402/v1 calls also go there
+    const targetUrl = `${backendOrigin}${path}`;
     const res = await fetch(targetUrl, { ...options, headers });
     let data: any = {};
     const text = await res.text();
@@ -200,7 +210,19 @@ const ResumeIntelligence: React.FC = () => {
       return;
     }
 
+    // Auto-unlock Resume Intelligence (calls backend unlock — works immediately when BYPASS_PAYMENT=true)
+    try {
+      await apiFetch(`/api/resume/${rid}/unlock`, { method: 'POST' });
+      setResumeIntelUnlocked(true);
+    } catch (unlockErr) {
+      // 402 returned — user will need to pay via the UI button
+      console.info('[Pipeline] Resume Intelligence requires payment');
+    }
+
     // Step 2, 3, 9 in parallel!
+    // Capture the primary career detected so runSkillGaps can use the live value
+    let detectedPrimaryCareer = targetRole;
+
     const runAtsAnalysis = async () => {
       try {
         setPipelineStatus(s => ({ ...s, atsAnalysis: 'running' }));
@@ -215,18 +237,23 @@ const ResumeIntelligence: React.FC = () => {
     const runBestFitRoles = async () => {
       try {
         setPipelineStatus(s => ({ ...s, bestFitRoles: 'running' }));
+        // Get full extracted data
         const extractionRes = await apiFetch(`/api/resume/${rid}/extraction`);
         if (extractionRes.success && extractionRes.data) {
           setExtractedData(extractionRes.data);
+        }
+        // Call career-fit to detect and persist top career roles
+        const careerFitRes = await apiFetch(`/api/resume/${rid}/career-fit`, { method: 'POST' });
+        if (careerFitRes.success && careerFitRes.data?.primaryCareer) {
+          detectedPrimaryCareer = careerFitRes.data.primaryCareer;
+          setTargetRole(careerFitRes.data.primaryCareer);
         }
         setPipelineStatus(s => ({ ...s, bestFitRoles: 'done' }));
       } catch (e) {
         console.warn('[Pipeline] Determine Best-Fit Roles failed:', e);
         setPipelineStatus(s => ({ ...s, bestFitRoles: 'done' }));
       }
-    };
-
-    const runResumeImprovements = async () => {
+    };    const runResumeImprovements = async () => {
       try {
         setPipelineStatus(s => ({ ...s, improvements: 'running' }));
         await apiFetch(`/api/resume/${rid}/improvements`);
@@ -284,7 +311,13 @@ const ResumeIntelligence: React.FC = () => {
     const runSkillGaps = async () => {
       try {
         setPipelineStatus(s => ({ ...s, skillGaps: 'running' }));
-        await apiFetch(`/api/resume/${rid}/improvements/analyze`, { method: 'POST' });
+        // Use detectedPrimaryCareer (updated by runBestFitRoles above, not stale state)
+        await apiFetch(`/api/resume/${rid}/skill-gap`, {
+          method: 'POST',
+          body: JSON.stringify({ targetRole: detectedPrimaryCareer }),
+        });
+        // Also run improvement analysis for market insights
+        await apiFetch(`/api/resume/${rid}/improvements/analyze`, { method: 'POST' }).catch(() => {});
         setPipelineStatus(s => ({ ...s, skillGaps: 'done' }));
       } catch (e) {
         console.warn('[Pipeline] Gaps analysis failed:', e);
@@ -516,7 +549,7 @@ const ResumeIntelligence: React.FC = () => {
     formData.append('file', file);
 
     const xhr = new XMLHttpRequest();
-    // Supports fallback root route and apiPrefix route
+    // Upload goes directly to /api/resume/upload (not prefixed with /api/v1)
     xhr.open('POST', `${backendOrigin}/api/resume/upload`);
 
     // Track upload progress percentage
@@ -962,9 +995,14 @@ const ResumeIntelligence: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex-1 w-full h-full bg-slate-100 relative">
-                    {extractedData?.fileUrl || resumeId ? (
+                    {(fileUrl || extractedData?.fileUrl) ? (
                       <iframe
-                        src={`${backendOrigin}${fileUrl || extractedData?.fileUrl || `/uploads/documents/${resumeId}.pdf`}`}
+                        src={(() => {
+                          const url = fileUrl || extractedData?.fileUrl || '';
+                          if (url.startsWith('http://') || url.startsWith('https://')) return url;
+                          if (url.startsWith('/')) return `${backendOrigin}${url}`;
+                          return `${backendOrigin}/uploads/documents/${url}`;
+                        })()}
                         className="w-full h-full border-0"
                         title="Original Resume PDF Viewer"
                       />
@@ -1279,9 +1317,14 @@ const ResumeIntelligence: React.FC = () => {
                 </div>
               </div>
               <div className="flex-1 w-full h-full bg-slate-100 relative">
-                {extractedData?.fileUrl || resumeId ? (
+                {(fileUrl || extractedData?.fileUrl) ? (
                   <iframe
-                    src={`${backendOrigin}${fileUrl || extractedData?.fileUrl || `/uploads/documents/${resumeId}.pdf`}`}
+                    src={(() => {
+                      const url = fileUrl || extractedData?.fileUrl || '';
+                      if (url.startsWith('http://') || url.startsWith('https://')) return url;
+                      if (url.startsWith('/')) return `${backendOrigin}${url}`;
+                      return `${backendOrigin}/uploads/documents/${url}`;
+                    })()}
                     className="w-full h-full border-0"
                     title="Original Resume PDF Viewer"
                   />
@@ -1330,31 +1373,44 @@ const ResumeIntelligence: React.FC = () => {
 
                 <button
                   onClick={async () => {
-                    if (!activeAddress) {
-                      alert("Please connect your wallet first via the Manage Wallet tab.");
-                      return;
-                    }
-                    setResumeIntelPaymentStep('402');
+                    // When BYPASS_PAYMENT is on, or no wallet, call the unlock endpoint directly
+                    setResumeIntelPaymentStep('verifying');
                     try {
-                      const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
-                      setResumeIntelPaymentStep('wallet');
-                      await x402Fetch(`/api/x402/resume-intelligence`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ resumeId })
-                      });
-                      setResumeIntelPaymentStep('verifying');
+                      // Try direct unlock first (works when BYPASS_PAYMENT=true on backend)
+                      await apiFetch(`/api/resume/${resumeId}/unlock`, { method: 'POST' });
+                      setResumeIntelPaymentStep('complete');
                       setTimeout(() => {
-                        setResumeIntelPaymentStep('complete');
+                        setResumeIntelUnlocked(true);
+                        setResumeIntelPaymentStep(null);
+                      }, 800);
+                    } catch (directErr: any) {
+                      // 402 was returned — need wallet payment
+                      if (!activeAddress) {
+                        setResumeIntelPaymentStep(null);
+                        alert("Please connect your wallet first via the Manage Wallet tab.");
+                        return;
+                      }
+                      setResumeIntelPaymentStep('402');
+                      try {
+                        const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
+                        setResumeIntelPaymentStep('wallet');
+                        await x402Fetch(`${backendOrigin}/api/resume/${resumeId}/unlock`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                        });
+                        setResumeIntelPaymentStep('verifying');
                         setTimeout(() => {
-                          setResumeIntelUnlocked(true);
-                          setResumeIntelPaymentStep(null);
-                        }, 1200);
-                      }, 1500);
-                    } catch (err: any) {
-                      console.error('[x402] Unlock failed:', err);
-                      alert(`Payment verification failed: ${err.message || err}`);
-                      setResumeIntelPaymentStep(null);
+                          setResumeIntelPaymentStep('complete');
+                          setTimeout(() => {
+                            setResumeIntelUnlocked(true);
+                            setResumeIntelPaymentStep(null);
+                          }, 1200);
+                        }, 1500);
+                      } catch (err: any) {
+                        console.error('[x402] Unlock failed:', err);
+                        alert(`Payment verification failed: ${err.message || err}`);
+                        setResumeIntelPaymentStep(null);
+                      }
                     }
                   }}
                   className="w-full max-w-sm mx-auto bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-sm py-3.5 rounded-2xl shadow-lg hover:opacity-95 transition-all flex items-center justify-center gap-2"
