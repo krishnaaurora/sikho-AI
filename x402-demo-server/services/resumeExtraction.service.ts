@@ -140,7 +140,7 @@ export async function extractStructuredData(rawText: string): Promise<Record<str
   const groq = getGroqClient();
 
   const completion = await groq.chat.completions.create({
-    model: "openai/gpt-oss-120b",
+    model: "llama-3.3-70b-versatile",
     messages: [
       { role: "system", content: EXTRACTION_PROMPT },
       {

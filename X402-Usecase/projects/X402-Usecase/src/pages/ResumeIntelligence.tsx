@@ -1101,23 +1101,8 @@ const ResumeIntelligence: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Tabs */}
+                  {/* Personal Info Details */}
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden">
-                    <div className="flex overflow-x-auto border-b border-slate-100 px-3 pt-3 gap-1">
-                      {extractionTabs.map(tab => (
-                        <button
-                          key={tab}
-                          className={`flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-t-lg border-b-2 transition-colors ${
-                            tab === 'Personal Info'
-                              ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50'
-                              : 'border-transparent text-slate-500 hover:text-slate-700'
-                          }`}
-                        >
-                          {tab}
-                        </button>
-                      ))}
-                    </div>
-
                     <div className="p-4 space-y-2.5">
                       {[
                         { label: 'Full Name',     value: extractedData?.structuredData?.personal?.name || 'N/A',             ready: !!extractedData },
@@ -1134,39 +1119,6 @@ const ResumeIntelligence: React.FC = () => {
                           ) : (
                             <div className="h-3 w-32 bg-slate-100 rounded animate-pulse" />
                           )}
-                        </div>
-                      ))}
-
-                      <button className="w-full mt-2 text-[10px] font-black text-indigo-600 border border-indigo-100 bg-indigo-50/50 rounded-xl py-2 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-1">
-                        View All Personal Information <ChevronRight size={10} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Extracted sections list */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-[0_4px_16px_rgba(0,0,0,0.03)]">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-black text-slate-900">Pipeline Progression</span>
-                      <span className="text-[10px] font-bold text-slate-400">9 Steps Active</span>
-                    </div>
-                    <div className="space-y-2">
-                      {extractedSections.map(({ key, label, icon: Icon, status, running }) => (
-                        <div key={key} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 transition-colors">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
-                              <Icon size={13} className="text-indigo-500" />
-                            </div>
-                            <span className="text-xs font-semibold text-slate-700">{label}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {status ? (
-                              <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Completed</span>
-                            ) : running ? (
-                              <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full animate-pulse">Running</span>
-                            ) : (
-                              <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Pending</span>
-                            )}
-                          </div>
                         </div>
                       ))}
                     </div>

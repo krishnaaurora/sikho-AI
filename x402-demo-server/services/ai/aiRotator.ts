@@ -20,7 +20,7 @@ export async function queryAIWithJsonRotation(systemPrompt: string, userPrompt: 
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        model: "openai/gpt-oss-120b",
+        model: "llama-3.3-70b-versatile",
         temperature: 0.3,
         response_format: { type: "json_object" }
       });

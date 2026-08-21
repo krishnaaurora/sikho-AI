@@ -56,7 +56,7 @@ Return ONLY a valid JSON object matching this structure:
         { role: "system", content: systemPrompt },
         { role: "user", content: `Generate a mind map hierarchy tree for "${topic}"` }
       ],
-      model: "openai/gpt-oss-120b",
+      model: "llama-3.3-70b-versatile",
       temperature: 0.5,
       response_format: { type: "json_object" }
     });

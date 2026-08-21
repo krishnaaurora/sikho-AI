@@ -24,8 +24,8 @@ import { ExplainResponseSchema, ExplainResponse } from "../../types/explain.type
 //   Slot 10    → Fast 8B: quick depth across all styles
 
 const MODEL_FAST   = "openai/gpt-oss-20b";
-const MODEL_LARGE  = "openai/gpt-oss-120b";
-const MODEL_DEEP   = "openai/gpt-oss-120b";
+const MODEL_LARGE  = "llama-3.3-70b-versatile";
+const MODEL_DEEP   = "llama-3.3-70b-versatile";
 const MODEL_CODE   = "qwen/qwen3.6-27b";
 const MODEL_GEMMA  = "openai/gpt-oss-20b";
 
