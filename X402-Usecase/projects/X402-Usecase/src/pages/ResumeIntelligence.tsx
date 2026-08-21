@@ -24,6 +24,7 @@ const ResumeIntelligence: React.FC = () => {
 
   // State management
   const [hasResume, setHasResume] = useState(false);
+  const [extractedData, setExtractedData] = useState<any | null>(null);
   const [currentView, setCurrentView] = useState<'overview' | 'quality' | 'skills' | 'career' | 'discovery' | 'experience' | 'gaps' | 'market' | 'projects' | 'target' | 'targetmatch' | 'improve' | 'match' | 'action' | 'versions' | 'progress' | 'jobdisc' | 'jobintel' | 'payment' | 'rematch' | 'projectplan'>('overview');
   const [jobAnalysisPaid, setJobAnalysisPaid] = useState<Record<number, boolean>>({});
   const [paymentStep, setPaymentStep] = useState<'paywall' | '402' | 'wallet' | 'verifying' | 'complete' | null>(null);
@@ -186,7 +187,10 @@ const ResumeIntelligence: React.FC = () => {
     // Step 3: Determine Best-Fit Roles
     try {
       setPipelineStatus(s => ({ ...s, bestFitRoles: 'running' }));
-      await apiFetch(`/api/resume/${rid}/extraction`);
+      const extractionRes = await apiFetch(`/api/resume/${rid}/extraction`);
+      if (extractionRes.success && extractionRes.data) {
+        setExtractedData(extractionRes.data);
+      }
       setPipelineStatus(s => ({ ...s, bestFitRoles: 'done' }));
     } catch (e) {
       console.warn('[Pipeline] Determine Best-Fit Roles failed:', e);
@@ -560,15 +564,7 @@ const ResumeIntelligence: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    const currentProgressVal = getAnalysisProgress();
-    if (isAnalyzing && currentProgressVal >= 100) {
-      setIsAnalyzing(false);
-      setHasResume(true);
-      setUploadStatus('done');
-      setCurrentView('overview');
-    }
-  }, [pipelineStatus, isAnalyzing, getAnalysisProgress]);
+  // Auto-transition is disabled. User proceeds by clicking "Next" button in the UI.
 
   // Sync profile options
   useEffect(() => {
@@ -941,56 +937,106 @@ const ResumeIntelligence: React.FC = () => {
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden">
                   <div className="relative">
                     <div className="bg-slate-50 p-6 font-serif" style={{ fontFamily: 'Georgia, serif', minHeight: '460px' }}>
-                      <div className="space-y-4">
-                        <div>
-                          <h2 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'Georgia, serif' }}>Daniel D'Souza</h2>
-                          <p className="text-indigo-600 font-semibold text-sm">UX Designer</p>
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[10px] text-slate-600">
-                            <span>📞 +91 98765 43210</span>
-                            <span>✉ daniel.dsouza@gmail.com</span>
-                            <span>📍 Bangalore, India</span>
+                      {extractedData ? (
+                        <div className="space-y-4">
+                          <div>
+                            <h2 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'Georgia, serif' }}>
+                              {extractedData.structuredData?.personal?.name || 'Your Name'}
+                            </h2>
+                            <p className="text-indigo-600 font-semibold text-sm">
+                              {extractedData.structuredData?.personal?.summary ? 
+                                (extractedData.structuredData.personal.summary.substring(0, 50) + '...') : 
+                                (extractedData.structuredData?.experience?.[0]?.role || 'Resume Profile')}
+                            </p>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[10px] text-slate-600">
+                              {extractedData.structuredData?.personal?.phone && (
+                                <span>📞 {extractedData.structuredData.personal.phone}</span>
+                              )}
+                              {extractedData.structuredData?.personal?.email && (
+                                <span>✉ {extractedData.structuredData.personal.email}</span>
+                              )}
+                              {extractedData.structuredData?.personal?.location && (
+                                <span>📍 {extractedData.structuredData.personal.location}</span>
+                              )}
+                            </div>
+                            {extractedData.structuredData?.personal?.linkedin && (
+                              <p className="text-[10px] text-indigo-600 mt-1">
+                                🔗 {extractedData.structuredData.personal.linkedin}
+                              </p>
+                            )}
                           </div>
-                          <p className="text-[10px] text-indigo-600 mt-1">🔗 linkedin.com/in/danieldsouza</p>
-                        </div>
 
-                        <div>
-                          <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1 border-b border-indigo-200 pb-0.5">PROFESSIONAL SUMMARY</p>
-                          <p className="text-[10px] text-slate-600 leading-relaxed">
-                            Creative UX Designer with 4+ years of experience designing user-centered digital products. Skilled in wireframing, prototyping, user research, and collaborating with cross-functional teams to deliver impactful solutions.
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1 border-b border-indigo-200 pb-0.5">EXPERIENCE</p>
-                          <div className="space-y-2">
+                          {extractedData.structuredData?.personal?.summary && (
                             <div>
+                              <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1 border-b border-indigo-200 pb-0.5">PROFESSIONAL SUMMARY</p>
+                              <p className="text-[10px] text-slate-600 leading-relaxed">
+                                {extractedData.structuredData.personal.summary}
+                              </p>
+                            </div>
+                          )}
+
+                          {extractedData.structuredData?.experience?.length > 0 && (
+                            <div>
+                              <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1 border-b border-indigo-200 pb-0.5">EXPERIENCE</p>
+                              <div className="space-y-2">
+                                {extractedData.structuredData.experience.slice(0, 2).map((exp: any, idx: number) => (
+                                  <div key={idx}>
+                                    <div className="flex justify-between items-start">
+                                      <div>
+                                        <span className="text-[10px] font-bold text-slate-800">{exp.role}</span>
+                                        <span className="text-[10px] text-slate-400"> · {exp.company}</span>
+                                      </div>
+                                      <span className="text-[9px] text-slate-400">{exp.startDate} – {exp.endDate || 'Present'}</span>
+                                    </div>
+                                    <p className="text-[9.5px] text-slate-600 leading-normal mt-0.5">
+                                      {exp.description ? (exp.description.substring(0, 180) + '...') : ''}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {extractedData.structuredData?.education?.length > 0 && (
+                            <div>
+                              <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1 border-b border-indigo-200 pb-0.5">EDUCATION</p>
                               <div className="flex justify-between items-start">
                                 <div>
-                                  <span className="text-[10px] font-bold text-slate-800">Senior UX Designer</span>
-                                  <span className="text-[10px] text-slate-400"> · Designify</span>
+                                  <p className="text-[10px] font-bold text-slate-800">
+                                    {extractedData.structuredData.education[0].degree} in {extractedData.structuredData.education[0].field}
+                                  </p>
+                                  <p className="text-[9px] text-slate-500">{extractedData.structuredData.education[0].institution}</p>
                                 </div>
-                                <span className="text-[9px] text-slate-400">Jan 2022 – Present</span>
+                                <span className="text-[9px] text-slate-400">
+                                  {extractedData.structuredData.education[0].endYear}
+                                </span>
                               </div>
-                              <ul className="mt-1 space-y-0.5">
-                                {['Led end-to-end design for SaaS platform used by 10K+ users.', 'Conducted user research and usability testing.', 'Collaborated with product-managers and developers.'].map(b => (
-                                  <li key={b} className="text-[9px] text-slate-600 flex gap-1"><span>•</span>{b}</li>
-                                ))}
-                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        // Skeleton preview while extraction loads
+                        <div className="space-y-6 animate-pulse">
+                          <div className="space-y-2">
+                            <div className="h-6 w-48 bg-slate-200 rounded" />
+                            <div className="h-4 w-32 bg-slate-100 rounded" />
+                            <div className="flex gap-2">
+                              <div className="h-3 w-20 bg-slate-100 rounded" />
+                              <div className="h-3 w-20 bg-slate-100 rounded" />
                             </div>
                           </div>
-                        </div>
-
-                        <div>
-                          <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1 border-b border-indigo-200 pb-0.5">EDUCATION</p>
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="text-[10px] font-bold text-slate-800">B.Des in Communication Design</p>
-                              <p className="text-[9px] text-slate-500">National Institute of Design, Bangalore</p>
-                            </div>
-                            <span className="text-[9px] text-slate-400">2016 – 2020</span>
+                          <div className="space-y-2">
+                            <div className="h-3 w-full bg-slate-200 rounded" />
+                            <div className="h-3 w-full bg-slate-200 rounded" />
+                            <div className="h-3 w-2/3 bg-slate-200 rounded" />
+                          </div>
+                          <div className="space-y-2">
+                            <div className="h-3 w-32 bg-slate-100 rounded" />
+                            <div className="h-5 w-full bg-slate-200 rounded" />
+                            <div className="h-5 w-full bg-slate-200 rounded" />
                           </div>
                         </div>
-                      </div>
+                      )}
 
                       {currentProgress < 100 && (
                         <div
@@ -1054,12 +1100,12 @@ const ResumeIntelligence: React.FC = () => {
 
                     <div className="p-4 space-y-2.5">
                       {[
-                        { label: 'Full Name',     value: 'Daniel D\'Souza',             ready: true },
-                        { label: 'Current Role',  value: 'UX Designer',                 ready: true },
-                        { label: 'Email',         value: 'daniel.dsouza@gmail.com',     ready: true },
-                        { label: 'Phone',         value: '+91 98765 43210',             ready: true },
-                        { label: 'Location',      value: 'Bangalore, India',            ready: true },
-                        { label: 'LinkedIn',      value: 'linkedin.com/in/danieldsouza',ready: true },
+                        { label: 'Full Name',     value: extractedData?.structuredData?.personal?.name || 'N/A',             ready: !!extractedData },
+                        { label: 'Current Role',  value: extractedData?.structuredData?.experience?.[0]?.role || 'N/A',      ready: !!extractedData },
+                        { label: 'Email',         value: extractedData?.structuredData?.personal?.email || 'N/A',             ready: !!extractedData },
+                        { label: 'Phone',         value: extractedData?.structuredData?.personal?.phone || 'N/A',             ready: !!extractedData },
+                        { label: 'Location',      value: extractedData?.structuredData?.personal?.location || 'N/A',          ready: !!extractedData },
+                        { label: 'LinkedIn',      value: extractedData?.structuredData?.personal?.linkedin || 'N/A',          ready: !!extractedData },
                       ].map(({ label, value, ready }) => (
                         <div key={label} className="flex items-center justify-between py-1.5 border-b border-slate-50">
                           <span className="text-xs font-bold text-slate-700 w-28 flex-shrink-0">{label}</span>
@@ -1112,15 +1158,21 @@ const ResumeIntelligence: React.FC = () => {
                       variant="outline"
                       onClick={clearFile}
                       className="flex-1 rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50 gap-2"
+                      disabled={currentProgress < 100}
                     >
                       <UploadCloud size={14} /> Upload Another
                     </Button>
-                    {resumeId && (
+                    {currentProgress >= 100 && (
                       <Button
-                        onClick={() => { setHasResume(true); setCurrentView('overview'); }}
-                        className="flex-1 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md gap-2 hover:opacity-90 transition-all"
+                        onClick={() => {
+                          setIsAnalyzing(false);
+                          setHasResume(true);
+                          setUploadStatus('done');
+                          setCurrentView('overview');
+                        }}
+                        className="flex-1 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md gap-2 hover:opacity-90 transition-all animate-bounce"
                       >
-                        Analyze Resume <Sparkles size={14} />
+                        Next: View Results <ArrowRight size={14} />
                       </Button>
                     )}
                   </div>
