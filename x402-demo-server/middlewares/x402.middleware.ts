@@ -23,7 +23,9 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
 
     const forwardedProto = String(req.headers["x-forwarded-proto"] || req.protocol || "http");
     const forwardedHost = String(req.headers["x-forwarded-host"] || req.get("host") || "");
-    const requestUrl = `${forwardedProto}://${forwardedHost}${req.originalUrl}`;
+    // Strip dynamic 24-character Hex IDs (such as resumeId or jobId) to ensure a static, stable resource URL
+    const cleanPath = req.originalUrl.replace(/\/[a-f\d]{24}/ig, "");
+    const requestUrl = `${forwardedProto}://${forwardedHost}${cleanPath}`;
 
     // Derive service identity and unique operation resource targets
     let serviceId = "job_analysis";
