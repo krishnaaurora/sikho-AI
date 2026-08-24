@@ -107,8 +107,28 @@ function isRetryableError(err: any): boolean {
   return false;
 }
 
+import crypto from "crypto";
+
+const responseCache = new Map<string, string>();
+
+function getCacheKey(req: ResumeGroqRequest): string {
+  const hash = crypto.createHash("sha256");
+  hash.update(req.system || "");
+  hash.update(req.user || "");
+  hash.update(String(req.maxTokens || 4096));
+  hash.update(String(req.temperature || 0.3));
+  hash.update(req.jsonMode ? "json" : "text");
+  return hash.digest("hex");
+}
+
 // ─── Core chat completion with key-rotation failover ─────────────
 export async function resumeGroqChat(req: ResumeGroqRequest): Promise<string> {
+  const cacheKey = getCacheKey(req);
+  if (responseCache.has(cacheKey)) {
+    console.info("[ResumeGroq] Cache hit! Returning cached completion.");
+    return responseCache.get(cacheKey)!;
+  }
+
   const model   = config.groqResumeModel;
   const total   = slots.length;
   const maxTries = Math.min(total, 5); // never more than 5 attempts
@@ -127,39 +147,63 @@ export async function resumeGroqChat(req: ResumeGroqRequest): Promise<string> {
       continue;
     }
 
-    try {
-      console.info(`[ResumeGroq] Using key slot ${slot.index} (model: ${model})`);
+    let delay = 1500;
+    let lastErr: any = null;
 
-      const completion = await slot.client.chat.completions.create({
-        model,
-        messages: [
-          { role: "system", content: req.system },
-          { role: "user",   content: req.user   },
-        ],
-        temperature:     req.temperature ?? 0.3,
-        max_tokens:      req.maxTokens   ?? 4096,
-        ...(req.jsonMode ? { response_format: { type: "json_object" } } : {}),
-      });
+    // Retry up to 3 times per key if we hit 429
+    for (let retry = 0; retry < 3; retry++) {
+      try {
+        console.info(`[ResumeGroq] Attempting key slot ${slot.index} (model: ${model}, try: ${retry + 1}/3)`);
 
-      const text = completion.choices?.[0]?.message?.content ?? "";
-      if (!text) throw new Error("Empty response from Groq");
+        const completion = await slot.client.chat.completions.create({
+          model,
+          messages: [
+            { role: "system", content: req.system },
+            { role: "user",   content: req.user   },
+          ],
+          temperature:     req.temperature ?? 0.3,
+          max_tokens:      req.maxTokens   ?? 1024, // reduced default max tokens for efficiency
+          ...(req.jsonMode ? { response_format: { type: "json_object" } } : {}),
+        });
 
-      // Advance cursor for the next call (round-robin)
-      roundRobinCursor = (slotIdx + 1) % total;
-      slot.lastError   = null;
-      return text;
+        const text = completion.choices?.[0]?.message?.content ?? "";
+        if (!text) throw new Error("Empty response from Groq");
 
-    } catch (err: any) {
-      slot.lastError = err?.message ?? String(err);
-      console.error(`[ResumeGroq] Key slot ${slot.index} failed: ${slot.lastError}`);
+        // Cache successful response
+        responseCache.set(cacheKey, text);
 
-      if (!isRetryableError(err)) {
-        // Non-retryable error (bad prompt, parse error, auth invalid) — throw immediately
-        throw err;
+        // Advance cursor for the next call (round-robin)
+        roundRobinCursor = (slotIdx + 1) % total;
+        slot.lastError   = null;
+        return text;
+
+      } catch (err: any) {
+        lastErr = err;
+        slot.lastError = err?.message ?? String(err);
+        const status = err?.status ?? err?.statusCode ?? 0;
+
+        if (status === 429) {
+          // Read retry headers if available
+          const retryAfterHeader = err?.headers?.["retry-after"] || err?.headers?.["x-ratelimit-reset"];
+          const waitMs = retryAfterHeader ? (parseFloat(retryAfterHeader) * 1000) : delay;
+          console.warn(`[ResumeGroq] Key slot ${slot.index} hit 429 rate limit. Retrying in ${waitMs}ms...`);
+          await new Promise(r => setTimeout(r, waitMs));
+          delay *= 2; // exponential backoff fallback
+        } else {
+          // Non-429 error, break and rotate key immediately
+          break;
+        }
       }
+    }
 
-      // Retryable → log and try next slot
-      console.warn(`[ResumeGroq] Key slot ${slot.index} returned ${err?.status ?? "error"} — trying next key`);
+    if (lastErr) {
+      console.error(`[ResumeGroq] Key slot ${slot.index} exhausted attempts. Error: ${slot.lastError}`);
+      if (!isRetryableError(lastErr)) {
+        // Non-retryable error (e.g. invalid auth, bad payload) -> throw immediately
+        throw lastErr;
+      }
+      // Retryable -> try next slot
+      console.warn(`[ResumeGroq] Key slot ${slot.index} failed with retryable error. Rotating to next key slot.`);
     }
   }
 

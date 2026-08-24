@@ -156,6 +156,16 @@ export const findJobs = asyncHandler(async (req: any, res: Response) => {
       }
     } catch (cfErr: any) {
       console.warn(`[FindJobs] Career fit computation failed: ${cfErr.message}`);
+      if (cfErr?.status === 429 || cfErr?.message?.includes("Rate limit") || cfErr?.message?.includes("429")) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            status: "temporarily_unavailable",
+            message: "Live job analysis is temporarily busy. Please try again shortly."
+          },
+          message: "Service temporarily rate limited"
+        });
+      }
     }
   }
 
