@@ -1,4 +1,4 @@
-import Groq from "groq-sdk";
+﻿import Groq from "groq-sdk";
 import Job, { IJobIntelligence } from "../models/Job.model";
 import { config } from "../config";
 

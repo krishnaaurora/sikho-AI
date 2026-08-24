@@ -108,6 +108,28 @@ app.use(
     },
   })
 );
+
+// ---------------------------------------------------------------------------
+// Static serving of uploaded files (resumes, images, documents)
+// Required so the frontend PDF viewer can display uploaded resumes via iframe.
+// __dirname is dist/ in compiled mode, or src/ with ts-node.
+// Multer saves to process.cwd()/uploads, so we resolve from project root.
+// ---------------------------------------------------------------------------
+const uploadsDir = path.resolve(process.cwd(), "uploads");
+app.use(
+  "/uploads",
+  express.static(uploadsDir, {
+    setHeaders(res) {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Cache-Control", "no-cache");
+      // Allow this path to be embedded in iframes (helmet sets SAMEORIGIN globally,
+      // which blocks the PDF viewer iframe when the frontend is on a different port).
+      res.setHeader("X-Frame-Options", "ALLOWALL");
+      // CSP frame-ancestors: allow any origin to embed these static files
+      res.setHeader("Content-Security-Policy", "frame-ancestors *");
+    },
+  })
+);
 const allowedOrigins = appConfig.corsOrigin === "*"
   ? []
   : appConfig.corsOrigin.split(",").map(o => o.trim());

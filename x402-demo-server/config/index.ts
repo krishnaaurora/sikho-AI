@@ -14,7 +14,12 @@ export const config = {
   avmAddress: env.AVM_ADDRESS,
   facilitatorUrl: env.FACILITATOR_URL,
   groqApiKeys: env.GROQ_API_KEYS,
-  apifyApiToken: env.APIFY_API_TOKEN
+  groqResumeKeys: env.GROQ_RESUME_KEYS,
+  groqResumeModel: env.GROQ_RESUME_MODEL,
+  jsearchApiKey: env.JSEARCH_API_KEY,
+  apifyApiToken: env.APIFY_API_TOKEN,
+  apifyLinkedInActor: env.APIFY_LINKEDIN_ACTOR,
+  geminiApiKey: env.GEMINI_API_KEY
 };
 
 export { appConfig } from './app.config';

@@ -1,15 +1,13 @@
 import path from "path";
 import fs from "fs";
+import axios from "axios";
 import Groq from "groq-sdk";
 import { config } from "../config";
+import { resumeGroqJson } from "./resumeGroq.service";
+import { exec } from "child_process";
+import { promisify } from "util";
 
-// --- PDF Parser ---
-const getPdfParse = async (): Promise<(buffer: Buffer) => Promise<{ text: string }>> => {
-  // pdf-parse is CJS; use require for reliable loading
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require("pdf-parse");
-  return typeof mod === "function" ? mod : mod.default ?? mod;
-};
+const execAsync = promisify(exec);
 
 // --- DOCX Parser (lazy-loaded) ---
 let mammoth: any = null;
@@ -20,24 +18,56 @@ const getMammoth = async () => {
   return mammoth;
 };
 
-// --- Groq client with round-robin key rotation ---
-const getGroqClient = (): Groq => {
-  const keys = (config.groqApiKeys || []).filter(Boolean);
-  if (!keys.length) throw new Error("No Groq API keys configured");
-  const key = keys[Math.floor(Math.random() * keys.length)];
-  return new Groq({ apiKey: key });
-};
+// --- Groq client for legacy callers (kept for non-resume use) ---
 
 // ─────────────────────────────────────────────────────────────────
 // 1. EXTRACT RAW TEXT FROM FILE
 // ─────────────────────────────────────────────────────────────────
 export async function extractRawText(filePath: string): Promise<string> {
   const ext = path.extname(filePath).toLowerCase();
+
+  // Try parsing using IBM Docling (python helper script) first.
+  // Hard-cap at 5 s — Docling cold-starts a heavy ML model and can hang
+  // for 10-30 s on the first call. If it doesn't finish quickly, we fall
+  // through to the fast Node.js parsers below.
+  try {
+    const scriptPath = path.join(__dirname, "../scripts/extract_docling.py");
+    const { stdout } = await execAsync(
+      `python "${scriptPath}" "${filePath}"`,
+      { timeout: 5000 }   // kill after 5 s
+    );
+    if (stdout && stdout.trim().length > 0) {
+      console.log(`[Docling] Successfully extracted ${stdout.length} characters`);
+      return stdout;
+    }
+  } catch (err: any) {
+    console.warn(`[Docling] Failed or timed out, falling back to local Node parsers. Error:`, err.message || err);
+  }
+
+  // Fallback to traditional parser if Docling fails or is not available
   const buffer = fs.readFileSync(filePath);
 
   if (ext === ".pdf") {
-    const parse = await getPdfParse();
-    const result = await parse(buffer);
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pdfParseMod = require("pdf-parse");
+    
+    // Check if it's the new class-based TypeScript version
+    if (pdfParseMod.PDFParse) {
+      const parser = new pdfParseMod.PDFParse({ data: buffer });
+      try {
+        const textResult = await parser.getText();
+        return textResult.text || "";
+      } finally {
+        await parser.destroy().catch(() => {});
+      }
+    }
+    
+    // Fallback to the old CJS function version
+    const parseFunc = typeof pdfParseMod === "function" ? pdfParseMod : pdfParseMod.default ?? pdfParseMod;
+    if (typeof parseFunc !== "function") {
+      throw new Error("Could not load a valid pdf-parse function or class");
+    }
+    const result = await parseFunc(buffer);
     return result.text || "";
   }
 
@@ -75,7 +105,7 @@ Schema:
       "degree": "string",
       "field": "string",
       "startYear": "string",
-      "endYear": string",
+      "endYear": "string",
       "gpa": "string"
     }
   ],
@@ -121,40 +151,64 @@ Schema:
 
 Rules:
 - If a field is not found, use empty string "" or empty array [].
-- Separate work experience from internships if possible.
+- CRITICAL: The "experience" array must include ALL work-like entries regardless of how the section is labelled in the resume. Treat any of these section headings as experience: "Experience", "Work Experience", "Professional Experience", "Job Experience", "Internship Experience", "Internships", "Industry Experience", "Relevant Experience", "Career History", "Employment History", "Work History". Do NOT leave experience empty just because the section has an unusual name.
+- Only use the separate "internships" array for entries you cannot classify as either formal work or part-time work — when in doubt, put the entry in "experience".
 - Extract ALL skills mentioned anywhere in the resume.
 - Keep descriptions concise but complete.
 - Extract all links (GitHub, LinkedIn, portfolio, etc.).`;
 
 export async function extractStructuredData(rawText: string): Promise<Record<string, any>> {
-  const groq = getGroqClient();
+  const geminiKey = (config as any).geminiApiKey;
+  if (geminiKey) {
+    try {
+      console.log(`[ExtractionService] Trying structured extraction via Gemini API`);
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+      const response = await axios.post(
+        url,
+        {
+          contents: [
+            {
+              parts: [
+                {
+                  text: `${EXTRACTION_PROMPT}\n\nExtract information from this resume:\n\n${rawText.substring(0, 15000)}`
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            responseMimeType: "application/json"
+          }
+        },
+        { headers: { "Content-Type": "application/json" } }
+      );
 
-  const completion = await groq.chat.completions.create({
-    model: "openai/gpt-oss-120b",
-    messages: [
-      { role: "system", content: EXTRACTION_PROMPT },
-      {
-        role: "user",
-        content: `Extract information from this resume:\n\n${rawText.substring(0, 12000)}`
+      const content = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (content) {
+        const cleaned = content
+          .replace(/^```json\s*/i, "")
+          .replace(/^```\s*/i, "")
+          .replace(/\s*```$/i, "")
+          .trim();
+        const parsed = JSON.parse(cleaned);
+        console.log(`[ExtractionService] ✓ Successfully parsed structured data using Gemini`);
+        return parsed;
       }
-    ],
-    temperature: 0.1,
-    max_tokens: 4096,
-  });
+    } catch (geminiError: any) {
+      console.warn(`[ExtractionService] Gemini extraction failed, falling back to Groq. Error:`, geminiError.message || geminiError);
+    }
+  }
 
-  const content = completion.choices[0]?.message?.content || "{}";
-
-  // Strip markdown code blocks if present
-  const cleaned = content
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
+  console.log(`[ExtractionService] Running structured extraction via Groq Resume pool`);
 
   try {
-    return JSON.parse(cleaned);
+    return await resumeGroqJson({
+      system: EXTRACTION_PROMPT,
+      user: `Extract information from this resume:\n\n${rawText.substring(0, 12000)}`,
+      temperature: 0.1,
+      maxTokens: 4096,
+    });
   } catch {
-    console.error("[ExtractionService] JSON parse failed, returning empty structure");
+    console.error("[ExtractionService] Groq extraction failed, returning empty structure");
     return {
       personal: {}, education: [], experience: [], internships: [],
       skills: [], projects: [], certifications: [], achievements: [],

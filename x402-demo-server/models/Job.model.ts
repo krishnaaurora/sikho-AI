@@ -63,6 +63,7 @@ export interface IJob extends Document {
   sourceJobId: string;
   jobHash: string;
   jobUrl?: string;
+  applyUrl?: string;  // Separate apply URL (Lever applyUrl, Ashby applyUrl)
   postedAt?: Date;
   scrapedAt: Date;
 
@@ -89,6 +90,7 @@ const JobSchema = new Schema<IJob>(
     sourceJobId:      { type: String, required: true },
     jobHash:          { type: String, required: true, unique: true, index: true },
     jobUrl:           { type: String },
+    applyUrl:         { type: String },   // separate apply URL preserved from source
     postedAt:         { type: Date },
     scrapedAt:        { type: Date, default: Date.now },
 

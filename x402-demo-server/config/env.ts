@@ -41,12 +41,27 @@ export const env = {
     process.env.GROQ_API_KEY_26,
     process.env.GROQ_API_KEY_27,
   ].filter(Boolean) as string[],
+  // ─── Resume Intelligence dedicated key pool ────────────────────
+  // 5 keys reserved exclusively for ATS analysis, career fit,
+  // resume extraction, and improvements. Never sent to the frontend.
+  GROQ_RESUME_KEYS: [
+    process.env.GROQ_RESUME_KEY_1,
+    process.env.GROQ_RESUME_KEY_2,
+    process.env.GROQ_RESUME_KEY_3,
+    process.env.GROQ_RESUME_KEY_4,
+    process.env.GROQ_RESUME_KEY_5,
+  ].filter(Boolean) as string[],
+  // llama-3.3-70b-versatile deprecated June 17 2026 → openai/gpt-oss-120b
+  GROQ_RESUME_MODEL: process.env.GROQ_RESUME_MODEL || "openai/gpt-oss-120b",
+  JSEARCH_API_KEY: process.env.JSEARCH_API_KEY || "",
   ALGORAND_API_KEY: process.env.ALGORAND_API_KEY || "",
   ALGORAND_SERVER: process.env.ALGORAND_SERVER || "https://mainnet-api.algonode.cloud",
   X402_API_KEY: process.env.X402_API_KEY || "",
   AVM_ADDRESS: process.env.AVM_ADDRESS || "2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY",
   FACILITATOR_URL: process.env.FACILITATOR_URL || "https://facilitator.goplausible.xyz",
   APIFY_API_TOKEN: process.env.APIFY_API_TOKEN || "",
+  APIFY_LINKEDIN_ACTOR: process.env.APIFY_LINKEDIN_ACTOR || "crawlworks~linkedin-jobs-scraper",
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || "AIzaSyAZTTsW72ILNQgzFkV_u_9I7vaw4Og9BYE",
   /**
    * Canonical public-facing URL for this merchant's site.
    * Used in x402 `resource` field and OG tags so the GoPlausible facilitator

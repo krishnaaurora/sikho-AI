@@ -46,9 +46,10 @@ export const matchAllJobs = asyncHandler(async (req: Request, res: Response) => 
   const resumeId = req.params.resumeId as string;
   const limit    = parseInt(req.query.limit as string) || 50;
 
-  // Only match jobs with intelligence analyzed
-  const jobs = await Job.find({ intelligenceStatus: "done" })
+  // Match all jobs — include newly ingested ones regardless of intelligence status
+  const jobs = await Job.find({})
     .select("_id")
+    .sort({ scrapedAt: -1 })
     .limit(limit)
     .lean();
 
@@ -85,7 +86,7 @@ export const getResumeMatches = asyncHandler(async (req: Request, res: Response)
 
   const [matches, total, distribution] = await Promise.all([
     ResumeJobMatch.find(filter)
-      .populate("jobId", "title company location remoteType salary jobUrl intelligence.employmentType intelligence.domain")
+      .populate("jobId", "title company location remoteType salary jobUrl applyUrl source postedAt experienceLevel description intelligence.employmentType intelligence.domain intelligence.requiredSkills intelligence.summary")
       .sort({ "scores.overall": -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -94,10 +95,27 @@ export const getResumeMatches = asyncHandler(async (req: Request, res: Response)
     getMatchDistribution(resumeId),
   ]);
 
+  // Add convenience aliases so the frontend can read consistent field names
+  const normalised = matches.map((m: any) => ({
+    ...m,
+    // Frontend reads m.matchScore (0-1); schema stores scores.overall (0-100)
+    matchScore: (m.scores?.overall ?? 0) / 100,
+    // Frontend reads m.matchedSkills as string[]; schema stores objects
+    matchedSkills: (m.matchedSkills || []).map((s: any) =>
+      typeof s === "string" ? s : s.skill
+    ),
+    // Frontend reads m.missingSkills; schema field is missingItems
+    missingSkills: (m.missingItems || []).map((i: any) =>
+      typeof i === "string" ? i : i.skill
+    ),
+    // Frontend reads m.whyMatch; schema field is whyYouMatch
+    whyMatch: m.whyYouMatch || [],
+  }));
+
   return sendSuccessResponse(
     res,
     {
-      matches,
+      matches: normalised,
       distribution,
       total,
       page,

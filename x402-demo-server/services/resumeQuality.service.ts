@@ -1,12 +1,4 @@
-import Groq from "groq-sdk";
-import { config } from "../config";
-
-const getGroqClient = (): Groq => {
-  const keys = (config.groqApiKeys || []).filter(Boolean);
-  if (!keys.length) throw new Error("No Groq API keys configured");
-  const key = keys[Math.floor(Math.random() * keys.length)];
-  return new Groq({ apiKey: key });
-};
+import { resumeGroqJson } from "./resumeGroq.service";
 
 // ─────────────────────────────────────────────────────────────────
 // TYPES
@@ -98,8 +90,6 @@ export async function analyzeResumeQuality(
   rawText: string,
   structuredData: Record<string, any>
 ): Promise<QualityAnalysis> {
-  const groq = getGroqClient();
-
   const resumeContext = `
 RAW TEXT (first 8000 chars):
 ${rawText.substring(0, 8000)}
@@ -114,25 +104,14 @@ STRUCTURED DATA SUMMARY:
 - Has Summary: ${!!structuredData.personal?.summary}
 `;
 
-  const completion = await groq.chat.completions.create({
-    model: "openai/gpt-oss-120b",
-    messages: [
-      { role: "system", content: QUALITY_PROMPT },
-      { role: "user", content: `Analyze this resume:\n${resumeContext}` }
-    ],
+  const result = await resumeGroqJson<QualityAnalysis>({
+    system: QUALITY_PROMPT,
+    user: `Analyze this resume:\n${resumeContext}`,
+    maxTokens: 3000,
     temperature: 0.2,
-    max_tokens: 3000,
   });
 
-  const content = completion.choices[0]?.message?.content || "{}";
-  const cleaned = content
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
-
   try {
-    const result = JSON.parse(cleaned) as QualityAnalysis;
     // Safety clamp all scores
     result.overallScore = Math.min(100, Math.max(0, result.overallScore || 0));
     result.atsScore = Math.min(100, Math.max(0, result.atsScore || 0));
@@ -141,42 +120,8 @@ STRUCTURED DATA SUMMARY:
     result.experienceScore = Math.min(100, Math.max(0, result.experienceScore || 0));
     result.careerAlignmentScore = Math.min(100, Math.max(0, result.careerAlignmentScore || 0));
     return result;
-  } catch {
-    console.error("[QualityService] JSON parse failed, returning fallback");
-    return getFallbackAnalysis();
+  } catch (err: any) {
+    console.error("[QualityService] JSON parse failed:", err.message);
+    throw new Error(`Failed to parse resume quality analysis response: ${err.message}`);
   }
-}
-
-// ─────────────────────────────────────────────────────────────────
-// FALLBACK (if Groq fails)
-// ─────────────────────────────────────────────────────────────────
-function getFallbackAnalysis(): QualityAnalysis {
-  return {
-    overallScore: 72,
-    atsScore: 85,
-    impactScore: 60,
-    projectScore: 70,
-    experienceScore: 75,
-    careerAlignmentScore: 78,
-    tip: "Focus on adding measurable impact to your bullet points — numbers make you stand out!",
-    checks: [
-      { key: "atsCompatibility",       label: "ATS Compatibility",          status: "Good",       detail: "Standard formatting detected, no major ATS blockers." },
-      { key: "missingSections",        label: "Missing Sections",           status: "Good",       detail: "All core sections are present." },
-      { key: "weakBulletPoints",       label: "Weak Bullet Points",         status: "Needs Work", detail: "Several bullet points lack strong action verbs." },
-      { key: "genericDescriptions",    label: "Generic Descriptions",       status: "Needs Work", detail: "Some descriptions are too generic." },
-      { key: "repeatedKeywords",       label: "Repeated Keywords",          status: "Good",       detail: "Keyword usage is balanced." },
-      { key: "missingMeasurableImpact",label: "Missing Measurable Impact",  status: "Needs Work", detail: "Few bullet points include metrics or quantified results." },
-      { key: "poorFormatting",         label: "Poor Formatting",            status: "Good",       detail: "Formatting is clean and consistent." },
-      { key: "skillProjectConsistency",label: "Skill-to-Project Consistency",status: "Good",      detail: "Skills align well with listed projects." },
-      { key: "experienceDescriptions", label: "Experience Descriptions",    status: "Good",       detail: "Experience sections are reasonably detailed." },
-      { key: "projectQuality",         label: "Project Quality",            status: "Good",       detail: "Projects are described with adequate context." },
-      { key: "careerAlignment",        label: "Career Alignment",           status: "Good",       detail: "Career trajectory appears consistent." },
-    ],
-    issues: [
-      { id: "issue_1", title: "Add measurable impact to experience bullet points", category: "Impact",          priority: "High",   description: "3+ experience bullets lack quantified results. Add numbers, percentages, or scale metrics." },
-      { id: "issue_2", title: "Missing 'Certifications' section",                  category: "Missing Section", priority: "Medium", description: "Adding relevant certifications significantly improves ATS ranking and credibility." },
-      { id: "issue_3", title: "Generic description found in 2 places",              category: "Content Quality", priority: "Medium", description: "Descriptions in experience section sound too generic. Make them role-specific." },
-      { id: "issue_4", title: "Improve formatting for better readability",          category: "Formatting",      priority: "Low",    description: "Consider consistent date formats and spacing throughout the document." },
-    ]
-  };
 }

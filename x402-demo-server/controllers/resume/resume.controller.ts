@@ -113,7 +113,7 @@ async function runExtractionPipeline(resumeId: string, filePath: string, fileNam
 export const getResumeStatus = asyncHandler(async (req: any, res: Response) => {
   const { resumeId } = req.params;
   const resume = await Resume.findById(resumeId).select(
-    "status structuredData rawText fileName processingError createdAt updatedAt"
+    "status structuredData rawText fileName fileUrl processingError createdAt updatedAt"
   );
 
   if (!resume) {
@@ -126,6 +126,7 @@ export const getResumeStatus = asyncHandler(async (req: any, res: Response) => {
     resumeId: resume._id,
     status: resume.status,
     fileName: resume.fileName,
+    fileUrl: resume.fileUrl,
     processingError: resume.processingError,
     structuredData: resume.structuredData,
     sectionStatuses,

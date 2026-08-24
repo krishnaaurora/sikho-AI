@@ -38,7 +38,12 @@ import {
   applyResumeImprovements,
   generateProjectPlan,
 } from "../controllers/resume/resumeImprovement.controller";
+import { runCareerFit, getCareerFit } from "../controllers/resume/careerFit.controller";
+import { runSkillGap } from "../controllers/resume/skillGap.controller";
+import { findJobs } from "../controllers/resume/findJobs.controller";
 import { enforceWorkspacePayment } from "../middlewares/x402.middleware";
+import { sendSuccessResponse } from "../utils/response";
+import ResumeJobMatch from "../models/ResumeJobMatch.model";
 
 const router = express.Router();
 
@@ -93,11 +98,35 @@ router.post("/:resumeId/quality", optionalAuthenticate, runQualityAnalysis);
 // GET   /api/resume/:resumeId/quality     — Fetch analyzed quality metrics
 router.get("/:resumeId/quality", optionalAuthenticate, getQualityAnalysis);
 
+// POST  /api/resume/:resumeId/career-fit  — Trigger career fit analysis
+router.post("/:resumeId/career-fit", optionalAuthenticate, runCareerFit);
+
+// GET   /api/resume/:resumeId/career-fit  — Get cached career fit data
+router.get("/:resumeId/career-fit", optionalAuthenticate, getCareerFit);
+
+// POST  /api/resume/:resumeId/skill-gap   — Trigger skill gap analysis
+router.post("/:resumeId/skill-gap", optionalAuthenticate, runSkillGap);
+
 // POST  /api/resume/:resumeId/intent        — Extract target career parameters from prompt
 router.post("/:resumeId/intent", optionalAuthenticate, extractIntent);
 
-// POST  /api/resume/:resumeId/discover-jobs — Start Apify scraping
-router.post("/:resumeId/discover-jobs", optionalAuthenticate, enforceWorkspacePayment({ priceUsd: 0.02, description: "Target Career Exploration Search" }), discoverJobs);
+// POST  /api/resume/:resumeId/discover-jobs — Real-time job discovery (free — no payment gate)
+router.post("/:resumeId/discover-jobs", optionalAuthenticate, discoverJobs);
+
+// POST  /api/resume/:resumeId/find-jobs — Personalised job discovery (x402 $0.02)
+//   Page 1: Gemini + Google Search  |  Page 2+: Greenhouse + Lever + Ashby
+router.post(
+  "/:resumeId/find-jobs",
+  optionalAuthenticate,
+  enforceWorkspacePayment({ priceUsd: 0.02, description: "Sikho AI Resume Intelligence — Personalised Real-Time Job Discovery" }),
+  findJobs
+);
+
+// GET   /api/resume/:resumeId/job-discovery/status — Free poll after payment
+router.get("/:resumeId/job-discovery/status", optionalAuthenticate, async (req: any, res: Response) => {
+  const count = await ResumeJobMatch.countDocuments({ resumeId: req.params.resumeId });
+  return sendSuccessResponse(res, { resumeId: req.params.resumeId, matchCount: count, status: count > 0 ? "ready" : "processing" }, "Status fetched");
+});
 
 // POST  /api/resume/webhook/apify          — Apify webhook callback receiver
 router.post("/webhook/apify", handleApifyWebhook);

@@ -45,6 +45,7 @@ export interface NormalizedJob {
   sourceJobId: string;
   jobHash: string;
   jobUrl?: string;
+  applyUrl?: string;  // separate apply URL — Lever applyUrl, Ashby applyUrl
   postedAt?: Date;
   scrapedAt: Date;
 }
@@ -134,7 +135,8 @@ function normalizeRaw(raw: RawApifyJob, index: number, source = "apify"): Normal
     source,
     sourceJobId: deriveSourceJobId(raw, index),
     jobHash: buildJobHash(title, company, description),
-    jobUrl: raw.url || raw.jobUrl || raw.applyUrl,
+    jobUrl:  raw.url || raw.jobUrl,               // canonical job page URL
+    applyUrl: raw.applyUrl || undefined,           // direct apply URL (kept separate — never fabricated)
     postedAt: parseDate(raw.postedAt || raw.datePosted),
     scrapedAt: new Date(),
   };
