@@ -1,4 +1,4 @@
-﻿import Groq from "groq-sdk";
+import Groq from "groq-sdk";
 import Resume, { ISkillEvidence } from "../models/Resume.model";
 import Job, { IJobIntelligence } from "../models/Job.model";
 import ResumeJobMatch, {
@@ -221,57 +221,34 @@ async function generateNarrative(
   matchedSkills: IMatchedSkill[],
   missingItems: IMissingItem[]
 ): Promise<{ keyHighlights: string[]; whyYouMatch: string[]; whatsMissing: string[] }> {
-  const groq = getGroqClient();
+  // Completely deterministic logic to save rate limits and speed up matching
+  const keyHighlights = [
+    `${scores.skillMatch}% technical skill alignment with the job requirements.`,
+    matchedSkills.length > 0
+      ? `Demonstrated experience with ${matchedSkills.slice(0, 3).map(s => s.skill).join(", ")}.`
+      : "Basic qualifications alignment.",
+    scores.experienceMatch >= 80 ? "Meets or exceeds the required experience level." : "Experience alignment matches core requirements."
+  ];
 
-  const prompt = `
-You are a career matching assistant. Given the match data below, generate 3 sections as JSON.
-
-Candidate: ${candidateName}
-Job: ${jobTitle} at ${company}
-Scores: Skill=${scores.skillMatch}% Experience=${scores.experienceMatch}% Project=${scores.projectMatch}% Education=${scores.educationMatch}% Domain=${scores.domainMatch}%
-Matched Skills: ${matchedSkills.slice(0, 8).map(s => s.skill).join(", ")}
-Missing Skills: ${missingItems.slice(0, 6).map(m => m.skill).join(", ")}
-
-Return ONLY this JSON:
-{
-  "keyHighlights": ["3-4 short bullet highlights like 'Strong technical skills alignment'"],
-  "whyYouMatch": ["4-6 reasons why candidate matches, referencing matched skills"],
-  "whatsMissing": ["3-5 specific gaps with brief reason like 'Docker - Not found in projects'"]
-}`;
-
-  try {
-    const completion = await groq.chat.completions.create({
-      model: MODEL,
-      temperature: 0.2,
-      max_tokens: 600,
-      messages: [
-        { role: "system", content: "You are a career matching assistant. Return only valid JSON." },
-        { role: "user",   content: prompt },
-      ],
-    });
-
-    const raw = (completion.choices[0]?.message?.content || "")
-      .replace(/```json/gi, "").replace(/```/g, "").trim();
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("No JSON in response");
-    const parsed = JSON.parse(match[0]);
-    return {
-      keyHighlights: Array.isArray(parsed.keyHighlights) ? parsed.keyHighlights : [],
-      whyYouMatch:   Array.isArray(parsed.whyYouMatch)   ? parsed.whyYouMatch   : [],
-      whatsMissing:  Array.isArray(parsed.whatsMissing)   ? parsed.whatsMissing  : [],
-    };
-  } catch {
-    // Fallback if LLM fails
-    return {
-      keyHighlights: [
-        `${scores.skillMatch}% skill alignment with job requirements`,
-        matchedSkills.length > 0 ? `${matchedSkills.length} matching skills found` : "Limited skill overlap",
-        missingItems.length > 0  ? "Some preferred skills are missing"              : "Strong overall match",
-      ],
-      whyYouMatch:  matchedSkills.slice(0, 5).map((s) => `${s.skill} — ${s.strength}`),
-      whatsMissing: missingItems.slice(0, 5).map((m) => `${m.skill} — ${m.reason}`),
-    };
+  const whyYouMatch = matchedSkills.slice(0, 5).map(s =>
+    `Strong match in ${s.skill} (${s.strength || 'Matched'}) shown in your resume (${s.evidenceSections?.join(', ') || 'skills'}).`
+  );
+  if (whyYouMatch.length === 0) {
+    whyYouMatch.push("Candidate shows fundamental training and capability for this domain.");
   }
+
+  const whatsMissing = missingItems.slice(0, 4).map(m =>
+    `${m.skill} — Not explicitly mentioned as a strong match in your experience sections.`
+  );
+  if (whatsMissing.length === 0) {
+    whatsMissing.push("No major skill gaps identified for this role.");
+  }
+
+  return {
+    keyHighlights,
+    whyYouMatch,
+    whatsMissing
+  };
 }
 
 // ─────────────────────────────────────────────
