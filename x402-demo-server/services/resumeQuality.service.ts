@@ -1,12 +1,4 @@
-import Groq from "groq-sdk";
-import { config } from "../config";
-
-const getGroqClient = (): Groq => {
-  const keys = (config.groqApiKeys || []).filter(Boolean);
-  if (!keys.length) throw new Error("No Groq API keys configured");
-  const key = keys[Math.floor(Math.random() * keys.length)];
-  return new Groq({ apiKey: key });
-};
+import { resumeGroqJson } from "./resumeGroq.service";
 
 // ─────────────────────────────────────────────────────────────────
 // TYPES
@@ -98,8 +90,6 @@ export async function analyzeResumeQuality(
   rawText: string,
   structuredData: Record<string, any>
 ): Promise<QualityAnalysis> {
-  const groq = getGroqClient();
-
   const resumeContext = `
 RAW TEXT (first 8000 chars):
 ${rawText.substring(0, 8000)}
@@ -114,25 +104,14 @@ STRUCTURED DATA SUMMARY:
 - Has Summary: ${!!structuredData.personal?.summary}
 `;
 
-  const completion = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
-    messages: [
-      { role: "system", content: QUALITY_PROMPT },
-      { role: "user", content: `Analyze this resume:\n${resumeContext}` }
-    ],
+  const result = await resumeGroqJson<QualityAnalysis>({
+    system: QUALITY_PROMPT,
+    user: `Analyze this resume:\n${resumeContext}`,
+    maxTokens: 3000,
     temperature: 0.2,
-    max_tokens: 3000,
   });
 
-  const content = completion.choices[0]?.message?.content || "{}";
-  const cleaned = content
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
-
   try {
-    const result = JSON.parse(cleaned) as QualityAnalysis;
     // Safety clamp all scores
     result.overallScore = Math.min(100, Math.max(0, result.overallScore || 0));
     result.atsScore = Math.min(100, Math.max(0, result.atsScore || 0));

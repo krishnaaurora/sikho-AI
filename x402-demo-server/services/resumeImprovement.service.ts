@@ -1,4 +1,4 @@
-import Groq from "groq-sdk";
+﻿import { resumeGroqJson, resumeGroqChat } from "./resumeGroq.service";
 import Resume, { ISkillEvidence } from "../models/Resume.model";
 import Job from "../models/Job.model";
 import ResumeJobMatch from "../models/ResumeJobMatch.model";
@@ -6,16 +6,9 @@ import {
   ResumeImprovementInsight,
   JobResumeRecommendation,
 } from "../models/ResumeImprovement.model";
-import { config } from "../config";
 
-const MODEL = "llama-3.3-70b-versatile";
 
-function getGroqClient(): Groq {
-  const keys = (config.groqApiKeys || []).filter(Boolean);
-  if (!keys.length) throw new Error("No Groq API keys configured");
-  const randomKey = keys[Math.floor(Math.random() * keys.length)];
-  return new Groq({ apiKey: randomKey });
-}
+function getGroqClient() { /* removed — use resumeGroqJson instead */ }
 
 // ─────────────────────────────────────────────
 //  Phase 11: Core Analysis Service
@@ -199,19 +192,13 @@ Selected Job Description: ${jobDesc}
 Resume: ${currentResumeText}`;
 
   try {
-    const groq = getGroqClient();
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userContent }
-      ],
-      model: MODEL,
+    const raw = await resumeGroqJson({
+      system: systemPrompt,
+      user: userContent,
+      maxTokens: 2000,
       temperature: 0.1,
-      response_format: { type: "json_object" }
     });
-
-    const resultText = chatCompletion.choices[0]?.message?.content || "";
-    const parsed = JSON.parse(resultText.trim());
+    const parsed = raw as any;
     return Array.isArray(parsed) ? parsed : parsed.suggestions || Object.values(parsed)[0] || [];
   } catch (err: any) {
     console.error("[GroqImprovement] Live improvement generation failed:", err.message);
@@ -252,19 +239,12 @@ Selected Job Description: ${jobDesc}
 Current Resume: ${currentResumeText}`;
 
   try {
-    const groq = getGroqClient();
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userContent }
-      ],
-      model: MODEL,
+    return await resumeGroqJson({
+      system: systemPrompt,
+      user: userContent,
+      maxTokens: 2500,
       temperature: 0.2,
-      response_format: { type: "json_object" }
     });
-
-    const resultText = chatCompletion.choices[0]?.message?.content || "";
-    return JSON.parse(resultText.trim());
   } catch (err: any) {
     console.error("[GroqProject] Project recommendations generation failed:", err.message);
     throw new Error(`Failed to generate custom project recommendation: ${err.message}`);
@@ -347,19 +327,12 @@ Output ONLY raw JSON. No markdown code wraps.`;
 Current Resume: ${currentResumeText}`;
 
   try {
-    const groq = getGroqClient();
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userContent }
-      ],
-      model: MODEL,
+    return await resumeGroqJson({
+      system: systemPrompt,
+      user: userContent,
+      maxTokens: 2500,
       temperature: 0.2,
-      response_format: { type: "json_object" }
     });
-
-    const resultText = chatCompletion.choices[0]?.message?.content || "";
-    return JSON.parse(resultText.trim());
   } catch (err: any) {
     console.error("[GroqActionPlan] Career action plan generation failed:", err.message);
     throw new Error(`Failed to generate transition action plan: ${err.message}`);

@@ -3,6 +3,7 @@ import fs from "fs";
 import axios from "axios";
 import Groq from "groq-sdk";
 import { config } from "../config";
+import { resumeGroqJson } from "./resumeGroq.service";
 import { exec } from "child_process";
 import { promisify } from "util";
 
@@ -17,13 +18,7 @@ const getMammoth = async () => {
   return mammoth;
 };
 
-// --- Groq client with round-robin key rotation ---
-const getGroqClient = (): Groq => {
-  const keys = (config.groqApiKeys || []).filter(Boolean);
-  if (!keys.length) throw new Error("No Groq API keys configured");
-  const key = keys[Math.floor(Math.random() * keys.length)];
-  return new Groq({ apiKey: key });
-};
+// --- Groq client for legacy callers (kept for non-resume use) ---
 
 // ─────────────────────────────────────────────────────────────────
 // 1. EXTRACT RAW TEXT FROM FILE
@@ -31,17 +26,22 @@ const getGroqClient = (): Groq => {
 export async function extractRawText(filePath: string): Promise<string> {
   const ext = path.extname(filePath).toLowerCase();
 
-  // Try parsing using IBM Docling (python helper script) first
+  // Try parsing using IBM Docling (python helper script) first.
+  // Hard-cap at 5 s — Docling cold-starts a heavy ML model and can hang
+  // for 10-30 s on the first call. If it doesn't finish quickly, we fall
+  // through to the fast Node.js parsers below.
   try {
     const scriptPath = path.join(__dirname, "../scripts/extract_docling.py");
-    // Run python script with path wrapped in quotes to handle spaces
-    const { stdout } = await execAsync(`python "${scriptPath}" "${filePath}"`);
+    const { stdout } = await execAsync(
+      `python "${scriptPath}" "${filePath}"`,
+      { timeout: 5000 }   // kill after 5 s
+    );
     if (stdout && stdout.trim().length > 0) {
       console.log(`[Docling] Successfully extracted ${stdout.length} characters`);
       return stdout;
     }
   } catch (err: any) {
-    console.warn(`[Docling] Failed, falling back to local Node parsers. Error:`, err.message || err);
+    console.warn(`[Docling] Failed or timed out, falling back to local Node parsers. Error:`, err.message || err);
   }
 
   // Fallback to traditional parser if Docling fails or is not available
@@ -151,7 +151,8 @@ Schema:
 
 Rules:
 - If a field is not found, use empty string "" or empty array [].
-- Separate work experience from internships if possible.
+- CRITICAL: The "experience" array must include ALL work-like entries regardless of how the section is labelled in the resume. Treat any of these section headings as experience: "Experience", "Work Experience", "Professional Experience", "Job Experience", "Internship Experience", "Internships", "Industry Experience", "Relevant Experience", "Career History", "Employment History", "Work History". Do NOT leave experience empty just because the section has an unusual name.
+- Only use the separate "internships" array for entries you cannot classify as either formal work or part-time work — when in doubt, put the entry in "experience".
 - Extract ALL skills mentioned anywhere in the resume.
 - Keep descriptions concise but complete.
 - Extract all links (GitHub, LinkedIn, portfolio, etc.).`;
@@ -197,35 +198,17 @@ export async function extractStructuredData(rawText: string): Promise<Record<str
     }
   }
 
-  console.log(`[ExtractionService] Running structured extraction via Groq (Llama-3.3)`);
-  const groq = getGroqClient();
-
-  const completion = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
-    messages: [
-      { role: "system", content: EXTRACTION_PROMPT },
-      {
-        role: "user",
-        content: `Extract information from this resume:\n\n${rawText.substring(0, 12000)}`
-      }
-    ],
-    temperature: 0.1,
-    max_tokens: 4096,
-  });
-
-  const content = completion.choices[0]?.message?.content || "{}";
-
-  // Strip markdown code blocks if present
-  const cleaned = content
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
+  console.log(`[ExtractionService] Running structured extraction via Groq Resume pool`);
 
   try {
-    return JSON.parse(cleaned);
+    return await resumeGroqJson({
+      system: EXTRACTION_PROMPT,
+      user: `Extract information from this resume:\n\n${rawText.substring(0, 12000)}`,
+      temperature: 0.1,
+      maxTokens: 4096,
+    });
   } catch {
-    console.error("[ExtractionService] JSON parse failed, returning empty structure");
+    console.error("[ExtractionService] Groq extraction failed, returning empty structure");
     return {
       personal: {}, education: [], experience: [], internships: [],
       skills: [], projects: [], certifications: [], achievements: [],

@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+﻿import { Request, Response } from "express";
 import axios from "axios";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { sendSuccessResponse } from "../../utils/response";
@@ -6,6 +6,8 @@ import { AppError } from "../../utils/errors";
 import Resume from "../../models/Resume.model";
 import { config } from "../../config";
 import { ingestApifyJobs, RawApifyJob } from "../../services/jobIngestion.service";
+import { matchResumeToAllJobs } from "../../services/resumeJobMatching.service";
+import { scrapeJobsForRoles } from "../../services/companyJobScraper.service";
 import { extractCareerIntent } from "../../services/ai/intentExtraction.service";
 import { ApifyRun, JobSearch, JobSource, JobSnapshot } from "../../models/ApifyTracker.model";
 
@@ -152,121 +154,126 @@ export const extractIntent = asyncHandler(async (req: any, res: Response) => {
   );
 });
 
-// ─────────────────────────────────────────────
-//  Trigger: POST /api/resume/:resumeId/discover-jobs
-// ─────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────
+//  POST /api/resume/:resumeId/discover-jobs
+//  Aggregates real jobs from Greenhouse, Lever, and Ashby company
+//  career pages — no API keys required, always returns live data.
+//  Falls back to JSearch (RapidAPI) if fewer than 5 jobs found.
+// ─────────────────────────────────────────────────────────────────
 export const discoverJobs = asyncHandler(async (req: any, res: Response) => {
   const { resumeId } = req.params;
-  const { 
-    career = "Data Scientist", 
-    location = "India", 
-    experienceLevel = "Entry Level", 
-    remote = false 
+  const {
+    career       = "Software Engineer",
+    topRoles     = [] as string[],  // career-fit top roles from frontend
+    location     = "India",
+    experienceLevel = "Entry Level",
+    remote       = false,
   } = req.body;
 
   const resume = await Resume.findById(resumeId);
   if (!resume) throw new AppError("Resume not found", 404);
 
-  // Sync / ensure targetCareer is set on resume record
+  // Persist detected target career
   if (career && resume.targetCareer !== career) {
     resume.targetCareer = career;
     await resume.save();
   }
 
-  const token = config.apifyApiToken;
+  // Build unified role list — career fit roles take priority
+  const roles: string[] = [
+    ...new Set([career, ...(Array.isArray(topRoles) ? topRoles : [])].filter(Boolean))
+  ].slice(0, 5);
 
-  // Build target career search queries dynamically (Phase 13 workflow)
-  let searchQueries: string[] = [];
-  if (experienceLevel === "Internship" || experienceLevel.toLowerCase().includes("intern")) {
-    searchQueries = [`${career} Intern`, `Junior ${career} Intern`, `Graduate ${career}`];
-  } else if (experienceLevel === "Senior Level" || experienceLevel.toLowerCase().includes("senior") || experienceLevel.toLowerCase().includes("lead")) {
-    searchQueries = [`Senior ${career}`, `Lead ${career}`, `Staff ${career}`];
-  } else {
-    searchQueries = [career, `Junior ${career}`, `${career} Engineer`];
-  }
+  console.log(`[JobDiscovery] Starting for roles: ${roles.join(", ")}`);
 
-  // Prepend or append location filters
-  let formattedLocation = location;
-  if (remote) {
-    searchQueries = searchQueries.map(q => `${q} Remote`);
-    formattedLocation = "Remote";
-  } else if (location && location !== "India") {
-    searchQueries = searchQueries.map(q => `${q} in ${location}`);
-  }
+  // ── Phase 1: Greenhouse + Lever + Ashby (free, no auth) ────────
+  const scrapeResult = await scrapeJobsForRoles(roles, 80);
 
-  // Dynamically select Actor and build Input based on configuration
-  const actorId = (config as any).apifyLinkedInActor || "apify~google-jobs-scraper";
-  const isLinkedIn = actorId.includes("linkedin");
+  let allRawJobs = scrapeResult.jobs;
+  console.log(
+    `[JobDiscovery] ATS sources returned ${allRawJobs.length} jobs ` +
+    `(greenhouse:${scrapeResult.sources.greenhouse} lever:${scrapeResult.sources.lever} ashby:${scrapeResult.sources.ashby})`
+  );
 
-  const actorInput = isLinkedIn
-    ? {
-        keywords: searchQueries[0] || career,
-        location: location || "India",
-        maxItems: 20,
-        jobsToFetch: 20,
-      }
-    : {
-        searchQueries,
-        locations: [location || "India"],
-        maxItems: 20,
-      };
-
-  const webhookUrl =
-    `${req.protocol}://${req.get("host")}/api/resume/webhook/apify?resumeId=${resumeId}`;
-
-  if (!token) {
-    throw new AppError("Apify API Token (APIFY_API_TOKEN) is not configured in .env file.", 400);
-  }
-
-  try {
-    const runResponse = await axios.post(
-      `https://api.apify.com/v2/acts/${actorId}/runs?token=${token}`,
-      actorInput,
-      { headers: { "Content-Type": "application/json" } }
-    );
-
-    const runId: string = runResponse.data?.data?.id;
-    if (!runId) {
-      throw new Error("No run ID returned from Apify");
-    }
-    console.log(`[ApifyDiscover] Started Actor run ${runId} for resume ${resumeId} using actor ${actorId}`);
-
-    // Track the run
-    await ApifyRun.create({
-      runId,
-      actorId,
-      searchQuery: searchQueries.join(", "),
-      status: "RUNNING",
-      startedAt: new Date(),
-      resumeId,
-    });
-
-    // Track the search
-    await JobSearch.create({
-      resumeId,
-      searchQuery: searchQueries.join(", "),
-      runId,
-    });
-
-    // Fire-and-forget background poll → simulate webhook when run finishes
-    setTimeout(async () => {
+  // ── Phase 2: JSearch fallback if ATS sources returned too few ──
+  if (allRawJobs.length < 5) {
+    console.log("[JobDiscovery] ATS sources returned < 5 jobs — trying JSearch fallback");
+    const jsearchKey = (config as any).jsearchApiKey || "";
+    if (jsearchKey) {
       try {
-        console.log(`[ApifyDiscover] Background webhook trigger for run ${runId}`);
-        await axios.post(`${webhookUrl}&runId=${runId}`);
+        const query = roles[0];
+        const resp = await axios.get("https://jsearch.p.rapidapi.com/search", {
+          headers: {
+            "X-RapidAPI-Key":  jsearchKey,
+            "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
+          },
+          params: { query, num_pages: "2", page: "1", date_posted: "all" },
+          timeout: 12000,
+        });
+        const jsearchJobs: any[] = resp.data?.data || [];
+        const seenFallback = new Set(allRawJobs.map((j: any) => (j.title || "").toLowerCase() + (j.companyName || "").toLowerCase()));
+        for (const j of jsearchJobs) {
+          const key = (j.job_title || "").toLowerCase() + (j.employer_name || "").toLowerCase();
+          if (seenFallback.has(key)) continue;
+          seenFallback.add(key);
+          allRawJobs.push({
+            title:         j.job_title,
+            companyName:   j.employer_name,
+            company:       j.employer_name,
+            location:      [j.job_city, j.job_state, j.job_country].filter(Boolean).join(", ") || location,
+            description:   j.job_description || j.job_title,
+            url:           j.job_apply_link || j.job_google_link || "",
+            jobUrl:        j.job_apply_link || j.job_google_link || "",
+            id:            `jsearch_${j.job_id}`,
+            postedAt:      j.job_posted_at_datetime_utc,
+            isRemote:      !!j.job_is_remote,
+            employmentType: j.job_employment_type,
+          });
+        }
+        console.log(`[JobDiscovery] JSearch fallback added ${jsearchJobs.length} more jobs → total: ${allRawJobs.length}`);
       } catch (err: any) {
-        console.error("[ApifyDiscover] Background webhook trigger failed:", err.message);
+        console.warn(`[JobDiscovery] JSearch fallback failed: ${err.message}`);
       }
-    }, 10_000);
-
-    return sendSuccessResponse(
-      res,
-      { resumeId, status: "DISCOVERING", runId, searchQueries, location, remote },
-      "Job discovery initiated"
-    );
-  } catch (err: any) {
-    console.error("[ApifyDiscover] Actor start failed:", err.message);
-    throw new AppError(`Failed to trigger job discovery via Apify: ${err.response?.data?.error?.message || err.message}`, 500);
+    }
   }
+
+  if (allRawJobs.length === 0) {
+    return sendSuccessResponse(res, {
+      resumeId, status: "DONE", jobsFound: 0, jobsIngested: 0,
+      roles, sources: scrapeResult.sources,
+      message: "No matching jobs found across all sources. The career pages may have no current openings matching your roles.",
+    }, "No jobs found");
+  }
+
+  // ── Phase 3: Ingest → deduplicate → store ──────────────────────
+  const ingestionResult = await ingestApifyJobs(allRawJobs, "ats-boards");
+  console.log(
+    `[JobDiscovery] Ingested=${ingestionResult.ingested} ` +
+    `dupes=${ingestionResult.duplicates} invalid=${ingestionResult.invalid}`
+  );
+
+  // ── Phase 4: Score against resume (fire-and-forget) ─────────────
+  const allJobIds: string[] = [
+    ...ingestionResult.jobs.map((j: any) => j._id.toString()),
+  ];
+
+  // Also match any already-existing jobs from previous runs
+  if (allJobIds.length > 0) {
+    matchResumeToAllJobs(resumeId, allJobIds).catch((err: any) =>
+      console.warn("[JobDiscovery] Matching error:", err.message)
+    );
+  }
+
+  return sendSuccessResponse(res, {
+    resumeId,
+    status:       "DONE",
+    jobsFound:    allRawJobs.length,
+    jobsIngested: ingestionResult.ingested,
+    roles,
+    sources:      scrapeResult.sources,
+  }, `Found ${allRawJobs.length} live jobs from company career pages`);
 });
+
 
 

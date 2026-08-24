@@ -1,8 +1,8 @@
-import Groq from "groq-sdk";
+﻿import Groq from "groq-sdk";
 import Job, { IJobIntelligence } from "../models/Job.model";
 import { config } from "../config";
 
-const MODEL = "llama-3.3-70b-versatile";
+const MODEL = "openai/gpt-oss-120b";
 const BATCH_SIZE = 5;          // jobs analyzed per batch
 const DELAY_MS  = 1200;        // delay between batches to respect rate limits
 

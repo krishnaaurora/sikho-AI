@@ -41,6 +41,19 @@ export const env = {
     process.env.GROQ_API_KEY_26,
     process.env.GROQ_API_KEY_27,
   ].filter(Boolean) as string[],
+  // ─── Resume Intelligence dedicated key pool ────────────────────
+  // 5 keys reserved exclusively for ATS analysis, career fit,
+  // resume extraction, and improvements. Never sent to the frontend.
+  GROQ_RESUME_KEYS: [
+    process.env.GROQ_RESUME_KEY_1,
+    process.env.GROQ_RESUME_KEY_2,
+    process.env.GROQ_RESUME_KEY_3,
+    process.env.GROQ_RESUME_KEY_4,
+    process.env.GROQ_RESUME_KEY_5,
+  ].filter(Boolean) as string[],
+  // llama-3.3-70b-versatile deprecated June 17 2026 → openai/gpt-oss-120b
+  GROQ_RESUME_MODEL: process.env.GROQ_RESUME_MODEL || "openai/gpt-oss-120b",
+  JSEARCH_API_KEY: process.env.JSEARCH_API_KEY || "",
   ALGORAND_API_KEY: process.env.ALGORAND_API_KEY || "",
   ALGORAND_SERVER: process.env.ALGORAND_SERVER || "https://mainnet-api.algonode.cloud",
   X402_API_KEY: process.env.X402_API_KEY || "",

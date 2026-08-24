@@ -40,7 +40,10 @@ import {
 } from "../controllers/resume/resumeImprovement.controller";
 import { runCareerFit, getCareerFit } from "../controllers/resume/careerFit.controller";
 import { runSkillGap } from "../controllers/resume/skillGap.controller";
+import { findJobs } from "../controllers/resume/findJobs.controller";
 import { enforceWorkspacePayment } from "../middlewares/x402.middleware";
+import { sendSuccessResponse } from "../utils/response";
+import ResumeJobMatch from "../models/ResumeJobMatch.model";
 
 const router = express.Router();
 
@@ -107,8 +110,23 @@ router.post("/:resumeId/skill-gap", optionalAuthenticate, runSkillGap);
 // POST  /api/resume/:resumeId/intent        — Extract target career parameters from prompt
 router.post("/:resumeId/intent", optionalAuthenticate, extractIntent);
 
-// POST  /api/resume/:resumeId/discover-jobs — Start Apify scraping
-router.post("/:resumeId/discover-jobs", optionalAuthenticate, enforceWorkspacePayment({ priceUsd: 0.02, description: "Target Career Exploration Search" }), discoverJobs);
+// POST  /api/resume/:resumeId/discover-jobs — Real-time job discovery (free — no payment gate)
+router.post("/:resumeId/discover-jobs", optionalAuthenticate, discoverJobs);
+
+// POST  /api/resume/:resumeId/find-jobs — Personalised job discovery (x402 $0.02)
+//   Page 1: Gemini + Google Search  |  Page 2+: Greenhouse + Lever + Ashby
+router.post(
+  "/:resumeId/find-jobs",
+  optionalAuthenticate,
+  enforceWorkspacePayment({ priceUsd: 0.02, description: "Sikho AI Resume Intelligence — Personalised Real-Time Job Discovery" }),
+  findJobs
+);
+
+// GET   /api/resume/:resumeId/job-discovery/status — Free poll after payment
+router.get("/:resumeId/job-discovery/status", optionalAuthenticate, async (req: any, res: Response) => {
+  const count = await ResumeJobMatch.countDocuments({ resumeId: req.params.resumeId });
+  return sendSuccessResponse(res, { resumeId: req.params.resumeId, matchCount: count, status: count > 0 ? "ready" : "processing" }, "Status fetched");
+});
 
 // POST  /api/resume/webhook/apify          — Apify webhook callback receiver
 router.post("/webhook/apify", handleApifyWebhook);

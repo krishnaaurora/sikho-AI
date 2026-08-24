@@ -122,6 +122,11 @@ app.use(
     setHeaders(res) {
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Cache-Control", "no-cache");
+      // Allow this path to be embedded in iframes (helmet sets SAMEORIGIN globally,
+      // which blocks the PDF viewer iframe when the frontend is on a different port).
+      res.setHeader("X-Frame-Options", "ALLOWALL");
+      // CSP frame-ancestors: allow any origin to embed these static files
+      res.setHeader("Content-Security-Policy", "frame-ancestors *");
     },
   })
 );

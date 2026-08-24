@@ -1,4 +1,4 @@
-import Groq from "groq-sdk";
+﻿import Groq from "groq-sdk";
 import { config } from "../../config";
 import { ExplainResponseSchema, ExplainResponse } from "../../types/explain.types";
 
@@ -9,7 +9,7 @@ import { ExplainResponseSchema, ExplainResponse } from "../../types/explain.type
 // remaining keys if the primary key hits a rate-limit or error.
 //
 // Model tier guide:
-//   llama-3.3-70b-versatile  → 70B, best reasoning, formal/structured output
+//   openai/gpt-oss-120b  → 70B, best reasoning, formal/structured output
 //   llama-3.1-70b-versatile  → 70B alternative, wide context
 //   deepseek-r1-distill-llama-70b → reasoning champion, great for deep/academic
 //   llama-3.1-8b-instant     → 8B, fastest, good for quick/beginner tasks
@@ -24,8 +24,8 @@ import { ExplainResponseSchema, ExplainResponse } from "../../types/explain.type
 //   Slot 10    → Fast 8B: quick depth across all styles
 
 const MODEL_FAST   = "openai/gpt-oss-20b";
-const MODEL_LARGE  = "llama-3.3-70b-versatile";
-const MODEL_DEEP   = "llama-3.3-70b-versatile";
+const MODEL_LARGE  = "openai/gpt-oss-120b";
+const MODEL_DEEP   = "openai/gpt-oss-120b";
 const MODEL_CODE   = "qwen/qwen3.6-27b";
 const MODEL_GEMMA  = "openai/gpt-oss-20b";
 

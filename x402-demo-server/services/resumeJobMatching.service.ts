@@ -1,4 +1,4 @@
-import Groq from "groq-sdk";
+﻿import Groq from "groq-sdk";
 import Resume, { ISkillEvidence } from "../models/Resume.model";
 import Job, { IJobIntelligence } from "../models/Job.model";
 import ResumeJobMatch, {
@@ -9,7 +9,7 @@ import ResumeJobMatch, {
 } from "../models/ResumeJobMatch.model";
 import { config } from "../config";
 
-const MODEL = "llama-3.3-70b-versatile";
+const MODEL = "openai/gpt-oss-120b";
 
 // ─────────────────────────────────────────────
 //  Groq client
