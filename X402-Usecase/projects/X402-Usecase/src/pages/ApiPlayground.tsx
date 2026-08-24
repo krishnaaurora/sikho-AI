@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Sparkles, Play, Code2, HelpCircle, Terminal, Microscope, 
   UserCheck, Compass, MessageSquare, AlertCircle, FileSpreadsheet,
@@ -29,10 +30,76 @@ const ENDPOINTS: EndpointInfo[] = [
   { path: "/api/v1/ai/career-roadmap", name: "10. Career Roadmap", price: "$0.005", icon: <Compass size={16} />, placeholderInput: JSON.stringify({ targetRole: "ML Engineer", currentSkills: ["Python", "Machine Learning"], experienceLevel: "Beginner" }, null, 2) }
 ];
 
+function getCustomPlaceholder(endpointPath: string, query: string): string {
+  const ep = ENDPOINTS.find(e => e.path === endpointPath);
+  if (!ep) return "";
+  try {
+    const obj = JSON.parse(ep.placeholderInput);
+    if (endpointPath === "/api/v1/ai/explain") {
+      obj.query = query;
+    } else if (endpointPath === "/api/v1/ai/doubt-solve") {
+      obj.doubt = query;
+    } else if (endpointPath === "/api/v1/ai/code-review") {
+      obj.code = query;
+    } else if (endpointPath === "/api/v1/ai/debug") {
+      obj.code = query;
+    } else if (endpointPath === "/api/v1/ai/generate-quiz") {
+      obj.topic = query;
+    } else if (endpointPath === "/api/v1/ai/mock-interview") {
+      obj.role = query;
+    } else if (endpointPath === "/api/v1/ai/research-analysis") {
+      obj.title = query;
+    } else if (endpointPath === "/api/v1/ai/interactive-lab") {
+      obj.topic = query;
+    } else if (endpointPath === "/api/v1/ai/resume-analysis") {
+      obj.resumeText = query;
+    } else if (endpointPath === "/api/v1/ai/career-roadmap") {
+      obj.targetRole = query;
+    }
+    return JSON.stringify(obj, null, 2);
+  } catch (_) {
+    return ep.placeholderInput;
+  }
+}
+
 const ApiPlayground: React.FC = () => {
   const { activeAddress, signTransactions } = useWallet();
-  const [selectedEndpoint, setSelectedEndpoint] = useState<EndpointInfo>(ENDPOINTS[0]);
-  const [inputJson, setInputJson] = useState<string>(ENDPOINTS[0].placeholderInput);
+  const [searchParams] = useSearchParams();
+  const pathParam = searchParams.get('path');
+  const queryParam = searchParams.get('q');
+
+  const [selectedEndpoint, setSelectedEndpoint] = useState<EndpointInfo>(() => {
+    if (pathParam) {
+      const ep = ENDPOINTS.find(e => e.path === pathParam);
+      if (ep) return ep;
+    }
+    return ENDPOINTS[0];
+  });
+  
+  const [inputJson, setInputJson] = useState<string>(() => {
+    if (pathParam) {
+      if (queryParam) {
+        return getCustomPlaceholder(pathParam, queryParam);
+      }
+      const ep = ENDPOINTS.find(e => e.path === pathParam);
+      if (ep) return ep.placeholderInput;
+    }
+    return ENDPOINTS[0].placeholderInput;
+  });
+
+  useEffect(() => {
+    if (pathParam) {
+      const ep = ENDPOINTS.find(e => e.path === pathParam);
+      if (ep) {
+        setSelectedEndpoint(ep);
+        if (queryParam) {
+          setInputJson(getCustomPlaceholder(pathParam, queryParam));
+        } else {
+          setInputJson(ep.placeholderInput);
+        }
+      }
+    }
+  }, [pathParam, queryParam]);
   
   const [httpStatus, setHttpStatus] = useState<number | null>(null);
   const [responseHeaders, setResponseHeaders] = useState<Record<string, string>>({});
@@ -111,7 +178,7 @@ const ApiPlayground: React.FC = () => {
       // Build mainnet/testnet atomic transfer transaction block
       const client = new algosdk.Algodv2(
         import.meta.env.VITE_ALGOD_TOKEN || "",
-        import.meta.env.VITE_ALGOD_SERVER || "https://testnet-api.algonode.cloud",
+        import.meta.env.VITE_ALGOD_SERVER || "https://mainnet-api.algonode.cloud",
         import.meta.env.VITE_ALGOD_PORT || ""
       );
 

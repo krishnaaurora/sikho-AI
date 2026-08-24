@@ -623,40 +623,6 @@ const ExplainPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pt-20">
       
-      {/* ── Source Ingestion Header panel ── */}
-      <div className="bg-white border-b border-slate-200 py-6 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <Sparkles className="text-blue-500 animate-pulse" size={24} />
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Source-Grounded Learning Workspace</h2>
-              <p className="text-xs text-slate-500">Ground explanations in PDFs or website documentation</p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4">
-            {/* PDF Upload */}
-            <label className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-250 rounded-xl cursor-pointer text-xs font-bold transition-all border border-slate-200 text-slate-800">
-              <Upload size={14} className="text-blue-500" />
-              <span>Upload PDF</span>
-              <input type="file" accept=".pdf,.txt" onChange={handleFileUpload} className="hidden" />
-            </label>
-          </div>
-        </div>
-
-        {uploadStatus && (
-          <div className="max-w-7xl mx-auto mt-3 flex items-center gap-2 pl-2">
-            <span className="text-[11px] font-mono bg-slate-100 px-2.5 py-1 rounded border border-slate-200 text-blue-600">
-              {uploadStatus}
-            </span>
-            {uploadedSource && (
-              <span className="text-[11px] font-mono text-slate-600 font-semibold">
-                📄 {uploadedSource.name}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         
