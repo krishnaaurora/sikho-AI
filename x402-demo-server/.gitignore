@@ -4,3 +4,17 @@
 node_modules
 dist
 build
+# Uploaded resumes
+x402-demo-server/uploads/documents/*
+!x402-demo-server/uploads/documents/.gitkeep
+
+# Temporary scripts
+**/scratch/
+
+# Vite generated files
+*.timestamp-*.mjs
+
+# Environment files
+.env
+.env.*
+!.env.example
