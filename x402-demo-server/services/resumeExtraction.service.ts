@@ -23,6 +23,78 @@ const getMammoth = async () => {
 // ─────────────────────────────────────────────────────────────────
 // 1. EXTRACT RAW TEXT FROM FILE
 // ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// 0. DETECT IF THE DOCUMENT IS ACTUALLY A RESUME
+// ─────────────────────────────────────────────────────────────────
+export interface DocumentTypeResult {
+  isResume: boolean;
+  documentType: string; // "resume" | "legal_document" | "registration_form" | "invoice" | "academic_paper" | "other"
+  confidence: number;   // 0-100
+  reason: string;
+}
+
+export async function detectDocumentType(rawText: string): Promise<DocumentTypeResult> {
+  const geminiKey = (config as any).geminiApiKey;
+  const sample = rawText.substring(0, 3000);
+
+  const prompt = `You are a document classifier. Determine if the following document is a RESUME/CV or something else entirely.
+
+A resume typically contains: candidate name, contact info, work experience or internships, education, skills, and/or projects.
+
+Return ONLY valid JSON (no markdown):
+{
+  "isResume": boolean,
+  "documentType": "resume" | "legal_document" | "registration_form" | "invoice" | "academic_paper" | "medical_record" | "other",
+  "confidence": number (0-100),
+  "reason": "one sentence explaining your classification"
+}
+
+Document text (first 3000 chars):
+${sample}`;
+
+  // Try Gemini first (fast + cheap for classification)
+  if (geminiKey) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
+      const response = await axios.post(
+        url,
+        {
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
+        },
+        { headers: { "Content-Type": "application/json" }, timeout: 10000 }
+      );
+      const content = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (content) {
+        const cleaned = content.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "").trim();
+        const parsed = JSON.parse(cleaned);
+        console.log(`[DocTypeDetect] Gemini classified as: ${parsed.documentType} (isResume=${parsed.isResume}, confidence=${parsed.confidence})`);
+        return parsed as DocumentTypeResult;
+      }
+    } catch (err: any) {
+      console.warn(`[DocTypeDetect] Gemini classification failed: ${err.message}`);
+    }
+  }
+
+  // Fallback: heuristic keyword check
+  const lowerText = rawText.toLowerCase().substring(0, 5000);
+  const resumeKeywords = ["experience", "education", "skills", "resume", "curriculum vitae", "cv", "internship", "work history", "employment"];
+  const nonResumeKeywords = ["registration form", "hereby declare", "agreement", "contract", "invoice", "patient", "prescription", "affidavit", "terms and conditions"];
+
+  const resumeHits = resumeKeywords.filter(k => lowerText.includes(k)).length;
+  const nonResumeHits = nonResumeKeywords.filter(k => lowerText.includes(k)).length;
+
+  const isResume = resumeHits >= 3 && nonResumeHits === 0;
+  return {
+    isResume,
+    documentType: isResume ? "resume" : "other",
+    confidence: isResume ? 60 : 70,
+    reason: isResume
+      ? `Heuristic: found ${resumeHits} resume keywords`
+      : `Heuristic: found ${nonResumeHits} non-resume indicators, only ${resumeHits} resume keywords`,
+  };
+}
+
 export async function extractRawText(filePath: string): Promise<string> {
   const ext = path.extname(filePath).toLowerCase();
 

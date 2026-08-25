@@ -18,6 +18,11 @@ export const runCareerFit = asyncHandler(async (req: any, res: Response) => {
   if (!resume) throw new AppError("Resume not found", 404);
   if (resume.status === "PROCESSING")
     throw new AppError("Resume extraction is still in progress. Please wait.", 400);
+  if (resume.status === "NOT_A_RESUME")
+    throw new AppError(
+      `This document is not a resume (detected as: ${(resume as any).documentType || "unknown"}). Please upload a valid resume or CV.`,
+      422
+    );
   if (resume.status !== "READY")
     throw new AppError("Resume extraction failed or is not ready.", 400);
 

@@ -24,6 +24,13 @@ export const runQualityAnalysis = asyncHandler(async (req: any, res: Response) =
     throw new AppError("Resume extraction is still in progress. Please wait.", 400);
   }
 
+  if (resume.status === "NOT_A_RESUME") {
+    throw new AppError(
+      `This document is not a resume (detected as: ${(resume as any).documentType || "unknown"}). Please upload a valid resume or CV.`,
+      422
+    );
+  }
+
   // If already analyzed, return cached result
   if (resume.qualityScore > 0) {
     return sendSuccessResponse(res, {

@@ -8,6 +8,7 @@ import {
   extractRawText,
   extractStructuredData,
   computeSectionStatuses,
+  detectDocumentType,
 } from "../../services/resumeExtraction.service";
 
 // ─────────────────────────────────────────────────────────────────
@@ -72,6 +73,22 @@ async function runExtractionPipeline(resumeId: string, filePath: string, fileNam
     const rawText = await extractRawText(filePath);
     console.log(`[ExtractionPipeline] Raw text extracted: ${rawText.length} chars`);
 
+    // Step 1.5: Detect document type — bail early if it's not a resume
+    const docType = await detectDocumentType(rawText);
+    console.log(`[ExtractionPipeline] Document type: ${docType.documentType} (isResume=${docType.isResume}, confidence=${docType.confidence})`);
+
+    if (!docType.isResume) {
+      await Resume.findByIdAndUpdate(resumeId, {
+        rawText,
+        status: "NOT_A_RESUME",
+        isResume: false,
+        documentType: docType.documentType,
+        processingError: `This document appears to be a "${docType.documentType}", not a resume. ${docType.reason}`,
+      });
+      console.warn(`[ExtractionPipeline] ✗ Not a resume — ${docType.documentType}. Aborting pipeline.`);
+      return;
+    }
+
     // Step 2: Groq structured extraction
     const structuredData = await extractStructuredData(rawText);
     console.log(`[ExtractionPipeline] Structured data extracted`);
@@ -82,6 +99,8 @@ async function runExtractionPipeline(resumeId: string, filePath: string, fileNam
     // Step 4: Persist to DB
     await Resume.findByIdAndUpdate(resumeId, {
       rawText,
+      isResume: true,
+      documentType: "resume",
       structuredData: {
         personal: structuredData.personal || {},
         education: structuredData.education || [],
@@ -113,7 +132,7 @@ async function runExtractionPipeline(resumeId: string, filePath: string, fileNam
 export const getResumeStatus = asyncHandler(async (req: any, res: Response) => {
   const { resumeId } = req.params;
   const resume = await Resume.findById(resumeId).select(
-    "status structuredData rawText fileName fileUrl processingError createdAt updatedAt"
+    "status structuredData rawText fileName fileUrl processingError isResume documentType createdAt updatedAt"
   );
 
   if (!resume) {
@@ -125,6 +144,8 @@ export const getResumeStatus = asyncHandler(async (req: any, res: Response) => {
   return sendSuccessResponse(res, {
     resumeId: resume._id,
     status: resume.status,
+    isResume: (resume as any).isResume !== false, // default true for old records
+    documentType: (resume as any).documentType || "resume",
     fileName: resume.fileName,
     fileUrl: resume.fileUrl,
     processingError: resume.processingError,

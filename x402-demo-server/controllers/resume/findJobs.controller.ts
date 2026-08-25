@@ -124,7 +124,7 @@ CRITICAL RULES:
 // POST /api/resume/:resumeId/find-jobs   (x402 $0.02)
 // ─────────────────────────────────────────────────────────────────
 export const findJobs = asyncHandler(async (req: any, res: Response) => {
-  const { resumeId } = req.params;
+  const resumeId = req.body.resumeId || req.params.resumeId || req.query.resumeId;
   const {
     location     = "India",
     experienceLevel = "Entry Level",

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
@@ -201,6 +201,13 @@ const ResumeIntelligence: React.FC = () => {
         if (statusRes.success && statusRes.data?.status === 'READY') {
           isReady = true;
           setExtractedData(statusRes.data);
+        } else if (statusRes.success && statusRes.data?.status === 'NOT_A_RESUME') {
+          const docType = statusRes.data?.documentType || 'unknown document';
+          const reason = statusRes.data?.processingError || '';
+          setError(`⚠️ This does not appear to be a resume. Our AI detected it as a "${docType}". ${reason} Please upload your actual resume or CV.`);
+          setPipelineStatus(s => ({ ...s, extraction: 'done' }));
+          setIsAnalyzing(false);
+          return;
         } else if (statusRes.success && statusRes.data?.status === 'FAILED') {
           throw new Error(statusRes.data.processingError || 'Extraction failed');
         } else {
@@ -2472,148 +2479,178 @@ const ResumeIntelligence: React.FC = () => {
 
               {/* PAGE: AUTO CAREER DETECTION */}
               {currentView === 'career' && (() => {
-                const careers = [
-                  { title: 'Data Scientist', desc: 'Best fit based on your skills', pct: 91, label: 'Primary Career', explanation: 'High confidence that your resume fits this career.' },
-                  { title: 'Data Analyst',  desc: 'Strong alignment',             pct: 86, label: 'Alternative Career', explanation: 'Good fit with analytical tools and python core.' },
-                  { title: 'ML Engineer',   desc: 'Good alignment',               pct: 74, label: 'Alternative Career', explanation: 'Requires minor evidence gaps coverage in deployment.' },
-                  { title: 'AI Engineer',   desc: 'Good alignment',               pct: 69, label: 'Alternative Career', explanation: 'Requires evidence of large language model APIs.' },
-                  { title: 'Software Engineer', desc: 'Moderate alignment',       pct: 42, label: 'Alternative Career', explanation: 'Declined due to lower system architecture mentions.' }
-                ];
-                
+                // ── Use live data from API, fall back to empty state ──
+                const liveRoles = careerFitRoles.length > 0 ? careerFitRoles : [];
+                const isLoading = careerFitLoading && liveRoles.length === 0;
+
+                // Normalise to a display-friendly shape
+                const careers = liveRoles.map((r, i) => ({
+                  title: r.role,
+                  pct:   Math.min(100, Math.round(r.confidence > 1 ? r.confidence : r.confidence * 100)),
+                  label: i === 0 ? 'Primary Career' : 'Alternative Career',
+                  reasons: r.reasons || [],
+                  desc: i === 0 ? 'Best fit based on your skills' : r.confidence >= 70 ? 'Strong alignment' : r.confidence >= 50 ? 'Good alignment' : 'Moderate alignment',
+                }));
+
                 const activeCareer = careers.find(c => c.title === selectedCareerOverview) || careers[0];
+
+                // Skills from extracted resume data
+                const resumeSkills: string[] = (extractedData?.structuredData?.skills || []).slice(0, 12);
+
+                const confidenceLabel = (pct: number) => pct >= 80 ? 'Very High' : pct >= 60 ? 'High' : pct >= 40 ? 'Moderate' : 'Low';
+                const confidenceColor = (pct: number) => pct >= 80 ? 'text-emerald-600' : pct >= 60 ? 'text-blue-600' : pct >= 40 ? 'text-amber-600' : 'text-red-500';
 
                 return (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-                    
+
                     {/* Header */}
-                    <div>
-                      <h2 className="text-xl font-black text-slate-900">Auto Career Detection</h2>
-                      <p className="text-xs text-slate-500 font-semibold mt-0.5">We analyze your skills and experience to find the career paths that best match your profile.</p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-xl font-black text-slate-900">Auto Career Detection</h2>
+                        <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                          AI-analysed career paths personalised to <span className="text-indigo-600">{extractedData?.structuredData?.personal?.name || 'your'}</span> resume.
+                        </p>
+                      </div>
+                      {careerFitLoading && (
+                        <span className="text-[10px] font-bold text-indigo-500 animate-pulse">Analysing…</span>
+                      )}
                     </div>
 
-                    {/* Top Row: Matches vs Details split */}
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Loading state */}
+                    {isLoading && (
+                      <div className="bg-white rounded-3xl border border-slate-200 p-12 flex flex-col items-center gap-4 shadow-sm">
+                        <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+                        <p className="text-sm font-bold text-slate-500">Detecting career paths from your resume…</p>
+                      </div>
+                    )}
 
-                      {/* Left: Top Career Matches list */}
-                      <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
-                        <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
-                          Top Career Matches <span className="text-[9px] text-slate-450 font-black cursor-pointer">ⓘ</span>
-                        </h3>
-                        
-                        <div className="space-y-2">
-                          {careers.map(item => (
-                            <div
-                              key={item.title}
-                              onClick={() => setSelectedCareerOverview(item.title)}
-                              className={`flex items-center gap-4 p-3 rounded-2xl border transition-all cursor-pointer ${
-                                selectedCareerOverview === item.title
-                                  ? 'bg-indigo-50/50 border-indigo-150 shadow-sm'
-                                  : 'bg-slate-50/50 hover:bg-slate-50 border-slate-100'
-                              }`}
-                            >
-                              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-650 flex-shrink-0 text-sm font-black">
-                                {item.title[0]}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-xs font-black text-slate-800 leading-snug">{item.title}</h4>
-                                <span className="text-[10px] text-slate-400 font-bold block mt-0.5">{item.desc}</span>
-                              </div>
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                <div className="w-20 bg-slate-100 h-1.5 rounded-full overflow-hidden hidden sm:block">
-                                  <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${item.pct}%` }} />
-                                </div>
-                                <span className="text-xs font-black text-slate-800 w-8 text-right">{item.pct}%</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        <button className="w-full text-center text-[10px] font-black text-indigo-600 hover:underline pt-2">
-                          View all career matches →
+                    {/* Empty state — API returned nothing yet */}
+                    {!isLoading && careers.length === 0 && (
+                      <div className="bg-white rounded-3xl border border-slate-200 p-10 flex flex-col items-center gap-3 shadow-sm">
+                        <span className="text-4xl">🎯</span>
+                        <p className="text-sm font-black text-slate-700">Career detection in progress</p>
+                        <p className="text-xs text-slate-400 font-semibold text-center max-w-xs">
+                          Our AI is analysing your skills, projects, and experience. This takes about 10 seconds.
+                        </p>
+                        <button
+                          onClick={() => resumeId && fetchCareerFitRoles(resumeId)}
+                          className="mt-2 px-4 py-2 text-xs font-black bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition"
+                        >
+                          Refresh Results
                         </button>
                       </div>
+                    )}
 
-                      {/* Right: Selected Career Profile details card */}
-                      <div className="lg:col-span-5 bg-white rounded-3xl border border-slate-205 p-6 shadow-sm space-y-5">
-                        <span className="text-xs font-black text-slate-900 block">Primary Career</span>
+                    {/* Live results */}
+                    {!isLoading && careers.length > 0 && (
+                      <>
+                        {/* Top Row: Matches vs Details */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                        <div className="flex gap-3 items-center">
-                          <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-655 text-base font-black flex-shrink-0">
-                            💼
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="text-sm font-black text-slate-800">{activeCareer.title}</h3>
-                              <span className="text-[8px] font-black bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded-md">
-                                {activeCareer.label}
-                              </span>
+                          {/* Left: Top Career Matches list */}
+                          <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+                            <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                              Top Career Matches
+                              <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">AI</span>
+                            </h3>
+
+                            <div className="space-y-2">
+                              {careers.map((item, i) => (
+                                <div
+                                  key={item.title}
+                                  onClick={() => setSelectedCareerOverview(item.title)}
+                                  className={`flex items-center gap-4 p-3 rounded-2xl border transition-all cursor-pointer ${
+                                    (selectedCareerOverview || careers[0]?.title) === item.title
+                                      ? 'bg-indigo-50/50 border-indigo-200 shadow-sm'
+                                      : 'bg-slate-50/50 hover:bg-slate-50 border-slate-100'
+                                  }`}
+                                >
+                                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-black ${i === 0 ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                                    {item.title[0]}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="text-xs font-black text-slate-800 leading-snug">{item.title}</h4>
+                                    <span className="text-[10px] text-slate-400 font-bold block mt-0.5">{item.desc}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    <div className="w-20 bg-slate-100 h-1.5 rounded-full overflow-hidden hidden sm:block">
+                                      <div className="h-full bg-indigo-600 rounded-full transition-all" style={{ width: `${item.pct}%` }} />
+                                    </div>
+                                    <span className="text-xs font-black text-slate-800 w-8 text-right">{item.pct}%</span>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            <p className="text-[9px] text-slate-455 font-bold uppercase mt-1">{activeCareer.explanation}</p>
                           </div>
+
+                          {/* Right: Selected Career Profile details */}
+                          {activeCareer && (
+                            <div className="lg:col-span-5 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-5">
+                              <span className="text-xs font-black text-slate-900 block">{activeCareer.label}</span>
+
+                              <div className="flex gap-3 items-center">
+                                <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-base font-black flex-shrink-0">💼</div>
+                                <div>
+                                  <h3 className="text-sm font-black text-slate-800">{activeCareer.title}</h3>
+                                  <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">{activeCareer.desc}</p>
+                                </div>
+                              </div>
+
+                              {/* Confidence score */}
+                              <div className="space-y-1.5">
+                                <span className="text-[9px] font-black text-slate-400 uppercase block">Confidence Score</span>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-2xl font-black text-indigo-600">{activeCareer.pct}%</span>
+                                  <div className="flex-1 bg-slate-100 h-2 rounded-full overflow-hidden">
+                                    <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all" style={{ width: `${activeCareer.pct}%` }} />
+                                  </div>
+                                  <span className={`text-[8px] font-black uppercase ${confidenceColor(activeCareer.pct)}`}>{confidenceLabel(activeCareer.pct)}</span>
+                                </div>
+                              </div>
+
+                              {/* Why this career fits — from AI reasons */}
+                              {activeCareer.reasons.length > 0 && (
+                                <div className="space-y-3">
+                                  <span className="text-[9px] font-black text-slate-400 uppercase block">Why this career fits</span>
+                                  <ul className="space-y-2 text-[10px] font-bold text-slate-600">
+                                    {activeCareer.reasons.slice(0, 4).map((reason: string, i: number) => (
+                                      <li key={i} className="flex items-start gap-2">
+                                        <span className="text-emerald-500 text-base leading-none mt-0.5">✓</span>
+                                        <span>{reason}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
 
-                        {/* Confidence score block */}
-                        <div className="space-y-1.5">
-                          <span className="text-[9px] font-black text-slate-455 uppercase block">Confidence Score</span>
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl font-black text-indigo-650">{activeCareer.pct}%</span>
-                            <div className="flex-1 bg-slate-100 h-2 rounded-full overflow-hidden">
-                              <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-650 rounded-full" style={{ width: `${activeCareer.pct}%` }} />
+                        {/* Bottom: Skills from resume */}
+                        {resumeSkills.length > 0 && (
+                          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+                            <div>
+                              <h3 className="text-sm font-black text-slate-900">
+                                Skills Detected in Your Resume
+                              </h3>
+                              <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                                Extracted by AI from your uploaded resume — {resumeSkills.length} skills found.
+                              </p>
                             </div>
-                            <span className="text-[8px] font-black text-emerald-600 uppercase">Very High</span>
-                          </div>
-                        </div>
-
-                        {/* Why this career fits checklist */}
-                        <div className="space-y-3">
-                          <span className="text-[9px] font-black text-slate-455 uppercase block">Why this career fits</span>
-                          <ul className="space-y-2 text-[10px] font-bold text-slate-655">
-                            <li className="flex items-center gap-2">
-                              <span className="text-emerald-500 text-base">✓</span> Strong match for your technical skills (Python, SQL, Pandas, ML)
-                            </li>
-                            <li className="flex items-center gap-2">
-                              <span className="text-emerald-500 text-base">✓</span> Relevant project experience in data analysis and ML
-                            </li>
-                            <li className="flex items-center gap-2">
-                              <span className="text-emerald-500 text-base">✓</span> Education and background align with industry requirements
-                            </li>
-                            <li className="flex items-center gap-2">
-                              <span className="text-emerald-500 text-base">✓</span> High demand and strong growth potential
-                            </li>
-                          </ul>
-                        </div>
-
-                      </div>
-
-                    </div>
-
-                    {/* Bottom Row: Skill assessment list */}
-                    <div className="bg-white rounded-3xl border border-slate-205 p-6 shadow-sm space-y-4">
-                      <div>
-                        <h3 className="text-sm font-black text-slate-900">Initial Skill Assessment for {activeCareer.title}</h3>
-                        <p className="text-[10px] text-slate-400 font-semibold mt-0.5">We evaluated your skills against the requirements for a {activeCareer.title} role.</p>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                        {[
-                          { name: 'Python', status: 'Strong', desc: 'Strong evidence from Projects, Experience', badge: 'bg-emerald-50 border-emerald-100 text-emerald-600' },
-                          { name: 'SQL',    status: 'Strong', desc: 'Strong evidence from Projects, Experience', badge: 'bg-emerald-50 border-emerald-100 text-emerald-600' },
-                          { name: 'Pandas', status: 'Strong', desc: 'Strong evidence from Projects, Experience', badge: 'bg-emerald-50 border-emerald-100 text-emerald-600' },
-                          { name: 'ML',     status: 'Strong', desc: 'Strong evidence from Projects, Experience', badge: 'bg-emerald-50 border-emerald-100 text-emerald-600' },
-                          { name: 'Docker', status: 'Gap',    desc: 'Limited to no evidence',                  badge: 'bg-red-50 border-red-100 text-red-600' },
-                          { name: 'AWS',    status: 'Gap',    desc: 'Listed only in skills section',           badge: 'bg-red-50 border-red-100 text-red-600' },
-                          { name: 'MLOps',  status: 'Gap',    desc: 'Missing from resume',                     badge: 'bg-red-50 border-red-100 text-red-600' }
-                        ].map(item => (
-                          <div key={item.name} className="border rounded-2xl p-4 flex flex-col justify-between hover:shadow-[0_2px_8px_rgba(0,0,0,0.015)] transition-all">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-black text-slate-800">{item.name}</span>
-                              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md border ${item.badge}`}>{item.status}</span>
+                            <div className="flex flex-wrap gap-2">
+                              {resumeSkills.map((skill: string, i: number) => (
+                                <span
+                                  key={i}
+                                  className="text-[10px] font-bold px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-xl"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
                             </div>
-                            <p className="text-[9px] text-slate-455 mt-3 font-semibold leading-relaxed">{item.desc}</p>
                           </div>
-                        ))}
-                      </div>
-                    </div>
+                        )}
+                      </>
+                    )}
                   </motion.div>
                 );
               })()}
@@ -3985,9 +4022,9 @@ const ResumeIntelligence: React.FC = () => {
                               if (!resumeId) return;
                               setJobDiscoveryPaymentStep('verifying');
                               try {
-                                await apiFetch(`/api/resume/${resumeId}/find-jobs`, {
+                                await apiFetch(`/api/resume/find-jobs`, {
                                   method: 'POST',
-                                  body: JSON.stringify({ location: targetLocation || 'India', experienceLevel }),
+                                  body: JSON.stringify({ resumeId, location: targetLocation || 'India', experienceLevel }),
                                 });
                                 setJobDiscoveryPaymentStep('complete');
                                 setJobDiscoveryUnlocked(true);
@@ -4005,10 +4042,10 @@ const ResumeIntelligence: React.FC = () => {
                                   const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
                                   setJobDiscoveryPaymentStep('wallet');
                                   const token = localStorage.getItem('token') || localStorage.getItem('accessToken') || document.cookie.split('; ').find(r => r.startsWith('accessToken='))?.split('=')[1];
-                                  const res = await x402Fetch(`${backendOrigin}/api/resume/${resumeId}/find-jobs`, {
+                                  const res = await x402Fetch(`${backendOrigin}/api/resume/find-jobs`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
-                                    body: JSON.stringify({ location: targetLocation || 'India', experienceLevel }),
+                                    body: JSON.stringify({ resumeId, location: targetLocation || 'India', experienceLevel }),
                                   });
                                   if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.message || `Status ${res.status}`); }
                                   setJobDiscoveryPaymentStep('verifying');
