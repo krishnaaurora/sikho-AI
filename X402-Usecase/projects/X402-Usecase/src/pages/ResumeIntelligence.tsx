@@ -40,7 +40,7 @@ const ResumeIntelligence: React.FC = () => {
   const [hasResume, setHasResume] = useState(false);
   const [extractedData, setExtractedData] = useState<any | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
-  const [currentView, setCurrentView] = useState<'overview' | 'quality' | 'skills' | 'career' | 'discovery' | 'experience' | 'gaps' | 'market' | 'projects' | 'target' | 'targetmatch' | 'improve' | 'match' | 'action' | 'versions' | 'progress' | 'jobdisc' | 'jobintel' | 'payment' | 'rematch' | 'projectplan' | 'jobs' | 'applications'>('overview');
+  const [currentView, setCurrentView] = useState<'overview' | 'quality' | 'skills' | 'career' | 'discovery' | 'experience' | 'gaps' | 'market' | 'projects' | 'target' | 'targetmatch' | 'improve' | 'match' | 'action' | 'versions' | 'progress' | 'jobdisc' | 'jobintel' | 'payment' | 'rematch' | 'projectplan' | 'jobs' | 'applications'>('quality');
   const [activeTab, setActiveTab] = useState<string>('Personal Info');
   const [jobAnalysisPaid, setJobAnalysisPaid] = useState<Record<number, boolean>>({});
   const [paymentStep, setPaymentStep] = useState<'paywall' | '402' | 'wallet' | 'verifying' | 'complete' | null>(null);
@@ -458,26 +458,35 @@ const ResumeIntelligence: React.FC = () => {
     setIsFindingJobs(true);
     setJobsLoadError(null);
     try {
-      // Fetch all matched jobs sorted by score — the find-jobs pipeline already ran on unlock
-      const res = await apiFetch(`/api/resume/${resumeId}/matches?limit=50`);
-      if (res.success && res.data?.matches?.length > 0) {
-        setLiveJobsList(res.data.matches);
+      // Poll until matches are available (backend awaits matching now, but retry for safety)
+      const MAX_ATTEMPTS = 8;
+      const DELAY_MS = 2000;
+      let jobs: any[] = [];
+
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        const res = await apiFetch(`/api/resume/${resumeId}/matches?limit=50`);
+        if (res.success && res.data?.matches?.length > 0) {
+          jobs = res.data.matches;
+          break;
+        }
+        if (attempt < MAX_ATTEMPTS) {
+          console.log(`[fetchLiveJobs] No matches yet (attempt ${attempt}/${MAX_ATTEMPTS}), retrying in ${DELAY_MS}ms…`);
+          await new Promise(r => setTimeout(r, DELAY_MS));
+        }
+      }
+
+      if (jobs.length > 0) {
+        setLiveJobsList(jobs);
       } else {
-        // If no matches yet, try again after a brief delay (matching may be in-flight)
-        await new Promise(r => setTimeout(r, 4000));
-        const res2 = await apiFetch(`/api/resume/${resumeId}/matches?limit=50`);
-        if (res2.success && res2.data?.matches?.length > 0) {
-          setLiveJobsList(res2.data.matches);
-        } else {
-          // Final fallback: flatten liveMatchedJobs from previous distribution fetch
-          const allJobs: any[] = [];
-          if (liveMatchedJobs) {
-            Object.values(liveMatchedJobs).forEach(tier => allJobs.push(...(tier as any[])));
-          }
+        // Last resort: flatten from previous distribution fetch
+        const allJobs: any[] = [];
+        if (liveMatchedJobs) {
+          Object.values(liveMatchedJobs).forEach(tier => allJobs.push(...(tier as any[])));
+        }
+        if (allJobs.length > 0) {
           setLiveJobsList(allJobs);
-          if (allJobs.length === 0) {
-            setJobsLoadError('No jobs found yet. The matching pipeline may still be running — try refreshing in a moment.');
-          }
+        } else {
+          setJobsLoadError('No jobs found yet. The matching pipeline may still be running — try refreshing in a moment.');
         }
       }
     } catch (e: any) {
@@ -937,7 +946,7 @@ const ResumeIntelligence: React.FC = () => {
                     e.stopPropagation();
                     setResumeId("mock-resume-123");
                     setHasResume(true);
-                    setCurrentView('overview');
+                    setCurrentView('quality');
                   }}
                   className="absolute top-2 right-2 text-[9px] bg-slate-100 hover:bg-slate-200 border text-slate-500 font-bold px-2 py-0.5 rounded z-10"
                 >
@@ -1034,7 +1043,7 @@ const ResumeIntelligence: React.FC = () => {
                     {resumeId && (
                       <div className="mt-4">
                         <Button
-                          onClick={() => { setHasResume(true); setCurrentView('overview'); }}
+                          onClick={() => { setHasResume(true); setCurrentView('quality'); }}
                           className="w-full rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md gap-2 hover:opacity-90 transition-all py-2.5 flex items-center justify-center"
                         >
                           Analyze Resume <Sparkles size={14} />
@@ -1645,27 +1654,23 @@ const ResumeIntelligence: React.FC = () => {
                   <div
                     className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-700"
                     style={{ width:
-                      currentView === 'overview' ? '10%' :
-                      currentView === 'quality' ? '40%' :
-                      currentView === 'career' ? '60%' :
-                      currentView === 'jobs' ? '80%' :
-                      currentView === 'applications' ? '100%' : '20%'
+                      currentView === 'quality' ? '33%' :
+                      currentView === 'career' ? '66%' :
+                      currentView === 'jobs' ? '100%' : '33%'
                     }}
                   />
                 </div>
               </div>
 
-              {/* 5 Nav Items */}
+              {/* Nav Items */}
               <div className="space-y-1">
                 {([
-                  { id: 'overview',      emoji: '📄', label: 'Resume',           step: 0, sublabel: 'Extracted data', locked: false },
                   { id: 'quality',       emoji: '🎯', label: 'ATS Analysis',     step: 1, sublabel: 'Score & improvements', locked: false },
                   { id: 'career',        emoji: '🧭', label: 'Career Fit',       step: 2, sublabel: 'Top 5 matches', locked: false },
                   { id: 'jobs',          emoji: '💼', label: 'Job Opportunities', step: 3, sublabel: 'Live jobs · 🔒 $0.02', locked: !jobDiscoveryUnlocked },
                 ] as const).map((item) => {
                   const isActive = currentView === item.id;
                   const isDone = (
-                    (item.step === 0 && ['quality','career','jobs','applications'].includes(currentView)) ||
                     (item.step === 1 && ['career','jobs','applications'].includes(currentView)) ||
                     (item.step === 2 && ['jobs','applications'].includes(currentView)) ||
                     (item.step === (4 as any) && currentView === 'applications')
