@@ -1,6 +1,6 @@
 import mongoose, { Schema, model, Document, Types } from "mongoose";
 
-export type ResumeStatus = "UPLOADING" | "PROCESSING" | "READY" | "FAILED";
+export type ResumeStatus = "UPLOADING" | "PROCESSING" | "READY" | "FAILED" | "NOT_A_RESUME";
 
 export interface ISkillEvidence {
   skill: string;
@@ -122,6 +122,9 @@ export interface IResume extends Document {
   // Target Career (user-set)
   targetCareer?: string;
   targetJobMatches: IJobMatch[];
+  // Document validation
+  isResume: boolean;
+  documentType?: string; // e.g. "resume", "legal_document", "registration_form", "other"
   // Status
   status: ResumeStatus;
   processingError?: string;
@@ -180,9 +183,11 @@ const ResumeSchema: Schema = new Schema(
     autoRecommendations: { type: [Schema.Types.Mixed], default: [] },
     targetCareer: { type: String },
     targetJobMatches: { type: [JobMatchSchema], default: [] },
+    isResume: { type: Boolean, default: true },
+    documentType: { type: String, default: "resume" },
     status: {
       type: String,
-      enum: ["UPLOADING", "PROCESSING", "READY", "FAILED"],
+      enum: ["UPLOADING", "PROCESSING", "READY", "FAILED", "NOT_A_RESUME"],
       default: "UPLOADING",
     },
     processingError: { type: String },

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
@@ -201,6 +201,13 @@ const ResumeIntelligence: React.FC = () => {
         if (statusRes.success && statusRes.data?.status === 'READY') {
           isReady = true;
           setExtractedData(statusRes.data);
+        } else if (statusRes.success && statusRes.data?.status === 'NOT_A_RESUME') {
+          const docType = statusRes.data?.documentType || 'unknown document';
+          const reason = statusRes.data?.processingError || '';
+          setError(`⚠️ This does not appear to be a resume. Our AI detected it as a "${docType}". ${reason} Please upload your actual resume or CV.`);
+          setPipelineStatus(s => ({ ...s, extraction: 'done' }));
+          setIsAnalyzing(false);
+          return;
         } else if (statusRes.success && statusRes.data?.status === 'FAILED') {
           throw new Error(statusRes.data.processingError || 'Extraction failed');
         } else {
@@ -3985,9 +3992,9 @@ const ResumeIntelligence: React.FC = () => {
                               if (!resumeId) return;
                               setJobDiscoveryPaymentStep('verifying');
                               try {
-                                await apiFetch(`/api/resume/${resumeId}/find-jobs`, {
+                                await apiFetch(`/api/resume/find-jobs`, {
                                   method: 'POST',
-                                  body: JSON.stringify({ location: targetLocation || 'India', experienceLevel }),
+                                  body: JSON.stringify({ resumeId, location: targetLocation || 'India', experienceLevel }),
                                 });
                                 setJobDiscoveryPaymentStep('complete');
                                 setJobDiscoveryUnlocked(true);
@@ -4005,10 +4012,10 @@ const ResumeIntelligence: React.FC = () => {
                                   const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
                                   setJobDiscoveryPaymentStep('wallet');
                                   const token = localStorage.getItem('token') || localStorage.getItem('accessToken') || document.cookie.split('; ').find(r => r.startsWith('accessToken='))?.split('=')[1];
-                                  const res = await x402Fetch(`${backendOrigin}/api/resume/${resumeId}/find-jobs`, {
+                                  const res = await x402Fetch(`${backendOrigin}/api/resume/find-jobs`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
-                                    body: JSON.stringify({ location: targetLocation || 'India', experienceLevel }),
+                                    body: JSON.stringify({ resumeId, location: targetLocation || 'India', experienceLevel }),
                                   });
                                   if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.message || `Status ${res.status}`); }
                                   setJobDiscoveryPaymentStep('verifying');
