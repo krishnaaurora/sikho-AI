@@ -6,7 +6,7 @@ import Resume from "../../models/Resume.model";
 import { analyzeSkillGap } from "../../services/skillGap.service";
 
 // ─────────────────────────────────────────────────────────────────
-// POST /api/resume/:resumeId/skill-gap
+// POST /api/v1/resume/:resumeId/skill-gap
 // Body: { targetRole?: string }
 // ─────────────────────────────────────────────────────────────────
 export const runSkillGap = asyncHandler(async (req: any, res: Response) => {

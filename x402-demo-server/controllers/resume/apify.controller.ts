@@ -25,7 +25,7 @@ function bucketJobs(jobs: any[]) {
 }
 
 // ─────────────────────────────────────────────
-//  Webhook: POST /api/resume/webhook/apify
+//  Webhook: POST /api/v1/resume/webhook/apify
 // ─────────────────────────────────────────────
 export const handleApifyWebhook = asyncHandler(async (req: Request, res: Response) => {
   const resumeId = req.query.resumeId as string;
@@ -127,7 +127,7 @@ export const handleApifyWebhook = asyncHandler(async (req: Request, res: Respons
 });
 
 // ─────────────────────────────────────────────
-//  Intent Extraction: POST /api/resume/:resumeId/intent
+//  Intent Extraction: POST /api/v1/resume/:resumeId/intent
 // ─────────────────────────────────────────────
 export const extractIntent = asyncHandler(async (req: any, res: Response) => {
   const { resumeId } = req.params;
@@ -156,7 +156,7 @@ export const extractIntent = asyncHandler(async (req: any, res: Response) => {
 
 
 // ─────────────────────────────────────────────────────────────────
-//  POST /api/resume/:resumeId/discover-jobs
+//  POST /api/v1/resume/:resumeId/discover-jobs
 //  Aggregates real jobs from Greenhouse, Lever, and Ashby company
 //  career pages — no API keys required, always returns live data.
 //  Falls back to JSearch (RapidAPI) if fewer than 5 jobs found.

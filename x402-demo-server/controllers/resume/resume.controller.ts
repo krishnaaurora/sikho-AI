@@ -12,7 +12,7 @@ import {
 } from "../../services/resumeExtraction.service";
 
 // ─────────────────────────────────────────────────────────────────
-// POST /api/resume/upload
+// POST /api/v1/resume/upload
 // ─────────────────────────────────────────────────────────────────
 export const uploadResume = asyncHandler(async (req: any, res: Response) => {
   const file = req.file;
@@ -127,7 +127,7 @@ async function runExtractionPipeline(resumeId: string, filePath: string, fileNam
 }
 
 // ─────────────────────────────────────────────────────────────────
-// GET /api/resume/:resumeId/status
+// GET /api/v1/resume/:resumeId/status
 // ─────────────────────────────────────────────────────────────────
 export const getResumeStatus = asyncHandler(async (req: any, res: Response) => {
   const { resumeId } = req.params;
@@ -157,7 +157,7 @@ export const getResumeStatus = asyncHandler(async (req: any, res: Response) => {
 });
 
 // ─────────────────────────────────────────────────────────────────
-// GET /api/resume/:resumeId/extraction
+// GET /api/v1/resume/:resumeId/extraction
 // Returns full extracted data for the Extraction Engine UI
 // ─────────────────────────────────────────────────────────────────
 export const getResumeExtraction = asyncHandler(async (req: any, res: Response) => {
@@ -183,7 +183,7 @@ export const getResumeExtraction = asyncHandler(async (req: any, res: Response) 
 });
 
 // ─────────────────────────────────────────────────────────────────
-// POST /api/resume/:resumeId/unlock
+// POST /api/v1/resume/:resumeId/unlock
 // ─────────────────────────────────────────────────────────────────
 export const unlockResumePass = asyncHandler(async (req: any, res: Response) => {
   const { resumeId } = req.params;

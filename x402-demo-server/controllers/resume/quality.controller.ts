@@ -6,7 +6,7 @@ import Resume from "../../models/Resume.model";
 import { analyzeResumeQuality } from "../../services/resumeQuality.service";
 
 // ─────────────────────────────────────────────────────────────────
-// POST /api/resume/:resumeId/quality
+// POST /api/v1/resume/:resumeId/quality
 // Trigger quality + ATS analysis on an extracted resume
 // ─────────────────────────────────────────────────────────────────
 export const runQualityAnalysis = asyncHandler(async (req: any, res: Response) => {
@@ -88,7 +88,7 @@ export const runQualityAnalysis = asyncHandler(async (req: any, res: Response) =
 });
 
 // ─────────────────────────────────────────────────────────────────
-// GET /api/resume/:resumeId/quality
+// GET /api/v1/resume/:resumeId/quality
 // Retrieve stored quality analysis
 // ─────────────────────────────────────────────────────────────────
 export const getQualityAnalysis = asyncHandler(async (req: any, res: Response) => {

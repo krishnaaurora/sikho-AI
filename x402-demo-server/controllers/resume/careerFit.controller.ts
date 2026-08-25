@@ -6,7 +6,7 @@ import Resume from "../../models/Resume.model";
 import { analyzeCareerFit } from "../../services/careerFit.service";
 
 // ─────────────────────────────────────────────────────────────────
-// POST /api/resume/:resumeId/career-fit
+// POST /api/v1/resume/:resumeId/career-fit
 // Runs Groq career fit analysis — returns top matching roles
 // ─────────────────────────────────────────────────────────────────
 export const runCareerFit = asyncHandler(async (req: any, res: Response) => {
@@ -68,7 +68,7 @@ export const runCareerFit = asyncHandler(async (req: any, res: Response) => {
 });
 
 // ─────────────────────────────────────────────────────────────────
-// GET /api/resume/:resumeId/career-fit
+// GET /api/v1/resume/:resumeId/career-fit
 // Return cached career fit data
 // ─────────────────────────────────────────────────────────────────
 export const getCareerFit = asyncHandler(async (req: any, res: Response) => {

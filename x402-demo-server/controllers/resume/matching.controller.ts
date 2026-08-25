@@ -11,7 +11,7 @@ import {
 } from "../../services/resumeJobMatching.service";
 
 // ─────────────────────────────────────────────
-//  POST /api/resume/:resumeId/match/:jobId
+//  POST /api/v1/resume/:resumeId/match/:jobId
 //  Match a single resume against a specific job
 // ─────────────────────────────────────────────
 export const matchSingleJob = asyncHandler(async (req: Request, res: Response) => {
@@ -23,7 +23,7 @@ export const matchSingleJob = asyncHandler(async (req: Request, res: Response) =
 });
 
 // ─────────────────────────────────────────────
-//  GET /api/resume/:resumeId/match/:jobId
+//  GET /api/v1/resume/:resumeId/match/:jobId
 //  Fetch existing match result for a resume+job pair
 // ─────────────────────────────────────────────
 export const getMatch = asyncHandler(async (req: Request, res: Response) => {
@@ -39,7 +39,7 @@ export const getMatch = asyncHandler(async (req: Request, res: Response) => {
 });
 
 // ─────────────────────────────────────────────
-//  POST /api/resume/:resumeId/match-all
+//  POST /api/v1/resume/:resumeId/match-all
 //  Match a resume against all jobs in the DB (or a subset)
 // ─────────────────────────────────────────────
 export const matchAllJobs = asyncHandler(async (req: Request, res: Response) => {
@@ -72,7 +72,7 @@ export const matchAllJobs = asyncHandler(async (req: Request, res: Response) => 
 });
 
 // ─────────────────────────────────────────────
-//  GET /api/resume/:resumeId/matches
+//  GET /api/v1/resume/:resumeId/matches
 //  Get all match results for a resume (sorted by score)
 // ─────────────────────────────────────────────
 export const getResumeMatches = asyncHandler(async (req: Request, res: Response) => {
@@ -127,7 +127,7 @@ export const getResumeMatches = asyncHandler(async (req: Request, res: Response)
 });
 
 // ─────────────────────────────────────────────
-//  GET /api/resume/:resumeId/match-distribution
+//  GET /api/v1/resume/:resumeId/match-distribution
 //  Get tier distribution summary for donut chart
 // ─────────────────────────────────────────────
 export const getDistribution = asyncHandler(async (req: Request, res: Response) => {

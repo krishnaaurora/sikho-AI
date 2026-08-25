@@ -13,7 +13,7 @@ import {
 } from "../../models/ResumeImprovement.model";
 
 // ─────────────────────────────────────────────
-//  POST /api/resume/:resumeId/improvements/analyze
+//  POST /api/v1/resume/:resumeId/improvements/analyze
 //  Runs calculations and populates insights and job-specific recommendations
 // ─────────────────────────────────────────────
 export const analyzeResumeImprovements = asyncHandler(async (req: Request, res: Response) => {
@@ -25,7 +25,7 @@ export const analyzeResumeImprovements = asyncHandler(async (req: Request, res: 
 });
 
 // ─────────────────────────────────────────────
-//  GET /api/resume/:resumeId/improvements
+//  GET /api/v1/resume/:resumeId/improvements
 //  Fetches market-level insights and job-specific recommendations
 // ─────────────────────────────────────────────
 export const getResumeImprovements = asyncHandler(async (req: Request, res: Response) => {
@@ -46,7 +46,7 @@ export const getResumeImprovements = asyncHandler(async (req: Request, res: Resp
 });
 
 // ─────────────────────────────────────────────
-//  POST /api/resume/:resumeId/improvements/apply
+//  POST /api/v1/resume/:resumeId/improvements/apply
 //  Dynamic user-prompted resume optimizer
 // ─────────────────────────────────────────────
 export const applyResumeImprovements = asyncHandler(async (req: Request, res: Response) => {
@@ -59,7 +59,7 @@ export const applyResumeImprovements = asyncHandler(async (req: Request, res: Re
 });
 
 // ─────────────────────────────────────────────
-//  POST /api/resume/:resumeId/projects/generate
+//  POST /api/v1/resume/:resumeId/projects/generate
 //  Dynamic project generator addressing missing skill gaps
 // ─────────────────────────────────────────────
 export const generateProjectPlan = asyncHandler(async (req: Request, res: Response) => {

@@ -1,7 +1,7 @@
 /**
  * findJobs.controller.ts
  * ─────────────────────────────────────────────────────────────────
- * POST /api/resume/:resumeId/find-jobs   — x402 $0.02 USDC
+ * GET /api/v1/resume/find-jobs   — x402 $0.02 USDC
  *
  * The single paid endpoint in Resume Intelligence. Takes the user's
  * top-5 career-fit roles and runs a two-phase real-time job discovery:
@@ -121,7 +121,7 @@ CRITICAL RULES:
 }
 
 // ─────────────────────────────────────────────────────────────────
-// POST /api/resume/:resumeId/find-jobs   (x402 $0.02)
+// GET /api/v1/resume/find-jobs   (x402 $0.02)
 // ─────────────────────────────────────────────────────────────────
 export const findJobs = asyncHandler(async (req: any, res: Response) => {
   const resumeId = req.body.resumeId || req.params.resumeId || req.query.resumeId;

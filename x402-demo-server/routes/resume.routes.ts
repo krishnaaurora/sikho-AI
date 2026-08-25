@@ -75,16 +75,16 @@ const optionalAuthenticate = async (req: any, res: Response, next: NextFunction)
 };
 
 // ─── Routes ───────────────────────────────────────────────────────
-// POST  /api/resume/upload          — Upload and start extraction
+// POST  /api/v1/resume/upload          — Upload and start extraction
 router.post("/upload", optionalAuthenticate, uploadSingle("file"), uploadResume);
 
-// GET   /api/resume/:resumeId/status     — Poll extraction status
+// GET   /api/v1/resume/:resumeId/status     — Poll extraction status
 router.get("/:resumeId/status", optionalAuthenticate, getResumeStatus);
 
-// GET   /api/resume/:resumeId/extraction — Full extracted data for Extraction Engine UI
+// GET   /api/v1/resume/:resumeId/extraction — Full extracted data for Extraction Engine UI
 router.get("/:resumeId/extraction", optionalAuthenticate, getResumeExtraction);
 
-// POST  /api/resume/:resumeId/unlock      — Unlock Resume Intelligence pass (Paid $0.10)
+// POST  /api/v1/resume/:resumeId/unlock      — Unlock Resume Intelligence pass (Paid $0.10)
 router.post(
   "/:resumeId/unlock",
   optionalAuthenticate,
@@ -92,35 +92,30 @@ router.post(
   unlockResumePass
 );
 
-// POST  /api/resume/:resumeId/quality    — Trigger quality & ATS analysis
+// POST  /api/v1/resume/:resumeId/quality    — Trigger quality & ATS analysis
 router.post("/:resumeId/quality", optionalAuthenticate, runQualityAnalysis);
 
-// GET   /api/resume/:resumeId/quality     — Fetch analyzed quality metrics
+// GET   /api/v1/resume/:resumeId/quality     — Fetch analyzed quality metrics
 router.get("/:resumeId/quality", optionalAuthenticate, getQualityAnalysis);
 
-// POST  /api/resume/:resumeId/career-fit  — Trigger career fit analysis
+// POST  /api/v1/resume/:resumeId/career-fit  — Trigger career fit analysis
 router.post("/:resumeId/career-fit", optionalAuthenticate, runCareerFit);
 
-// GET   /api/resume/:resumeId/career-fit  — Get cached career fit data
+// GET   /api/v1/resume/:resumeId/career-fit  — Get cached career fit data
 router.get("/:resumeId/career-fit", optionalAuthenticate, getCareerFit);
 
-// POST  /api/resume/:resumeId/skill-gap   — Trigger skill gap analysis
+// POST  /api/v1/resume/:resumeId/skill-gap   — Trigger skill gap analysis
 router.post("/:resumeId/skill-gap", optionalAuthenticate, runSkillGap);
 
-// POST  /api/resume/:resumeId/intent        — Extract target career parameters from prompt
+// POST  /api/v1/resume/:resumeId/intent        — Extract target career parameters from prompt
 router.post("/:resumeId/intent", optionalAuthenticate, extractIntent);
 
-// POST  /api/resume/:resumeId/discover-jobs — Real-time job discovery (free — no payment gate)
+// POST  /api/v1/resume/:resumeId/discover-jobs — Real-time job discovery (free — no payment gate)
 router.post("/:resumeId/discover-jobs", optionalAuthenticate, discoverJobs);
 
-// GET/POST /api/resume/find-jobs — Personalised job discovery (x402 $0.02)
+// GET /api/v1/resume/find-jobs — Personalised job discovery (x402 $0.02)
+//   Returns 402 Payment Required if no payment header provided
 //   Page 1: Gemini + Google Search  |  Page 2+: Greenhouse + Lever + Ashby
-router.post(
-  "/find-jobs",
-  optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.02, description: "Sikho AI Resume Intelligence — Personalised Real-Time Job Discovery" }),
-  findJobs
-);
 router.get(
   "/find-jobs",
   optionalAuthenticate,
@@ -128,52 +123,52 @@ router.get(
   findJobs
 );
 
-// GET   /api/resume/:resumeId/job-discovery/status — Free poll after payment
+// GET   /api/v1/resume/:resumeId/job-discovery/status — Free poll after payment
 router.get("/:resumeId/job-discovery/status", optionalAuthenticate, async (req: any, res: Response) => {
   const count = await ResumeJobMatch.countDocuments({ resumeId: req.params.resumeId });
   return sendSuccessResponse(res, { resumeId: req.params.resumeId, matchCount: count, status: count > 0 ? "ready" : "processing" }, "Status fetched");
 });
 
-// POST  /api/resume/webhook/apify          — Apify webhook callback receiver
+// POST  /api/v1/resume/webhook/apify          — Apify webhook callback receiver
 router.post("/webhook/apify", handleApifyWebhook);
 
 // ─── Job Intelligence Routes (Phase 8) ───────────────────────────
-// GET   /api/resume/jobs                        — List all jobs (paginated)
+// GET   /api/v1/resume/jobs                        — List all jobs (paginated)
 router.get("/jobs", listJobs);
 
-// POST  /api/resume/jobs/backfill-intelligence  — Re-analyze pending/failed jobs
+// POST  /api/v1/resume/jobs/backfill-intelligence  — Re-analyze pending/failed jobs
 router.post("/jobs/backfill-intelligence", backfillIntelligence);
 
-// POST  /api/resume/jobs/:jobId/analyze         — Analyze single job
+// POST  /api/v1/resume/jobs/:jobId/analyze         — Analyze single job
 router.post("/jobs/:jobId/analyze", optionalAuthenticate, enforceWorkspacePayment({ priceUsd: 0.02, description: "Job-Specific Resume Analysis" }), analyzeJob);
 
-// GET   /api/resume/jobs/:jobId/intelligence    — Fetch job intelligence
+// GET   /api/v1/resume/jobs/:jobId/intelligence    — Fetch job intelligence
 router.get("/jobs/:jobId/intelligence", getJobIntelligence);
 
 // ─── Resume ↔ Job Matching Routes (Phase 9) ──────────────────────
-// GET   /api/resume/:resumeId/matches              — All matches for a resume (paginated)
+// GET   /api/v1/resume/:resumeId/matches              — All matches for a resume (paginated)
 router.get("/:resumeId/matches", optionalAuthenticate, getResumeMatches);
 
-// GET   /api/resume/:resumeId/match-distribution   — Tier distribution for donut chart
+// GET   /api/v1/resume/:resumeId/match-distribution   — Tier distribution for donut chart
 router.get("/:resumeId/match-distribution", optionalAuthenticate, getDistribution);
 
-// POST  /api/resume/:resumeId/match-all            — Batch match against all DB jobs
+// POST  /api/v1/resume/:resumeId/match-all            — Batch match against all DB jobs
 router.post("/:resumeId/match-all", optionalAuthenticate, matchAllJobs);
 
-// POST  /api/resume/:resumeId/match/:jobId         — Match against a specific job
+// POST  /api/v1/resume/:resumeId/match/:jobId         — Match against a specific job
 router.post("/:resumeId/match/:jobId", optionalAuthenticate, matchSingleJob);
 
-// GET   /api/resume/:resumeId/match/:jobId         — Fetch existing match result
+// GET   /api/v1/resume/:resumeId/match/:jobId         — Fetch existing match result
 router.get("/:resumeId/match/:jobId", optionalAuthenticate, getMatch);
 
 // ─── Resume Improvement Routes (Phase 11) ─────────────────────────
-// POST  /api/resume/:resumeId/improvements/analyze  — Trigger improvement gap calculations
+// POST  /api/v1/resume/:resumeId/improvements/analyze  — Trigger improvement gap calculations
 router.post("/:resumeId/improvements/analyze", optionalAuthenticate, analyzeResumeImprovements);
 
-// GET   /api/resume/:resumeId/improvements          — Get market & job-specific tips
+// GET   /api/v1/resume/:resumeId/improvements          — Get market & job-specific tips
 router.get("/:resumeId/improvements", optionalAuthenticate, getResumeImprovements);
 
-// POST  /api/resume/:resumeId/improvements/apply       — Live dynamic resume improvements (Paid $0.05)
+// POST  /api/v1/resume/:resumeId/improvements/apply       — Live dynamic resume improvements (Paid $0.05)
 router.post(
   "/:resumeId/improvements/apply",
   optionalAuthenticate,
@@ -181,7 +176,7 @@ router.post(
   applyResumeImprovements
 );
 
-// POST  /api/resume/:resumeId/projects/generate        — Live dynamic project recommendations (Paid $0.03)
+// POST  /api/v1/resume/:resumeId/projects/generate        — Live dynamic project recommendations (Paid $0.03)
 router.post(
   "/:resumeId/projects/generate",
   optionalAuthenticate,

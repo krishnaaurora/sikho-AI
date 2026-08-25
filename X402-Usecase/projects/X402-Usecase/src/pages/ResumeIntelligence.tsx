@@ -160,7 +160,7 @@ const ResumeIntelligence: React.FC = () => {
   // ─── Fetch match distribution (Phase 10) ─────────────────────────
   const fetchDistribution = useCallback(async (rid: string) => {
     try {
-      const res = await apiFetch(`/api/resume/${rid}/match-distribution`);
+      const res = await apiFetch(`/api/v1/resume/${rid}/match-distribution`);
       if (res.success && res.data) setLiveDistribution(res.data);
     } catch (e) { console.warn('[Distribution] Fetch failed:', e); }
   }, [apiFetch]);
@@ -171,7 +171,7 @@ const ResumeIntelligence: React.FC = () => {
       const tiers = ['100%', '75%', '50%', '20%', '0%'];
       const results: Record<string, any[]> = {};
       await Promise.allSettled(tiers.map(async tier => {
-        const res = await apiFetch(`/api/resume/${rid}/matches?tier=${encodeURIComponent(tier)}&limit=10`);
+        const res = await apiFetch(`/api/v1/resume/${rid}/matches?tier=${encodeURIComponent(tier)}&limit=10`);
         if (res.success && res.data?.matches) results[tier] = res.data.matches;
       }));
       if (Object.keys(results).length > 0) setLiveMatchedJobs(results);
@@ -181,7 +181,7 @@ const ResumeIntelligence: React.FC = () => {
   // ─── Fetch improvement insights (Phase 11) ───────────────────────
   const fetchImprovements = useCallback(async (rid: string) => {
     try {
-      const res = await apiFetch(`/api/resume/${rid}/improvements`);
+      const res = await apiFetch(`/api/v1/resume/${rid}/improvements`);
       if (res.success && res.data) {
         if (res.data.insights) setLiveInsights(res.data.insights);
         if (res.data.jobRecommendations) setLiveJobRecs(res.data.jobRecommendations);
@@ -197,7 +197,7 @@ const ResumeIntelligence: React.FC = () => {
       let isReady = false;
       let attempts = 0;
       while (!isReady && attempts < 100) {
-        const statusRes = await apiFetch(`/api/resume/${rid}/status`);
+        const statusRes = await apiFetch(`/api/v1/resume/${rid}/status`);
         if (statusRes.success && statusRes.data?.status === 'READY') {
           isReady = true;
           setExtractedData(statusRes.data);
@@ -231,7 +231,7 @@ const ResumeIntelligence: React.FC = () => {
 
     // Auto-unlock Resume Intelligence (calls backend unlock — works immediately when BYPASS_PAYMENT=true)
     try {
-      await apiFetch(`/api/resume/${rid}/unlock`, { method: 'POST' });
+      await apiFetch(`/api/v1/resume/${rid}/unlock`, { method: 'POST' });
       setResumeIntelUnlocked(true);
     } catch (unlockErr) {
       // 402 returned — user will need to pay via the UI button
@@ -245,7 +245,7 @@ const ResumeIntelligence: React.FC = () => {
     const runAtsAnalysis = async () => {
       try {
         setPipelineStatus(s => ({ ...s, atsAnalysis: 'running' }));
-        await apiFetch(`/api/resume/${rid}/quality`, { method: 'POST' });
+        await apiFetch(`/api/v1/resume/${rid}/quality`, { method: 'POST' });
         setPipelineStatus(s => ({ ...s, atsAnalysis: 'done' }));
       } catch (e) {
         console.warn('[Pipeline] ATS Analysis failed:', e);
@@ -257,12 +257,12 @@ const ResumeIntelligence: React.FC = () => {
       try {
         setPipelineStatus(s => ({ ...s, bestFitRoles: 'running' }));
         // Get full extracted data
-        const extractionRes = await apiFetch(`/api/resume/${rid}/extraction`);
+        const extractionRes = await apiFetch(`/api/v1/resume/${rid}/extraction`);
         if (extractionRes.success && extractionRes.data) {
           setExtractedData(extractionRes.data);
         }
         // Call career-fit to detect and persist top career roles
-        const careerFitRes = await apiFetch(`/api/resume/${rid}/career-fit`, { method: 'POST' });
+        const careerFitRes = await apiFetch(`/api/v1/resume/${rid}/career-fit`, { method: 'POST' });
         if (careerFitRes.success && careerFitRes.data?.primaryCareer) {
           detectedPrimaryCareer = careerFitRes.data.primaryCareer;
           setTargetRole(careerFitRes.data.primaryCareer);
@@ -275,7 +275,7 @@ const ResumeIntelligence: React.FC = () => {
     };    const runResumeImprovements = async () => {
       try {
         setPipelineStatus(s => ({ ...s, improvements: 'running' }));
-        await apiFetch(`/api/resume/${rid}/improvements`);
+        await apiFetch(`/api/v1/resume/${rid}/improvements`);
         setPipelineStatus(s => ({ ...s, improvements: 'done' }));
       } catch (e) {
         console.warn('[Pipeline] Improvements failed:', e);
@@ -298,7 +298,7 @@ const ResumeIntelligence: React.FC = () => {
     // Step 5: Apify → Real Jobs
     try {
       setPipelineStatus(s => ({ ...s, apifyScraping: 'running' }));
-      await apiFetch(`/api/resume/${rid}/discover-jobs`, { method: 'POST' });
+      await apiFetch(`/api/v1/resume/${rid}/discover-jobs`, { method: 'POST' });
       setPipelineStatus(s => ({ ...s, apifyScraping: 'done' }));
     } catch (e) {
       console.warn('[Pipeline] Apify scraping failed:', e);
@@ -319,7 +319,7 @@ const ResumeIntelligence: React.FC = () => {
     const runMatching = async () => {
       try {
         setPipelineStatus(s => ({ ...s, matching: 'running' }));
-        await apiFetch(`/api/resume/${rid}/match-all`, { method: 'POST' });
+        await apiFetch(`/api/v1/resume/${rid}/match-all`, { method: 'POST' });
         setPipelineStatus(s => ({ ...s, matching: 'done' }));
       } catch (e) {
         console.warn('[Pipeline] Job matching failed:', e);
@@ -331,12 +331,12 @@ const ResumeIntelligence: React.FC = () => {
       try {
         setPipelineStatus(s => ({ ...s, skillGaps: 'running' }));
         // Use detectedPrimaryCareer (updated by runBestFitRoles above, not stale state)
-        await apiFetch(`/api/resume/${rid}/skill-gap`, {
+        await apiFetch(`/api/v1/resume/${rid}/skill-gap`, {
           method: 'POST',
           body: JSON.stringify({ targetRole: detectedPrimaryCareer }),
         });
         // Also run improvement analysis for market insights
-        await apiFetch(`/api/resume/${rid}/improvements/analyze`, { method: 'POST' }).catch(() => {});
+        await apiFetch(`/api/v1/resume/${rid}/improvements/analyze`, { method: 'POST' }).catch(() => {});
         setPipelineStatus(s => ({ ...s, skillGaps: 'done' }));
       } catch (e) {
         console.warn('[Pipeline] Gaps analysis failed:', e);
@@ -393,7 +393,7 @@ const ResumeIntelligence: React.FC = () => {
     setIsExtractingIntent(true);
     setIntentExtracted(false);
     try {
-      const res = await apiFetch(`/api/resume/${resumeId}/intent`, {
+      const res = await apiFetch(`/api/v1/resume/${resumeId}/intent`, {
         method: 'POST',
         body: JSON.stringify({ prompt: careerPrompt })
       });
@@ -468,7 +468,7 @@ const ResumeIntelligence: React.FC = () => {
       const MAX_ATTEMPTS = 5;
       const DELAY_MS = 2000;
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-        const res = await apiFetch(`/api/resume/${resumeId}/matches?limit=100`);
+        const res = await apiFetch(`/api/v1/resume/${resumeId}/matches?limit=100`);
         if (res.success && res.data?.matches?.length > 0) return res.data.matches;
         if (attempt < MAX_ATTEMPTS) {
           console.log(`[fetchLiveJobs] No matches yet (attempt ${attempt}/${MAX_ATTEMPTS}), retrying in ${DELAY_MS}ms…`);
@@ -486,7 +486,7 @@ const ResumeIntelligence: React.FC = () => {
         console.log('[fetchLiveJobs] No matches found — auto-triggering job discovery pipeline…');
         try {
           const careers = careerFitRoles.map(r => r.role);
-          await apiFetch(`/api/resume/${resumeId}/discover-jobs`, {
+          await apiFetch(`/api/v1/resume/${resumeId}/discover-jobs`, {
             method: 'POST',
             body: JSON.stringify({
               career: targetRole,
@@ -497,7 +497,7 @@ const ResumeIntelligence: React.FC = () => {
             }),
           });
           setPipelineStatus(s => ({ ...s, normalization: 'done' }));
-          await apiFetch(`/api/resume/${resumeId}/match-all`, { method: 'POST' });
+          await apiFetch(`/api/v1/resume/${resumeId}/match-all`, { method: 'POST' });
           jobs = await pollMatches();
           // Refresh career fit roles & distribution in background
           Promise.allSettled([fetchDistribution(resumeId), fetchImprovements(resumeId)]);
@@ -533,7 +533,7 @@ const ResumeIntelligence: React.FC = () => {
     setCareerFitLoading(true);
     try {
       // Try GET first — already computed from pipeline
-      const res = await apiFetch(`/api/resume/${rid}/career-fit`);
+      const res = await apiFetch(`/api/v1/resume/${rid}/career-fit`);
       if (res.success && res.data?.topRoles?.length > 0) {
         const normalised = (res.data.topRoles as any[]).map((r: any) => ({
           role:       r.role || r.career || '',
@@ -544,7 +544,7 @@ const ResumeIntelligence: React.FC = () => {
         return;
       }
       // Not computed yet — trigger POST
-      const postRes = await apiFetch(`/api/resume/${rid}/career-fit`, { method: 'POST' });
+      const postRes = await apiFetch(`/api/v1/resume/${rid}/career-fit`, { method: 'POST' });
       if (postRes.success && postRes.data?.topRoles?.length > 0) {
         const normalised = (postRes.data.topRoles as any[]).map((r: any) => ({
           role:       r.role || r.career || '',
@@ -736,8 +736,8 @@ const ResumeIntelligence: React.FC = () => {
     formData.append('file', file);
 
     const xhr = new XMLHttpRequest();
-    // Upload goes directly to /api/resume/upload (not prefixed with /api/v1)
-    xhr.open('POST', `${backendOrigin}/api/resume/upload`);
+    // Upload goes directly to /api/v1/resume/upload (not prefixed with /api/v1)
+    xhr.open('POST', `${backendOrigin}/api/v1/resume/upload`);
 
     // Track upload progress percentage
     xhr.upload.addEventListener('progress', (e) => {
@@ -1679,7 +1679,7 @@ const ResumeIntelligence: React.FC = () => {
                     setResumeIntelPaymentStep('verifying');
                     try {
                       // Try direct unlock first (works when BYPASS_PAYMENT=true on backend)
-                      await apiFetch(`/api/resume/${resumeId}/unlock`, { method: 'POST' });
+                      await apiFetch(`/api/v1/resume/${resumeId}/unlock`, { method: 'POST' });
                       setResumeIntelPaymentStep('complete');
                       setTimeout(() => {
                         setResumeIntelUnlocked(true);
@@ -1696,7 +1696,7 @@ const ResumeIntelligence: React.FC = () => {
                       try {
                         const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
                         setResumeIntelPaymentStep('wallet');
-                        await x402Fetch(`${backendOrigin}/api/resume/${resumeId}/unlock`, {
+                        await x402Fetch(`${backendOrigin}/api/v1/resume/${resumeId}/unlock`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                         });
@@ -2771,7 +2771,7 @@ const ResumeIntelligence: React.FC = () => {
                   const timer4 = setTimeout(() => setDiscoveryStep(5), 6500);
 
                   try {
-                    const res = await apiFetch(`/api/resume/${resumeId}/discover-jobs`, {
+                    const res = await apiFetch(`/api/v1/resume/${resumeId}/discover-jobs`, {
                       method: 'POST',
                       body: JSON.stringify({ 
                         career: target,
@@ -2784,8 +2784,8 @@ const ResumeIntelligence: React.FC = () => {
                     if (res.success) {
                       setScrapeResult(res.data);
                       // Trigger rematch & reload
-                      await apiFetch(`/api/resume/${resumeId}/match-all`, { method: 'POST' });
-                      await apiFetch(`/api/resume/${resumeId}/improvements/analyze`, { method: 'POST' });
+                      await apiFetch(`/api/v1/resume/${resumeId}/match-all`, { method: 'POST' });
+                      await apiFetch(`/api/v1/resume/${resumeId}/improvements/analyze`, { method: 'POST' });
                       await Promise.allSettled([
                         fetchDistribution(resumeId),
                         fetchMatchedJobs(resumeId),
@@ -3704,9 +3704,9 @@ const ResumeIntelligence: React.FC = () => {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                               {(x402Services.length > 0 ? x402Services : [
-                                { serviceId: 'job_analysis', name: 'Job-Specific Analysis', description: 'Deep analysis of your resume against a specific job', priceUsd: 0.02, endpoint: '/api/resume/jobs/:jobId/analyze', status: 'Active' },
-                                { serviceId: 'resume_improvement', name: 'Resume Improvement', description: 'AI-powered resume improvement with before/after suggestions', priceUsd: 0.05, endpoint: '/api/resume/:resumeId/improvements/apply', status: 'Active' },
-                                { serviceId: 'project_generation', name: 'Project Generation', description: 'Generate complete project plan with architecture, tasks & more', priceUsd: 0.03, endpoint: '/api/resume/:resumeId/projects/generate', status: 'Active' }
+                                { serviceId: 'job_analysis', name: 'Job-Specific Analysis', description: 'Deep analysis of your resume against a specific job', priceUsd: 0.02, endpoint: '/api/v1/resume/jobs/:jobId/analyze', status: 'Active' },
+                                { serviceId: 'resume_improvement', name: 'Resume Improvement', description: 'AI-powered resume improvement with before/after suggestions', priceUsd: 0.05, endpoint: '/api/v1/resume/:resumeId/improvements/apply', status: 'Active' },
+                                { serviceId: 'project_generation', name: 'Project Generation', description: 'Generate complete project plan with architecture, tasks & more', priceUsd: 0.03, endpoint: '/api/v1/resume/:resumeId/projects/generate', status: 'Active' }
                               ]).map((srv, idx) => (
                                 <tr key={idx} className="hover:bg-slate-50/30 transition-colors">
                                   <td className="px-5 py-4 flex items-center gap-2">
@@ -4188,7 +4188,7 @@ const ResumeIntelligence: React.FC = () => {
                               if (!resumeId) return;
                               setJobDiscoveryPaymentStep('verifying');
                               try {
-                                await apiFetch(`/api/resume/find-jobs`, {
+                                await apiFetch(`/api/v1/resume/find-jobs`, {
                                   method: 'POST',
                                   body: JSON.stringify({ resumeId, location: targetLocation || 'India', experienceLevel }),
                                 });
@@ -4208,7 +4208,7 @@ const ResumeIntelligence: React.FC = () => {
                                   const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
                                   setJobDiscoveryPaymentStep('wallet');
                                   const token = localStorage.getItem('token') || localStorage.getItem('accessToken') || document.cookie.split('; ').find(r => r.startsWith('accessToken='))?.split('=')[1];
-                                  const res = await x402Fetch(`${backendOrigin}/api/resume/find-jobs`, {
+                                  const res = await x402Fetch(`${backendOrigin}/api/v1/resume/find-jobs`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
                                     body: JSON.stringify({ resumeId, location: targetLocation || 'India', experienceLevel }),
@@ -4589,7 +4589,7 @@ const ResumeIntelligence: React.FC = () => {
                             setPaymentStep('wallet');
                             
                             // Trigger the paid x402 endpoint
-                            await x402Fetch(`/api/resume/jobs/${payingJobIdx}/analyze`, {
+                            await x402Fetch(`/api/v1/resume/jobs/${payingJobIdx}/analyze`, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' }
                             });
@@ -5120,7 +5120,7 @@ const ResumeIntelligence: React.FC = () => {
                       
                       setCustomSearchPaymentStep('verifying');
                       // Also fetch the parsed target role details to populate intent states
-                      const intentRes = await fetch(`/api/resume/${resumeId}/intent`, {
+                      const intentRes = await fetch(`/api/v1/resume/${resumeId}/intent`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ careerInput: careerPrompt })
