@@ -445,6 +445,12 @@ const ResumeIntelligence: React.FC = () => {
   const [careerFitLoading, setCareerFitLoading] = useState(false);
   // Active role filter tab in Job Opportunities view ('all' = show everything)
   const [jobRoleFilter, setJobRoleFilter] = useState<string>('all');
+  // Extended job filters: free-text search, location, source, sort
+  const [jobSearchQuery, setJobSearchQuery] = useState('');
+  const [jobLocationFilter, setJobLocationFilter] = useState<string>('all');
+  const [jobSourceFilter, setJobSourceFilter] = useState<string>('all');
+  const [jobSortBy, setJobSortBy] = useState<'match' | 'recent' | 'company'>('match');
+  const [showJobFilters, setShowJobFilters] = useState(false);
 
   const addApplication = (job: {title: string; company: string; location: string}) => {
     const newApp = { ...job, appliedAt: new Date().toLocaleDateString('en-IN'), status: 'Applied' as const };
@@ -457,21 +463,46 @@ const ResumeIntelligence: React.FC = () => {
     if (!resumeId) return;
     setIsFindingJobs(true);
     setJobsLoadError(null);
-    try {
-      // Poll until matches are available (backend awaits matching now, but retry for safety)
-      const MAX_ATTEMPTS = 8;
-      const DELAY_MS = 2000;
-      let jobs: any[] = [];
 
+    const pollMatches = async (): Promise<any[]> => {
+      const MAX_ATTEMPTS = 5;
+      const DELAY_MS = 2000;
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-        const res = await apiFetch(`/api/resume/${resumeId}/matches?limit=50`);
-        if (res.success && res.data?.matches?.length > 0) {
-          jobs = res.data.matches;
-          break;
-        }
+        const res = await apiFetch(`/api/resume/${resumeId}/matches?limit=100`);
+        if (res.success && res.data?.matches?.length > 0) return res.data.matches;
         if (attempt < MAX_ATTEMPTS) {
           console.log(`[fetchLiveJobs] No matches yet (attempt ${attempt}/${MAX_ATTEMPTS}), retrying in ${DELAY_MS}ms…`);
           await new Promise(r => setTimeout(r, DELAY_MS));
+        }
+      }
+      return [];
+    };
+
+    try {
+      let jobs: any[] = await pollMatches();
+
+      // No matches yet → auto-run discovery + matching pipeline instead of failing
+      if (jobs.length === 0) {
+        console.log('[fetchLiveJobs] No matches found — auto-triggering job discovery pipeline…');
+        try {
+          const careers = careerFitRoles.map(r => r.role);
+          await apiFetch(`/api/resume/${resumeId}/discover-jobs`, {
+            method: 'POST',
+            body: JSON.stringify({
+              career: targetRole,
+              careers,
+              location: targetLocation,
+              experienceLevel,
+              remote: targetLocation?.toLowerCase().includes('remote'),
+            }),
+          });
+          setPipelineStatus(s => ({ ...s, normalization: 'done' }));
+          await apiFetch(`/api/resume/${resumeId}/match-all`, { method: 'POST' });
+          jobs = await pollMatches();
+          // Refresh career fit roles & distribution in background
+          Promise.allSettled([fetchDistribution(resumeId), fetchImprovements(resumeId)]);
+        } catch (discErr) {
+          console.warn('[fetchLiveJobs] Auto-discovery failed:', discErr);
         }
       }
 
@@ -486,7 +517,7 @@ const ResumeIntelligence: React.FC = () => {
         if (allJobs.length > 0) {
           setLiveJobsList(allJobs);
         } else {
-          setJobsLoadError('No jobs found yet. The matching pipeline may still be running — try refreshing in a moment.');
+          setJobsLoadError('No matched jobs available yet. Job discovery was just triggered — give it a minute, then tap "Refresh Jobs". You can also run Target Discovery for a specific role.');
         }
       }
     } catch (e: any) {
@@ -525,6 +556,54 @@ const ResumeIntelligence: React.FC = () => {
     } catch (e) { console.warn('[CareerFit] Fetch failed:', e); }
     finally { setCareerFitLoading(false); }
   };
+
+  // Auto-load jobs when user opens the Jobs view (only if not already loaded/loading)
+  useEffect(() => {
+    if (currentView === 'jobs' && resumeId && liveJobsList.length === 0 && !isFindingJobs && !jobsLoadError) {
+      fetchLiveJobs();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentView, resumeId]);
+
+  // ─── Job filter helpers ──────────────────────────────────────────
+  const matchesJobFilters = useCallback((m: any) => {
+    const job = m.jobId || m;
+    const title = (job?.title || '').toLowerCase();
+    const company = (job?.company || '').toLowerCase();
+    const location = (job?.location || '').toLowerCase();
+    const source = (job?.source || 'Career Page').toLowerCase();
+
+    if (jobSearchQuery.trim()) {
+      const q = jobSearchQuery.trim().toLowerCase();
+      const skills = [...(m.matchedSkills || []), ...(m.missingSkills || [])].join(' ').toLowerCase();
+      if (!`${title} ${company} ${location} ${skills}`.includes(q)) return false;
+    }
+    if (jobLocationFilter !== 'all') {
+      const loc = jobLocationFilter.toLowerCase();
+      const isRemote = location.includes('remote') || location.includes('anywhere');
+      if (loc === 'remote' ? !isRemote : !location.includes(loc)) return false;
+    }
+    if (jobSourceFilter !== 'all' && source !== jobSourceFilter.toLowerCase()) return false;
+    return true;
+  }, [jobSearchQuery, jobLocationFilter, jobSourceFilter]);
+
+  const sortJobMatches = useCallback((list: any[]) => {
+    const scoreOf = (m: any) => {
+      const raw = m.matchScore ?? m.scores?.overall ?? 0;
+      return typeof raw === 'number' ? (raw <= 1 ? raw * 100 : raw) : 0;
+    };
+    return [...list].sort((a: any, b: any) => {
+      if (jobSortBy === 'match') return scoreOf(b) - scoreOf(a);
+      if (jobSortBy === 'company') {
+        const ca = ((a.jobId || a)?.company || '').toLowerCase();
+        const cb = ((b.jobId || b)?.company || '').toLowerCase();
+        return ca.localeCompare(cb);
+      }
+      const da = new Date((a.jobId || a)?.postedAt || 0).getTime() || 0;
+      const db = new Date((b.jobId || b)?.postedAt || 0).getTime() || 0;
+      return db - da;
+    });
+  }, [jobSortBy]);
 
   // Resume versions
   const [resumeVersions, setResumeVersions] = useState([
@@ -3919,6 +3998,88 @@ const ResumeIntelligence: React.FC = () => {
                     </div>
                   )}
 
+                  {/* ── Filter bar: search, location, source, sort ─────── */}
+                  {liveJobsList.length > 0 && (() => {
+                    const uniqueLocations = Array.from(new Set(
+                      liveJobsList.map((m: any) => (m.jobId || m)?.location || '').filter(Boolean)
+                    )).slice(0, 12);
+                    const uniqueSources = Array.from(new Set(
+                      liveJobsList.map((m: any) => (m.jobId || m)?.source || 'Career Page').filter(Boolean)
+                    ));
+                    const activeFilterCount =
+                      (jobSearchQuery.trim() ? 1 : 0) +
+                      (jobLocationFilter !== 'all' ? 1 : 0) +
+                      (jobSourceFilter !== 'all' ? 1 : 0);
+                    return (
+                      <div className="bg-white border border-slate-200 rounded-2xl p-3 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus-within:border-indigo-300 transition-colors">
+                            <Search size={13} className="text-slate-400 flex-shrink-0" />
+                            <input
+                              value={jobSearchQuery}
+                              onChange={(e) => setJobSearchQuery(e.target.value)}
+                              placeholder="Search by title, company, skill…"
+                              className="w-full bg-transparent text-xs font-semibold text-slate-700 outline-none placeholder:text-slate-400"
+                            />
+                            {jobSearchQuery && (
+                              <button onClick={() => setJobSearchQuery('')} className="text-slate-400 hover:text-slate-600"><X size={12} /></button>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => setShowJobFilters(v => !v)}
+                            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black border transition-all ${
+                              showJobFilters || activeFilterCount > 0
+                                ? 'bg-indigo-50 text-indigo-600 border-indigo-200'
+                                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <Layers size={12} /> Filters
+                            {activeFilterCount > 0 && (
+                              <span className="text-[9px] font-black bg-indigo-600 text-white px-1.5 py-0.5 rounded-md">{activeFilterCount}</span>
+                            )}
+                          </button>
+                        </div>
+
+                        {showJobFilters && (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                            <select
+                              value={jobLocationFilter}
+                              onChange={(e) => setJobLocationFilter(e.target.value)}
+                              className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-indigo-300 cursor-pointer"
+                            >
+                              <option value="all">📍 All Locations</option>
+                              {uniqueLocations.map(loc => (
+                                <option key={loc} value={loc}>{loc}</option>
+                              ))}
+                              {!uniqueLocations.some(l => l.toLowerCase().includes('remote')) && (
+                                <option value="remote">📍 Remote only</option>
+                              )}
+                            </select>
+                            <select
+                              value={jobSourceFilter}
+                              onChange={(e) => setJobSourceFilter(e.target.value)}
+                              className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-indigo-300 cursor-pointer"
+                            >
+                              <option value="all">🔗 All Sources</option>
+                              {uniqueSources.map(src => (
+                                <option key={src} value={src}>{src === 'find-jobs' ? 'Gemini' : src === 'google-jobs' ? 'Google Jobs' : src}</option>
+                              ))}
+                            </select>
+                            <select
+                              value={jobSortBy}
+                              onChange={(e) => setJobSortBy(e.target.value as 'match' | 'recent' | 'company')}
+                              className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-indigo-300 cursor-pointer"
+                            >
+                              <option value="match">↕ Sort: Best Match</option>
+                              <option value="recent">↕ Sort: Most Recent</option>
+                              <option value="company">↕ Sort: Company A–Z</option>
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {/* Active role context card */}
                   {jobRoleFilter !== 'all' && (() => {
                     const activeRole = careerFitRoles.find(r => r.role === jobRoleFilter);
@@ -4086,96 +4247,146 @@ const ResumeIntelligence: React.FC = () => {
 
                   {/* ── Job cards — grouped by career category ──────────── */}
                   {!isFindingJobs && liveJobsList.length > 0 && (() => {
-                    // Filter jobs based on active tab
-                    const filteredJobs = jobRoleFilter === 'all'
-                      ? liveJobsList
-                      : liveJobsList.filter((m: any) => {
-                          const title = ((m.jobId || m)?.title || '').toLowerCase();
-                          const keywords = jobRoleFilter.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
-                          return keywords.some((kw: string) => title.includes(kw));
-                        });
+                    // Apply global filters (search / location / source) first
+                    const baseJobs = liveJobsList.filter((m: any) => matchesJobFilters(m));
+
+                    const roleKeywordsOf = (role: string) =>
+                      role.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
+                    const titleMatchesRole = (m: any, role: string) => {
+                      const title = ((m.jobId || m)?.title || '').toLowerCase();
+                      return roleKeywordsOf(role).some((kw: string) => title.includes(kw));
+                    };
+
+                    // Sort according to selected order
+                    const sortedJobs = sortJobMatches(baseJobs);
 
                     // Determine which roles to show as sections
-                    const rolesToShow = jobRoleFilter === 'all' && careerFitRoles.length > 0
-                      ? careerFitRoles.map(r => r.role)
-                      : jobRoleFilter !== 'all' ? [jobRoleFilter] : ['All Jobs'];
+                    const rolesToShow = careerFitRoles.map(r => r.role);
+
+                    const filtersActive =
+                      jobSearchQuery.trim() !== '' ||
+                      jobLocationFilter !== 'all' ||
+                      jobSourceFilter !== 'all';
 
                     return (
                       <div className="space-y-6">
-                        {jobRoleFilter === 'all' && careerFitRoles.length > 0 ? (
-                          // Grouped by career category
+                        {/* Result summary */}
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            Showing {sortedJobs.length} of {liveJobsList.length} jobs
+                            {jobRoleFilter !== 'all' ? ` • ${jobRoleFilter}` : ''}
+                          </span>
+                          {filtersActive && (
+                            <button
+                              onClick={() => {
+                                setJobSearchQuery('');
+                                setJobLocationFilter('all');
+                                setJobSourceFilter('all');
+                              }}
+                              className="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-lg hover:bg-indigo-100 transition-colors"
+                            >
+                              ✕ Clear search &amp; filters
+                            </button>
+                          )}
+                        </div>
+
+                        {jobRoleFilter === 'all' ? (
+                          // Grouped by career category — ALL jobs per path shown
                           <>
-                            {rolesToShow.map((roleName, roleIdx) => {
-                              const roleJobs = liveJobsList.filter((m: any) => {
-                                const title = ((m.jobId || m)?.title || '').toLowerCase();
-                                const keywords = roleName.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
-                                return keywords.some((kw: string) => title.includes(kw));
-                              });
-                              if (roleJobs.length === 0) return null;
-                              const roleData = careerFitRoles.find(r => r.role === roleName);
-                              return (
-                                <div key={roleName} className="space-y-3">
-                                  {/* Category header */}
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[10px] font-black text-amber-600">{roleIdx === 0 ? '⭐ Primary' : `#${roleIdx + 1}`}</span>
-                                      <h3 className="text-sm font-black text-slate-900">{roleName}</h3>
-                                      {roleData && (
-                                        <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-md">{roleData.confidence}% match</span>
-                                      )}
+                            {careerFitRoles.length > 0 ? (
+                              <>
+                                {rolesToShow.map((roleName, roleIdx) => {
+                                  const roleJobs = sortJobMatches(baseJobs.filter((m: any) => titleMatchesRole(m, roleName)));
+                                  if (roleJobs.length === 0) return null;
+                                  const roleData = careerFitRoles.find(r => r.role === roleName);
+                                  return (
+                                    <div key={roleName} className="space-y-3">
+                                      {/* Category header */}
+                                      <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-[10px] font-black text-amber-600">{roleIdx === 0 ? '⭐ Primary' : `#${roleIdx + 1}`}</span>
+                                          <h3 className="text-sm font-black text-slate-900">{roleName}</h3>
+                                          {roleData && (
+                                            <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-md">{roleData.confidence}% match</span>
+                                          )}
+                                        </div>
+                                        <div className="flex-1 h-px bg-slate-100" />
+                                        <span className="text-[9px] font-bold text-slate-400">{roleJobs.length} jobs</span>
+                                      </div>
+                                      {/* ALL jobs in this category */}
+                                      {roleJobs.map((match: any, idx: number) => (
+                                        <JobCard key={idx} match={match} roleName={roleName} addApplication={addApplication} />
+                                      ))}
                                     </div>
-                                    <div className="flex-1 h-px bg-slate-100" />
-                                    <span className="text-[9px] font-bold text-slate-400">{roleJobs.length} jobs</span>
+                                  );
+                                })}
+                                {/* Jobs that don't match any specific role */}
+                                {(() => {
+                                  const allRoleKeywords = careerFitRoles.flatMap(r => roleKeywordsOf(r.role));
+                                  const otherJobs = sortJobMatches(baseJobs.filter((m: any) => {
+                                    const title = ((m.jobId || m)?.title || '').toLowerCase();
+                                    return !allRoleKeywords.some((kw: string) => title.includes(kw));
+                                  }));
+                                  if (otherJobs.length === 0) return null;
+                                  return (
+                                    <div className="space-y-3">
+                                      <div className="flex items-center gap-3">
+                                        <h3 className="text-sm font-black text-slate-600">Other Opportunities</h3>
+                                        <div className="flex-1 h-px bg-slate-100" />
+                                        <span className="text-[9px] font-bold text-slate-400">{otherJobs.length} jobs</span>
+                                      </div>
+                                      {otherJobs.map((match: any, idx: number) => (
+                                        <JobCard key={idx} match={match} roleName="" addApplication={addApplication} />
+                                      ))}
+                                    </div>
+                                  );
+                                })()}
+                              </>
+                            ) : (
+                              // Fallback when careerFitRoles is empty: show all as flat list
+                              <div className="space-y-3">
+                                {sortedJobs.length === 0 ? (
+                                  <div className="text-center py-10 space-y-2">
+                                    <p className="text-sm font-black text-slate-600">No jobs found yet. The matching pipeline may still be running — try refreshing in a moment.</p>
                                   </div>
-                                  {/* Jobs in this category */}
-                                  {roleJobs.slice(0, 5).map((match: any, idx: number) => (
-                                    <JobCard key={idx} match={match} roleName={roleName} addApplication={addApplication} />
-                                  ))}
-                                  {roleJobs.length > 5 && (
-                                    <button onClick={() => setJobRoleFilter(roleName)}
-                                      className="w-full text-center text-[10px] font-black text-indigo-600 border border-indigo-100 bg-indigo-50/50 rounded-xl py-2 hover:bg-indigo-50 transition-colors">
-                                      View all {roleJobs.length} {roleName} jobs →
-                                    </button>
-                                  )}
-                                </div>
-                              );
-                            })}
-                            {/* Jobs that don't match any specific role */}
-                            {(() => {
-                              const allRoleKeywords = careerFitRoles.flatMap(r => r.role.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2));
-                              const otherJobs = liveJobsList.filter((m: any) => {
-                                const title = ((m.jobId || m)?.title || '').toLowerCase();
-                                return !allRoleKeywords.some((kw: string) => title.includes(kw));
-                              });
-                              if (otherJobs.length === 0) return null;
-                              return (
-                                <div className="space-y-3">
-                                  <div className="flex items-center gap-3">
-                                    <h3 className="text-sm font-black text-slate-600">Other Opportunities</h3>
-                                    <div className="flex-1 h-px bg-slate-100" />
-                                    <span className="text-[9px] font-bold text-slate-400">{otherJobs.length} jobs</span>
-                                  </div>
-                                  {otherJobs.slice(0, 3).map((match: any, idx: number) => (
+                                ) : (
+                                  sortedJobs.map((match: any, idx: number) => (
                                     <JobCard key={idx} match={match} roleName="" addApplication={addApplication} />
-                                  ))}
-                                </div>
-                              );
-                            })()}
+                                  ))
+                                )}
+                              </div>
+                            )}
                           </>
                         ) : (
                           // Filtered by single role — flat list
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{filteredJobs.length} openings for {jobRoleFilter === 'all' ? 'all roles' : jobRoleFilter}</span>
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{sortedJobs.filter(m => titleMatchesRole(m, jobRoleFilter)).length} openings for {jobRoleFilter}</span>
                               <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">✓ Live</span>
                             </div>
-                            {filteredJobs.length === 0 ? (
+                            {sortedJobs.filter(m => titleMatchesRole(m, jobRoleFilter)).length === 0 ? (
                               <div className="text-center py-10 space-y-2">
-                                <p className="text-sm font-black text-slate-600">No jobs found for this role yet</p>
-                                <p className="text-xs text-slate-400">Try refreshing or check a different category</p>
+                                <p className="text-sm font-black text-slate-600">
+                                  {filtersActive ? 'No jobs match your current filters' : 'No jobs found for this role yet'}
+                                </p>
+                                <p className="text-xs text-slate-400">
+                                  {filtersActive ? 'Try clearing the search or picking a different location/source' : 'Try refreshing or check a different category'}
+                                </p>
+                                {filtersActive && (
+                                  <button
+                                    onClick={() => {
+                                      setJobSearchQuery('');
+                                      setJobLocationFilter('all');
+                                      setJobSourceFilter('all');
+                                    }}
+                                    className="text-xs font-black text-indigo-600 hover:underline"
+                                  >
+                                    Clear all filters →
+                                  </button>
+                                )}
                               </div>
-                            ) : filteredJobs.map((match: any, idx: number) => (
-                              <JobCard key={idx} match={match} roleName={jobRoleFilter} addApplication={addApplication} />
+                            ) : sortedJobs.filter(m => titleMatchesRole(m, jobRoleFilter)).map((match: any, idx: number) => (
+                              <JobCard key={idx} match={match} roleName={jobRoleFilter === 'all' ? '' : jobRoleFilter} addApplication={addApplication} />
                             ))}
                           </div>
                         )}
