@@ -263,12 +263,17 @@ export const findJobs = asyncHandler(async (req: any, res: Response) => {
   const ingestionResult = await ingestApifyJobs(allRaw, "find-jobs");
   console.log(`[FindJobs] Ingested=${ingestionResult.ingested} dupes=${ingestionResult.duplicates} invalid=${ingestionResult.invalid}`);
 
-  // ── Score against resume (fire-and-forget) ───────────────────────
+  // ── Score against resume — AWAIT so frontend can immediately read matches ──
   const newJobIds = ingestionResult.jobs.map((j: any) => j._id.toString());
+  let matchCount = 0;
   if (newJobIds.length > 0) {
-    matchResumeToAllJobs(resumeId, newJobIds).catch((err: any) =>
-      console.warn("[FindJobs] Matching error:", err.message)
-    );
+    try {
+      const matchResult = await matchResumeToAllJobs(resumeId, newJobIds);
+      matchCount = (matchResult as any)?.matched ?? newJobIds.length;
+      console.log(`[FindJobs] Matching complete: ${matchCount} matches scored`);
+    } catch (err: any) {
+      console.warn("[FindJobs] Matching error (non-fatal):", err.message);
+    }
   }
 
   return sendSuccessResponse(res, {
@@ -276,6 +281,7 @@ export const findJobs = asyncHandler(async (req: any, res: Response) => {
     status:       "done",
     jobsFound:    allRaw.length,
     jobsIngested: ingestionResult.ingested,
+    matchCount,
     roles,
     page1Count:   geminiJobsRaw.length,
     page2Count:   atsResult.jobs.length + fallbackJobs.length,
