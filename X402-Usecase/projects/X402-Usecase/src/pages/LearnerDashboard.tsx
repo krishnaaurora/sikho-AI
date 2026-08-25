@@ -246,7 +246,7 @@ const LearnerDashboard: React.FC = () => {
               <div className="relative w-56 h-56 flex-shrink-0 flex items-center justify-center animate-float-hero">
                 <div className="absolute inset-0 bg-indigo-50 rounded-full scale-95 opacity-80 blur-xl" />
                 <img
-                  src="/hero_illustration.png"
+                  src="/boy_illustration_transparent.png"
                   alt="Student Levitation Illustration"
                   className="relative z-10 w-full h-full object-contain select-none"
                 />
