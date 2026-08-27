@@ -119,14 +119,72 @@ router.post("/:resumeId/discover-jobs", optionalAuthenticate, discoverJobs);
 router.get(
   "/find-jobs",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.02, description: "Sikho AI Resume Intelligence — Personalised Real-Time Job Discovery" }),
+  enforceWorkspacePayment({
+    priceUsd: 0.02,
+    description: "Sikho AI Resume Intelligence — Personalised Real-Time Job Discovery",
+    mimeType: "application/json",
+  }),
   findJobs
 );
 
 router.post(
   "/find-jobs",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.02, description: "Sikho AI Resume Intelligence — Personalised Real-Time Job Discovery" }),
+  enforceWorkspacePayment({
+    priceUsd: 0.02,
+    description: "Sikho AI Resume Intelligence — Personalised Real-Time Job Discovery",
+    mimeType: "application/json",
+    discoveryInput: {
+      resumeId: "65cb765f0123456789abcdef",
+      skills: ["Python", "React", "Machine Learning"],
+      location: "Hyderabad",
+      experienceLevel: "student",
+    },
+    discoveryInputSchema: {
+      type: "object",
+      properties: {
+        resumeId: {
+          type: "string",
+          description: "Unique identifier of the analyzed resume",
+        },
+        skills: {
+          type: "array",
+          items: { type: "string" },
+          description: "Candidate skills to match against live job openings",
+        },
+        location: {
+          type: "string",
+          description: "Preferred job location (e.g. Hyderabad, India, or Remote)",
+        },
+        experienceLevel: {
+          type: "string",
+          description: "Candidate experience level (e.g. student, entry-level, mid, senior)",
+        },
+      },
+      required: ["resumeId"],
+    },
+    discoveryOutputExample: {
+      success: true,
+      data: {
+        resumeId: "65cb765f0123456789abcdef",
+        status: "done",
+        jobsFound: 12,
+        jobsIngested: 10,
+        matchCount: 10,
+        roles: ["AI/ML Engineer", "Frontend Developer", "Software Engineer"],
+        page1Count: 6,
+        page2Count: 6,
+        sources: {
+          gemini: 6,
+          greenhouse: 3,
+          lever: 2,
+          ashby: 1,
+          jsearch: 0,
+        },
+      },
+      message: "Found 12 verified live jobs across 3 career roles",
+    },
+  }),
   findJobs
 );
 

@@ -200,4 +200,4 @@ export const createPaymentService = async () => { };
 export const getPaymentHistoryService = async () => { };
 export const getPaymentByIdService = async () => { };
 
-export { buildWorkspacePaymentRequired } from "./workspacePayment";
+export { buildWorkspacePaymentRequired, PaidEndpointConfig } from "./workspacePayment";

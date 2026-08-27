@@ -1,14 +1,11 @@
 import { Request, Response, NextFunction } from "express";
-import { buildWorkspacePaymentRequired, verifyX402Payment } from "../services/payment";
+import { buildWorkspacePaymentRequired, verifyX402Payment, PaidEndpointConfig } from "../services/payment";
 // @ts-ignore
 import { encodePaymentRequiredHeader } from "@x402/core/http";
 import { logger } from "../utils/logger";
 import X402Transaction from "../models/X402Transaction.model";
 
-export interface PaidEndpointConfig {
-  priceUsd: number;
-  description: string;
-}
+export { PaidEndpointConfig };
 
 /**
  * Express middleware that intercepts requests and enforces pay-per-use constraints.
@@ -62,11 +59,12 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
 
     // Build requirement metadata mapping
     const paymentRequired = buildWorkspacePaymentRequired(
-      req.path,
+      cleanPath,
       config.priceUsd,
       config.description,
       requestUrl,
-      req.method
+      req.method,
+      config
     );
 
     // Allow complete payment bypass in development/demo mode if configured
