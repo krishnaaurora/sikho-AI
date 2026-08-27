@@ -113,10 +113,17 @@ router.post("/:resumeId/intent", optionalAuthenticate, extractIntent);
 // POST  /api/v1/resume/:resumeId/discover-jobs — Real-time job discovery (free — no payment gate)
 router.post("/:resumeId/discover-jobs", optionalAuthenticate, discoverJobs);
 
-// GET /api/v1/resume/find-jobs — Personalised job discovery (x402 $0.02)
+// GET & POST /api/v1/resume/find-jobs — Personalised job discovery (x402 $0.02)
 //   Returns 402 Payment Required if no payment header provided
 //   Page 1: Gemini + Google Search  |  Page 2+: Greenhouse + Lever + Ashby
 router.get(
+  "/find-jobs",
+  optionalAuthenticate,
+  enforceWorkspacePayment({ priceUsd: 0.02, description: "Sikho AI Resume Intelligence — Personalised Real-Time Job Discovery" }),
+  findJobs
+);
+
+router.post(
   "/find-jobs",
   optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.02, description: "Sikho AI Resume Intelligence — Personalised Real-Time Job Discovery" }),

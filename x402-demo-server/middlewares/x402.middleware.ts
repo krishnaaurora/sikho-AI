@@ -23,8 +23,11 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
 
     const forwardedProto = String(req.headers["x-forwarded-proto"] || req.protocol || "http");
     const forwardedHost = String(req.headers["x-forwarded-host"] || req.get("host") || "");
-    // Strip dynamic 24-character Hex IDs (such as resumeId or jobId) to ensure a static, stable resource URL
-    const cleanPath = req.originalUrl.replace(/\/[a-f\d]{24}/ig, "");
+    // Stable catalog URL: drop query string and Mongo ObjectIds so GoPlausible
+    // does not register a new resource per resumeId / jobId / probe.
+    const cleanPath = String(req.originalUrl || req.path)
+      .split("?")[0]
+      .replace(/\/[a-f\d]{24}/gi, "");
     const requestUrl = `${forwardedProto}://${forwardedHost}${cleanPath}`;
 
     // Derive service identity and unique operation resource targets
@@ -33,6 +36,8 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
       serviceId = "resume_improvement";
     } else if (config.description.toLowerCase().includes("project")) {
       serviceId = "project_generation";
+    } else if (config.description.toLowerCase().includes("job discovery") || config.description.toLowerCase().includes("find-jobs") || config.description.toLowerCase().includes("exploration")) {
+      serviceId = "job_discovery";
     }
 
     const resourceId = req.params.jobId || req.params.resumeId || req.body.jobId || req.body.resumeId || req.path;
@@ -60,7 +65,8 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
       req.path,
       config.priceUsd,
       config.description,
-      requestUrl
+      requestUrl,
+      req.method
     );
 
     // Allow complete payment bypass in development/demo mode if configured
