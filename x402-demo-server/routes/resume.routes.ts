@@ -116,6 +116,11 @@ router.post("/:resumeId/discover-jobs", optionalAuthenticate, discoverJobs);
 // GET & POST /api/v1/resume/find-jobs — Personalised job discovery (x402 $0.02)
 //   Returns 402 Payment Required if no payment header provided
 //   Page 1: Gemini + Google Search  |  Page 2+: Greenhouse + Lever + Ashby
+//
+// NOTE: The old /api/resume/find-jobs (no /v1/) path in the GoPlausible dashboard with
+//   107 transactions and method "-" came from a previous deployment that had the wrong
+//   API mount prefix. That stale record exists only in the settlement ledger, not in
+//   the discovery catalog. The correct canonical URL is always /api/v1/resume/find-jobs.
 router.get(
   "/find-jobs",
   optionalAuthenticate,
@@ -123,6 +128,61 @@ router.get(
     priceUsd: 0.02,
     description: "Sikho AI Resume Intelligence — Personalised Real-Time Job Discovery",
     mimeType: "application/json",
+    discoveryInput: {
+      resumeId: "65cb765f0123456789abcdef",
+      skills: ["Python", "React", "Machine Learning"],
+      location: "Hyderabad",
+      experienceLevel: "student",
+      page: 1,
+    },
+    discoveryInputSchema: {
+      type: "object",
+      properties: {
+        resumeId: {
+          type: "string",
+          description: "Unique identifier of the analyzed resume",
+        },
+        skills: {
+          type: "array",
+          items: { type: "string" },
+          description: "Candidate skills to match against live job openings",
+        },
+        location: {
+          type: "string",
+          description: "Preferred job location (e.g. Hyderabad, India, or Remote)",
+        },
+        experienceLevel: {
+          type: "string",
+          description: "Candidate experience level (e.g. student, entry-level, mid, senior)",
+        },
+        page: {
+          type: "number",
+          description: "Page number for paginated results (default: 1)",
+        },
+      },
+      required: ["resumeId"],
+    },
+    discoveryOutputExample: {
+      success: true,
+      data: {
+        resumeId: "65cb765f0123456789abcdef",
+        status: "done",
+        jobsFound: 12,
+        jobsIngested: 10,
+        matchCount: 10,
+        roles: ["AI/ML Engineer", "Frontend Developer", "Software Engineer"],
+        page1Count: 6,
+        page2Count: 6,
+        sources: {
+          gemini: 6,
+          greenhouse: 3,
+          lever: 2,
+          ashby: 1,
+          jsearch: 0,
+        },
+      },
+      message: "Found 12 verified live jobs across 3 career roles",
+    },
   }),
   findJobs
 );
