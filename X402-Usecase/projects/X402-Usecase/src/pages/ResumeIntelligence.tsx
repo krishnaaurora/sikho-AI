@@ -119,6 +119,10 @@ const ResumeIntelligence: React.FC = () => {
   const [careerActionPlanPaid, setCareerActionPlanPaid] = useState(false);
   const [careerActionPlanPaymentStep, setCareerActionPlanPaymentStep] = useState<'paywall' | '402' | 'wallet' | 'verifying' | 'complete' | null>(null);
   const [projectBlueprint, setProjectBlueprint] = useState<any | null>(null);
+  const [atsAnalysisUnlocked, setAtsAnalysisUnlocked] = useState(false);
+  const [atsAnalysisPaymentStep, setAtsAnalysisPaymentStep] = useState<'paywall' | '402' | 'wallet' | 'verifying' | 'complete' | null>(null);
+  const [careerFitUnlocked, setCareerFitUnlocked] = useState(false);
+  const [careerFitPaymentStep, setCareerFitPaymentStep] = useState<'paywall' | '402' | 'wallet' | 'verifying' | 'complete' | null>(null);
 
   // Moved nested page subview states to top-level
   const [searchQuery, setSearchQuery] = useState('');
@@ -447,6 +451,17 @@ const ResumeIntelligence: React.FC = () => {
   useEffect(() => {
     fetchX402Data();
   }, [fetchX402Data, currentView]);
+
+  useEffect(() => {
+    if (extractedData) {
+      if (extractedData.qualityScore > 0) {
+        setAtsAnalysisUnlocked(true);
+      }
+      if (extractedData.topRoles?.length > 0) {
+        setCareerFitUnlocked(true);
+      }
+    }
+  }, [extractedData]);
   
 
 
@@ -634,27 +649,134 @@ const ResumeIntelligence: React.FC = () => {
           return;
         }
       }
-      // Not computed yet — trigger POST
-      const postRes = await apiFetch(`/api/v1/resume/${rid}/career-fit`, { method: 'POST' });
-      if (postRes.success && postRes.data?.topRoles?.length > 0) {
-        const normalised = (postRes.data.topRoles as any[]).map((r: any) => ({
-          role:       r.role || r.career || '',
-          confidence: Math.round(r.confidence > 1 ? r.confidence : r.confidence * 100),
-          reasons:    r.reasons && r.reasons.length > 0 ? r.reasons : [
-            `Strong alignment with ${r.role || r.career} core requirements`,
-            `Relevant skills and background experience`,
-            `Demonstrated competency in key technologies`
-          ],
-        })).filter((r: any) => r.role);
-        if (normalised.length > 0) {
-          setCareerFitRoles(normalised);
-          if (!selectedCareerOverview || !normalised.some(n => n.role === selectedCareerOverview)) {
-            setSelectedCareerOverview(normalised[0].role);
-          }
-        }
-      }
     } catch (e) { console.warn('[CareerFit] Fetch failed:', e); }
     finally { setCareerFitLoading(false); }
+  };
+
+  const handleUnlockAtsAnalysis = async () => {
+    if (!resumeId) {
+      alert("Please upload a resume first.");
+      return;
+    }
+    if (!activeAddress) {
+      alert("Please connect your wallet first from the navigation bar.");
+      return;
+    }
+    setAtsAnalysisPaymentStep('402');
+    const token = localStorage.getItem('accessToken');
+    try {
+      // Try direct unlock check first (works if already paid/idempotent or bypassed)
+      const res = await apiFetch(`/api/v1/resume/${resumeId}/quality`, { method: 'POST' });
+      if (res.success) {
+        setAtsAnalysisUnlocked(true);
+        setAtsAnalysisPaymentStep(null);
+        const extractionRes = await apiFetch(`/api/v1/resume/${resumeId}/extraction`);
+        if (extractionRes.success && extractionRes.data) {
+          setExtractedData(extractionRes.data);
+        }
+        return;
+      }
+    } catch (err: any) {
+      setAtsAnalysisPaymentStep('402');
+    }
+
+    try {
+      const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
+      setAtsAnalysisPaymentStep('wallet');
+      
+      const paidRes = await x402Fetch(`${backendOrigin}/api/v1/resume/${resumeId}/quality`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+
+      if (!paidRes.ok) {
+        const errData = await paidRes.json().catch(() => ({}));
+        throw new Error(errData.message || `Payment failed with status ${paidRes.status}`);
+      }
+
+      setAtsAnalysisPaymentStep('verifying');
+      await new Promise(r => setTimeout(r, 1200));
+      setAtsAnalysisPaymentStep('complete');
+      setAtsAnalysisUnlocked(true);
+      await new Promise(r => setTimeout(r, 800));
+      setAtsAnalysisPaymentStep(null);
+      
+      const extractionRes = await apiFetch(`/api/v1/resume/${resumeId}/extraction`);
+      if (extractionRes.success && extractionRes.data) {
+        setExtractedData(extractionRes.data);
+      }
+    } catch (payErr: any) {
+      console.error('ATS Analysis payment failed:', payErr);
+      setAtsAnalysisPaymentStep(null);
+      alert(payErr?.message || 'Payment failed. Please ensure your Pera wallet is connected and funded with USDC.');
+    }
+  };
+
+  const handleUnlockCareerFit = async () => {
+    if (!resumeId) {
+      alert("Please upload a resume first.");
+      return;
+    }
+    if (!activeAddress) {
+      alert("Please connect your wallet first from the navigation bar.");
+      return;
+    }
+    setCareerFitPaymentStep('402');
+    const token = localStorage.getItem('accessToken');
+    try {
+      // Try direct unlock check first (works if already paid/idempotent or bypassed)
+      const res = await apiFetch(`/api/v1/resume/${resumeId}/career-fit`, { method: 'POST' });
+      if (res.success) {
+        setCareerFitUnlocked(true);
+        setCareerFitPaymentStep(null);
+        const extractionRes = await apiFetch(`/api/v1/resume/${resumeId}/extraction`);
+        if (extractionRes.success && extractionRes.data) {
+          setExtractedData(extractionRes.data);
+        }
+        fetchCareerFitRoles(resumeId);
+        return;
+      }
+    } catch (err: any) {
+      setCareerFitPaymentStep('402');
+    }
+
+    try {
+      const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
+      setCareerFitPaymentStep('wallet');
+      
+      const paidRes = await x402Fetch(`${backendOrigin}/api/v1/resume/${resumeId}/career-fit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+
+      if (!paidRes.ok) {
+        const errData = await paidRes.json().catch(() => ({}));
+        throw new Error(errData.message || `Payment failed with status ${paidRes.status}`);
+      }
+
+      setCareerFitPaymentStep('verifying');
+      await new Promise(r => setTimeout(r, 1200));
+      setCareerFitPaymentStep('complete');
+      setCareerFitUnlocked(true);
+      await new Promise(r => setTimeout(r, 800));
+      setCareerFitPaymentStep(null);
+      
+      const extractionRes = await apiFetch(`/api/v1/resume/${resumeId}/extraction`);
+      if (extractionRes.success && extractionRes.data) {
+        setExtractedData(extractionRes.data);
+      }
+      fetchCareerFitRoles(resumeId);
+    } catch (payErr: any) {
+      console.error('Career Fit payment failed:', payErr);
+      setCareerFitPaymentStep(null);
+      alert(payErr?.message || 'Payment failed. Please ensure your Pera wallet is connected and funded with USDC.');
+    }
   };
 
   // Auto-load jobs when user opens the Jobs view (only if unlocked and not already loaded/loading)
@@ -2177,7 +2299,61 @@ const ResumeIntelligence: React.FC = () => {
 
               {/* PAGE: QUALITY & ATS ANALYSIS */}
               {currentView === 'quality' && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                !atsAnalysisUnlocked ? (
+                  <div className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-10 text-center space-y-6 shadow-sm">
+                    <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl mx-auto shadow-lg shadow-indigo-100">
+                      🎯
+                    </div>
+                    <div className="max-w-md mx-auto space-y-2">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-black">
+                        <span>🔒 Algorand X402 Micropayment</span>
+                        <span>•</span>
+                        <span>$0.05 USDC</span>
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900">Unlock Resume Quality &amp; ATS Score</h3>
+                      <p className="text-xs text-slate-550 font-semibold leading-relaxed">
+                        Analyze your resume sections, impact language, formatting, and ATS compatibility using our advanced AI-powered grader.
+                      </p>
+                    </div>
+
+                    <div className="max-w-xs mx-auto">
+                      {atsAnalysisPaymentStep === '402' && (
+                        <div className="flex items-center justify-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs font-black text-indigo-700 animate-pulse mb-4">
+                          <span>💸 Preparing $0.05 USDC micropayment challenge...</span>
+                        </div>
+                      )}
+                      {atsAnalysisPaymentStep === 'wallet' && (
+                        <div className="flex items-center justify-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs font-black text-indigo-700 animate-bounce mb-4">
+                          <span>🔑 Check your Pera wallet to sign the $0.05 USDC transaction...</span>
+                        </div>
+                      )}
+                      {atsAnalysisPaymentStep === 'verifying' && (
+                        <div className="flex items-center justify-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs font-black text-indigo-700 animate-spin mb-4">
+                          <span>⏳ Settling transaction on Algorand blockchain...</span>
+                        </div>
+                      )}
+                      {atsAnalysisPaymentStep === 'complete' && (
+                        <div className="flex items-center justify-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-xs font-black text-emerald-700 mb-4">
+                          <span>✓ Payment confirmed ($0.05 USDC) — Unlocking report...</span>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={handleUnlockAtsAnalysis}
+                        className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-black px-7 py-3.5 rounded-xl shadow-lg shadow-indigo-200 hover:opacity-95 transition-all active:scale-[0.99]"
+                      >
+                        🔒 Unlock ATS Analysis — $0.05 USDC
+                      </button>
+                      
+                      {!activeAddress && (
+                        <p className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-200 rounded-lg p-2 mt-4">
+                          ⚠️ Connect your Pera wallet from the top right to sign the $0.05 transaction.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
                   
                   {/* Top Header */}
                   <div className="flex items-center justify-between">
@@ -2393,6 +2569,7 @@ const ResumeIntelligence: React.FC = () => {
                   </div>
 
                 </motion.div>
+                )
               )}
 
               {/* PAGE 5: SKILL & EVIDENCE INTELLIGENCE */}
@@ -2671,6 +2848,63 @@ const ResumeIntelligence: React.FC = () => {
 
               {/* PAGE: AUTO CAREER DETECTION */}
               {currentView === 'career' && (() => {
+                if (!careerFitUnlocked) {
+                  return (
+                    <div className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-10 text-center space-y-6 shadow-sm">
+                      <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-3xl mx-auto shadow-lg shadow-purple-100">
+                        🧭
+                      </div>
+                      <div className="max-w-md mx-auto space-y-2">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 border border-purple-100 text-purple-700 text-[10px] font-black">
+                          <span>🔒 Algorand X402 Micropayment</span>
+                          <span>•</span>
+                          <span>$0.05 USDC</span>
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900">Unlock Career Fit &amp; Top Roles</h3>
+                        <p className="text-xs text-slate-550 font-semibold leading-relaxed">
+                          AI-powered matching of your resume against top career paths, with confidence scores and detailed fit reasoning for each role.
+                        </p>
+                      </div>
+
+                      <div className="max-w-xs mx-auto">
+                        {careerFitPaymentStep === '402' && (
+                          <div className="flex items-center justify-center gap-2 p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs font-black text-purple-700 animate-pulse mb-4">
+                            <span>💸 Preparing $0.05 USDC micropayment challenge...</span>
+                          </div>
+                        )}
+                        {careerFitPaymentStep === 'wallet' && (
+                          <div className="flex items-center justify-center gap-2 p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs font-black text-purple-700 animate-bounce mb-4">
+                            <span>🔑 Check your Pera wallet to sign the $0.05 USDC transaction...</span>
+                          </div>
+                        )}
+                        {careerFitPaymentStep === 'verifying' && (
+                          <div className="flex items-center justify-center gap-2 p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs font-black text-purple-700 animate-spin mb-4">
+                            <span>⏳ Settling transaction on Algorand blockchain...</span>
+                          </div>
+                        )}
+                        {careerFitPaymentStep === 'complete' && (
+                          <div className="flex items-center justify-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-xs font-black text-emerald-700 mb-4">
+                            <span>✓ Payment confirmed ($0.05 USDC) — Unlocking career fit...</span>
+                          </div>
+                        )}
+
+                        <button
+                          onClick={handleUnlockCareerFit}
+                          className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-black px-7 py-3.5 rounded-xl shadow-lg shadow-purple-200 hover:opacity-95 transition-all active:scale-[0.99]"
+                        >
+                          🔒 Unlock Career Fit — $0.05 USDC
+                        </button>
+
+                        {!activeAddress && (
+                          <p className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-200 rounded-lg p-2 mt-4">
+                            ⚠️ Connect your Pera wallet from the top right to sign the $0.05 transaction.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
                 // ── Use live data from API, fall back to default top-5 career roles ──
                 const liveRoles = careerFitRoles.length > 0 ? careerFitRoles : DEFAULT_CAREER_ROLES;
 
