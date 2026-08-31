@@ -696,7 +696,7 @@ const ResumeIntelligence: React.FC = () => {
 
       if (!paidRes.ok) {
         const errData = await paidRes.json().catch(() => ({}));
-        throw new Error(errData.message || `Payment failed with status ${paidRes.status}`);
+        throw new Error(errData.reason || errData.error || errData.message || `Payment failed with status ${paidRes.status}`);
       }
 
       setAtsAnalysisPaymentStep('verifying');
@@ -761,7 +761,7 @@ const ResumeIntelligence: React.FC = () => {
 
       if (!paidRes.ok) {
         const errData = await paidRes.json().catch(() => ({}));
-        throw new Error(errData.message || `Payment failed with status ${paidRes.status}`);
+        throw new Error(errData.reason || errData.error || errData.message || `Payment failed with status ${paidRes.status}`);
       }
 
       setCareerFitPaymentStep('verifying');
@@ -4405,7 +4405,7 @@ const ResumeIntelligence: React.FC = () => {
 
                                   if (!paidRes.ok) {
                                     const errData = await paidRes.json().catch(() => ({}));
-                                    throw new Error(errData.message || `Payment failed with status ${paidRes.status}`);
+                                    throw new Error(errData.reason || errData.error || errData.message || `Payment failed with status ${paidRes.status}`);
                                   }
 
                                   setJobDiscoveryPaymentStep('verifying');
