@@ -251,9 +251,9 @@ router.post(
   "/ats-analysis",
   optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.05, description: "ATS Quality & Gaps Analysis" }),
-  asyncHandler(async (req: any, res: Response) => {
+  asyncHandler(async (req: any, res: Response, next: NextFunction) => {
     req.params.resumeId = req.body.resumeId;
-    return runQualityAnalysis(req, res);
+    return runQualityAnalysis(req, res, next);
   })
 );
 
@@ -262,9 +262,9 @@ router.post(
   "/career-fit",
   optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.05, description: "Resume Career Fit & Top Roles" }),
-  asyncHandler(async (req: any, res: Response) => {
+  asyncHandler(async (req: any, res: Response, next: NextFunction) => {
     req.params.resumeId = req.body.resumeId;
-    return runCareerFit(req, res);
+    return runCareerFit(req, res, next);
   })
 );
 
