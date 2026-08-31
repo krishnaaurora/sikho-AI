@@ -132,6 +132,7 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
       res.status(402).json({
         success: false,
         error: "Payment verification failed",
+        message: err.message,
         reason: err.message
       });
     }
