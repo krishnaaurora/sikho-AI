@@ -1974,15 +1974,15 @@ const ResumeIntelligence: React.FC = () => {
               {/* Nav Items */}
               <div className="space-y-1">
                 {([
-                  { id: 'quality',       emoji: '🎯', label: 'ATS Analysis',     step: 1, sublabel: 'Score & improvements', locked: false },
-                  { id: 'career',        emoji: '🧭', label: 'Career Fit',       step: 2, sublabel: 'Top 5 matches', locked: false },
-                  { id: 'jobs',          emoji: '💼', label: 'Job Opportunities', step: 3, sublabel: 'Live jobs · 🔒 $0.50', locked: !jobDiscoveryUnlocked },
+                  { id: 'quality',       emoji: '🎯', label: 'ATS Analysis',     step: 1, sublabel: atsAnalysisUnlocked ? 'Score & improvements' : '🔒 Unlock — $0.05', locked: !atsAnalysisUnlocked },
+                  { id: 'career',        emoji: '🧭', label: 'Career Fit',       step: 2, sublabel: careerFitUnlocked ? 'Top 5 matches' : '🔒 Unlock — $0.50', locked: !careerFitUnlocked },
+                  { id: 'jobs',          emoji: '💼', label: 'Job Opportunities', step: 3, sublabel: jobDiscoveryUnlocked ? 'Live jobs' : '🔒 Unlock — $0.50', locked: !jobDiscoveryUnlocked },
                 ] as const).map((item) => {
                   const isActive = currentView === item.id;
                   const isDone = (
-                    (item.step === 1 && ['career','jobs','applications'].includes(currentView)) ||
-                    (item.step === 2 && ['jobs','applications'].includes(currentView)) ||
-                    (item.step === (4 as any) && currentView === 'applications')
+                    (item.id === 'quality' && atsAnalysisUnlocked) ||
+                    (item.id === 'career' && careerFitUnlocked) ||
+                    (item.id === 'jobs' && jobDiscoveryUnlocked)
                   );
                   return (
                     <button
@@ -2000,7 +2000,7 @@ const ResumeIntelligence: React.FC = () => {
                         isDone ? 'bg-emerald-50 border border-emerald-200' :
                         'bg-slate-100 border border-slate-200'
                       }`}>
-                        {isDone && !isActive ? '✓' : item.emoji}
+                        {isDone ? '✓' : item.emoji}
                       </div>
                       {/* Labels */}
                       <div className="flex-1 min-w-0">
