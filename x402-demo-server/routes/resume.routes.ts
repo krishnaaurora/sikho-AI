@@ -1,0 +1,322 @@
+import express from "express";
+import {
+  uploadResume,
+  getResumeStatus,
+  getResumeExtraction,
+  unlockResumePass,
+} from "../controllers/resume/resume.controller";
+import { uploadSingle } from "../middlewares/upload.middleware";
+import { Response, NextFunction } from "express";
+import { verifyAccessToken, getUserById } from "../services/auth";
+import User from "../models/User.model";
+
+import {
+  runQualityAnalysis,
+  getQualityAnalysis,
+} from "../controllers/resume/quality.controller";
+import {
+  discoverJobs,
+  handleApifyWebhook,
+  extractIntent,
+} from "../controllers/resume/apify.controller";
+import {
+  analyzeJob,
+  getJobIntelligence,
+  backfillIntelligence,
+  listJobs,
+} from "../controllers/resume/jobIntelligence.controller";
+import {
+  matchSingleJob,
+  getMatch,
+  matchAllJobs,
+  getResumeMatches,
+  getDistribution,
+} from "../controllers/resume/matching.controller";
+import {
+  analyzeResumeImprovements,
+  getResumeImprovements,
+  applyResumeImprovements,
+  generateProjectPlan,
+} from "../controllers/resume/resumeImprovement.controller";
+import { runCareerFit, getCareerFit } from "../controllers/resume/careerFit.controller";
+import { runSkillGap } from "../controllers/resume/skillGap.controller";
+import { findJobs } from "../controllers/resume/findJobs.controller";
+import { enforceWorkspacePayment } from "../middlewares/x402.middleware";
+import { sendSuccessResponse } from "../utils/response";
+import ResumeJobMatch from "../models/ResumeJobMatch.model";
+
+const router = express.Router();
+
+// ─── Optional authentication middleware (falls back to seeded user) ───
+const optionalAuthenticate = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    let token: string | undefined;
+    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+      token = req.headers.authorization.split(" ")[1];
+    } else if (req.cookies?.accessToken) {
+      token = req.cookies.accessToken;
+    }
+
+    if (token) {
+      const decoded: any = verifyAccessToken(token);
+      const currentUser = await getUserById(decoded.userId);
+      if (currentUser && currentUser.isActive) {
+        req.user = currentUser;
+        return next();
+      }
+    }
+  } catch {
+    // Ignore — proceed as guest
+  }
+
+  const defaultUser = (await User.findOne({ email: "sneha@gmail.com" })) || (await User.findOne());
+  if (defaultUser) req.user = defaultUser;
+  next();
+};
+
+// ─── Routes ───────────────────────────────────────────────────────
+// POST  /api/v1/resume/upload          — Upload and start extraction
+router.post("/upload", optionalAuthenticate, uploadSingle("file"), uploadResume);
+
+// GET   /api/v1/resume/:resumeId/status     — Poll extraction status
+router.get("/:resumeId/status", optionalAuthenticate, getResumeStatus);
+
+// GET   /api/v1/resume/:resumeId/extraction — Full extracted data for Extraction Engine UI
+router.get("/:resumeId/extraction", optionalAuthenticate, getResumeExtraction);
+
+// POST  /api/v1/resume/:resumeId/unlock      — Unlock Resume Intelligence pass (Paid $0.50)
+router.post(
+  "/:resumeId/unlock",
+  optionalAuthenticate,
+  enforceWorkspacePayment({ priceUsd: 0.50, description: "Resume Intelligence Pass" }),
+  unlockResumePass
+);
+
+// POST  /api/v1/resume/:resumeId/quality    — Trigger quality & ATS analysis (Paid $0.05)
+router.post(
+  "/:resumeId/quality",
+  optionalAuthenticate,
+  enforceWorkspacePayment({ priceUsd: 0.05, description: "ATS Quality & Gaps Analysis" }),
+  runQualityAnalysis
+);
+
+// GET   /api/v1/resume/:resumeId/quality     — Fetch analyzed quality metrics
+router.get("/:resumeId/quality", optionalAuthenticate, getQualityAnalysis);
+
+// POST  /api/v1/resume/:resumeId/career-fit  — Trigger career fit analysis (Paid $0.50)
+router.post(
+  "/:resumeId/career-fit",
+  optionalAuthenticate,
+  enforceWorkspacePayment({ priceUsd: 0.50, description: "Resume Career Fit & Top Roles" }),
+  runCareerFit
+);
+
+// GET   /api/v1/resume/:resumeId/career-fit  — Get cached career fit data
+router.get("/:resumeId/career-fit", optionalAuthenticate, getCareerFit);
+
+// POST  /api/v1/resume/:resumeId/skill-gap   — Trigger skill gap analysis
+router.post("/:resumeId/skill-gap", optionalAuthenticate, runSkillGap);
+
+// POST  /api/v1/resume/:resumeId/intent        — Extract target career parameters from prompt
+router.post("/:resumeId/intent", optionalAuthenticate, extractIntent);
+
+// POST  /api/v1/resume/:resumeId/discover-jobs — Real-time job discovery (free — no payment gate)
+router.post("/:resumeId/discover-jobs", optionalAuthenticate, discoverJobs);
+
+// GET & POST /api/v1/resume/find-jobs — Personalised job discovery (x402 $0.50)
+//   Returns 402 Payment Required if no payment header provided
+//   Page 1: Gemini + Google Search  |  Page 2+: Greenhouse + Lever + Ashby
+//
+// NOTE: The old /api/resume/find-jobs (no /v1/) path in the GoPlausible dashboard with
+//   107 transactions and method "-" came from a previous deployment that had the wrong
+//   API mount prefix. That stale record exists only in the settlement ledger, not in
+//   the discovery catalog. The correct canonical URL is always /api/v1/resume/find-jobs.
+router.get(
+  "/find-jobs",
+  optionalAuthenticate,
+  enforceWorkspacePayment({
+    priceUsd: 0.50,
+    description: "Sikho AI Resume Intelligence — Personalised Real-Time Job Discovery",
+    mimeType: "application/json",
+    discoveryInput: {
+      resumeId: "65cb765f0123456789abcdef",
+      skills: ["Python", "React", "Machine Learning"],
+      location: "Hyderabad",
+      experienceLevel: "student",
+      page: 1,
+    },
+    discoveryInputSchema: {
+      type: "object",
+      properties: {
+        resumeId: {
+          type: "string",
+          description: "Unique identifier of the analyzed resume",
+        },
+        skills: {
+          type: "array",
+          items: { type: "string" },
+          description: "Candidate skills to match against live job openings",
+        },
+        location: {
+          type: "string",
+          description: "Preferred job location (e.g. Hyderabad, India, or Remote)",
+        },
+        experienceLevel: {
+          type: "string",
+          description: "Candidate experience level (e.g. student, entry-level, mid, senior)",
+        },
+        page: {
+          type: "number",
+          description: "Page number for paginated results (default: 1)",
+        },
+      },
+      required: ["resumeId"],
+    },
+    discoveryOutputExample: {
+      success: true,
+      data: {
+        resumeId: "65cb765f0123456789abcdef",
+        status: "done",
+        jobsFound: 12,
+        jobsIngested: 10,
+        matchCount: 10,
+        roles: ["AI/ML Engineer", "Frontend Developer", "Software Engineer"],
+        page1Count: 6,
+        page2Count: 6,
+        sources: {
+          gemini: 6,
+          greenhouse: 3,
+          lever: 2,
+          ashby: 1,
+          jsearch: 0,
+        },
+      },
+      message: "Found 12 verified live jobs across 3 career roles",
+    },
+  }),
+  findJobs
+);
+
+router.post(
+  "/find-jobs",
+  optionalAuthenticate,
+  enforceWorkspacePayment({
+    priceUsd: 0.50,
+    description: "Sikho AI Resume Intelligence — Personalised Real-Time Job Discovery",
+    mimeType: "application/json",
+    discoveryInput: {
+      resumeId: "65cb765f0123456789abcdef",
+      skills: ["Python", "React", "Machine Learning"],
+      location: "Hyderabad",
+      experienceLevel: "student",
+    },
+    discoveryInputSchema: {
+      type: "object",
+      properties: {
+        resumeId: {
+          type: "string",
+          description: "Unique identifier of the analyzed resume",
+        },
+        skills: {
+          type: "array",
+          items: { type: "string" },
+          description: "Candidate skills to match against live job openings",
+        },
+        location: {
+          type: "string",
+          description: "Preferred job location (e.g. Hyderabad, India, or Remote)",
+        },
+        experienceLevel: {
+          type: "string",
+          description: "Candidate experience level (e.g. student, entry-level, mid, senior)",
+        },
+      },
+      required: ["resumeId"],
+    },
+    discoveryOutputExample: {
+      success: true,
+      data: {
+        resumeId: "65cb765f0123456789abcdef",
+        status: "done",
+        jobsFound: 12,
+        jobsIngested: 10,
+        matchCount: 10,
+        roles: ["AI/ML Engineer", "Frontend Developer", "Software Engineer"],
+        page1Count: 6,
+        page2Count: 6,
+        sources: {
+          gemini: 6,
+          greenhouse: 3,
+          lever: 2,
+          ashby: 1,
+          jsearch: 0,
+        },
+      },
+      message: "Found 12 verified live jobs across 3 career roles",
+    },
+  }),
+  findJobs
+);
+
+// GET   /api/v1/resume/:resumeId/job-discovery/status — Free poll after payment
+router.get("/:resumeId/job-discovery/status", optionalAuthenticate, async (req: any, res: Response) => {
+  const count = await ResumeJobMatch.countDocuments({ resumeId: req.params.resumeId });
+  return sendSuccessResponse(res, { resumeId: req.params.resumeId, matchCount: count, status: count > 0 ? "ready" : "processing" }, "Status fetched");
+});
+
+// POST  /api/v1/resume/webhook/apify          — Apify webhook callback receiver
+router.post("/webhook/apify", handleApifyWebhook);
+
+// ─── Job Intelligence Routes (Phase 8) ───────────────────────────
+// GET   /api/v1/resume/jobs                        — List all jobs (paginated)
+router.get("/jobs", listJobs);
+
+// POST  /api/v1/resume/jobs/backfill-intelligence  — Re-analyze pending/failed jobs
+router.post("/jobs/backfill-intelligence", backfillIntelligence);
+
+// POST  /api/v1/resume/jobs/:jobId/analyze         — Analyze single job
+router.post("/jobs/:jobId/analyze", optionalAuthenticate, enforceWorkspacePayment({ priceUsd: 0.50, description: "Job-Specific Resume Analysis" }), analyzeJob);
+
+// GET   /api/v1/resume/jobs/:jobId/intelligence    — Fetch job intelligence
+router.get("/jobs/:jobId/intelligence", getJobIntelligence);
+
+// ─── Resume ↔ Job Matching Routes (Phase 9) ──────────────────────
+// GET   /api/v1/resume/:resumeId/matches              — All matches for a resume (paginated)
+router.get("/:resumeId/matches", optionalAuthenticate, getResumeMatches);
+
+// GET   /api/v1/resume/:resumeId/match-distribution   — Tier distribution for donut chart
+router.get("/:resumeId/match-distribution", optionalAuthenticate, getDistribution);
+
+// POST  /api/v1/resume/:resumeId/match-all            — Batch match against all DB jobs
+router.post("/:resumeId/match-all", optionalAuthenticate, matchAllJobs);
+
+// POST  /api/v1/resume/:resumeId/match/:jobId         — Match against a specific job
+router.post("/:resumeId/match/:jobId", optionalAuthenticate, matchSingleJob);
+
+// GET   /api/v1/resume/:resumeId/match/:jobId         — Fetch existing match result
+router.get("/:resumeId/match/:jobId", optionalAuthenticate, getMatch);
+
+// ─── Resume Improvement Routes (Phase 11) ─────────────────────────
+// POST  /api/v1/resume/:resumeId/improvements/analyze  — Trigger improvement gap calculations
+router.post("/:resumeId/improvements/analyze", optionalAuthenticate, analyzeResumeImprovements);
+
+// GET   /api/v1/resume/:resumeId/improvements          — Get market & job-specific tips
+router.get("/:resumeId/improvements", optionalAuthenticate, getResumeImprovements);
+
+// POST  /api/v1/resume/:resumeId/improvements/apply       — Live dynamic resume improvements (Paid $0.05)
+router.post(
+  "/:resumeId/improvements/apply",
+  optionalAuthenticate,
+  enforceWorkspacePayment({ priceUsd: 0.05, description: "Resume Improvement AI" }),
+  applyResumeImprovements
+);
+
+// POST  /api/v1/resume/:resumeId/projects/generate        — Live dynamic project recommendations (Paid $0.03)
+router.post(
+  "/:resumeId/projects/generate",
+  optionalAuthenticate,
+  enforceWorkspacePayment({ priceUsd: 0.03, description: "Project Generation AI" }),
+  generateProjectPlan
+);
+
+export default router;

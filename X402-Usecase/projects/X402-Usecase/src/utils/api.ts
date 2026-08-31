@@ -91,6 +91,12 @@ export const authApi = {
   async getCurrentUser() {
     return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.AUTH_ME);
   },
+  async updateProfile(data: any) {
+    return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.AUTH_PROFILE_UPDATE, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 export const courseApi = {
@@ -199,6 +205,13 @@ export const learnerApi = {
     return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.LEARNER_UNLOCK_CHAPTER, {
       method: 'POST',
       body: JSON.stringify({ chapterId, transactionHash }),
+    });
+  },
+
+  async routeIntent(query: string) {
+    return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.AI_ROUTE_INTENT, {
+      method: 'POST',
+      body: JSON.stringify({ query }),
     });
   },
 };

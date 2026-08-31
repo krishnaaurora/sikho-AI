@@ -13,6 +13,8 @@ interface User {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  onboardingCompleted?: boolean;
+  [key: string]: any;
 }
 
 interface AuthContextType {
@@ -24,6 +26,7 @@ interface AuthContextType {
     email: string; 
     password: string; 
     confirmPassword: string;
+    country?: string;
     educationLevel?: string;
     interests?: string[];
     currentSkills?: string[];

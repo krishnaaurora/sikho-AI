@@ -12,6 +12,7 @@ export interface UserResponse {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  [key: string]: any;
 }
 
 export const toUserResponse = (user: any): UserResponse => {
@@ -27,5 +28,36 @@ export const toUserResponse = (user: any): UserResponse => {
     isActive: user.isActive,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
+    educationLevel: user.educationLevel,
+    interests: user.interests,
+    currentSkills: user.currentSkills,
+    targetRole: user.targetRole,
+    experienceLevel: user.experienceLevel,
+    preferredLanguage: user.preferredLanguage,
+    whatAreYouHereToDo: user.whatAreYouHereToDo,
+    resumeText: user.resumeText,
+    collegeUniversity: user.collegeUniversity,
+    degree: user.degree,
+    graduationYear: user.graduationYear,
+    currentYearSemester: user.currentYearSemester,
+    careerJourneyState: user.careerJourneyState,
+    preferredIndustry: user.preferredIndustry,
+    targetCompanies: user.targetCompanies,
+    projects: user.projects,
+    internships: user.internships,
+    hackathons: user.hackathons,
+    certifications: user.certifications,
+    achievements: user.achievements,
+    learningTimePerDay: user.learningTimePerDay,
+    preferredLearningTime: user.preferredLearningTime,
+    country: user.country,
+    onboardingCompleted: user.onboardingCompleted,
+    specialization: user.specialization,
+    preferredLocations: user.preferredLocations,
+    targetTimeline: user.targetTimeline,
+    expectedSalary: user.expectedSalary,
+    careerDiscoveryAnswers: user.careerDiscoveryAnswers,
+    openSource: user.openSource,
+    skillProficiencies: user.skillProficiencies,
   };
 };

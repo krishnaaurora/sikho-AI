@@ -1,4 +1,4 @@
-import Groq from "groq-sdk";
+﻿import Groq from "groq-sdk";
 import { config } from "../../config";
 import { ExplainResponseSchema, ExplainResponse } from "../../types/explain.types";
 
@@ -9,7 +9,7 @@ import { ExplainResponseSchema, ExplainResponse } from "../../types/explain.type
 // remaining keys if the primary key hits a rate-limit or error.
 //
 // Model tier guide:
-//   llama-3.3-70b-versatile  → 70B, best reasoning, formal/structured output
+//   openai/gpt-oss-120b  → 70B, best reasoning, formal/structured output
 //   llama-3.1-70b-versatile  → 70B alternative, wide context
 //   deepseek-r1-distill-llama-70b → reasoning champion, great for deep/academic
 //   llama-3.1-8b-instant     → 8B, fastest, good for quick/beginner tasks
@@ -23,11 +23,11 @@ import { ExplainResponseSchema, ExplainResponse } from "../../types/explain.type
 //   Slots 8-9  → Gemma: beginner / analogy-driven content
 //   Slot 10    → Fast 8B: quick depth across all styles
 
-const MODEL_FAST   = "llama-3.1-8b-instant";
-const MODEL_LARGE  = "llama-3.3-70b-versatile";
-const MODEL_DEEP   = "deepseek-r1-distill-llama-70b";
-const MODEL_CODE   = "moonshotai/kimi-k2-instruct";
-const MODEL_GEMMA  = "gemma2-9b-it";
+const MODEL_FAST   = "openai/gpt-oss-20b";
+const MODEL_LARGE  = "openai/gpt-oss-120b";
+const MODEL_DEEP   = "openai/gpt-oss-120b";
+const MODEL_CODE   = "qwen/qwen3.6-27b";
+const MODEL_GEMMA  = "openai/gpt-oss-20b";
 
 // Slot-to-model assignment: maps key index → best Groq model for that slot
 // This ensures different keys are used for different model calls (no collision)
@@ -87,7 +87,7 @@ export interface GeneratedCourse {
 
 export const generateCourseChapters = async (
   topic: string,
-  numberOfChapters = 15
+  numberOfChapters = 5
 ): Promise<GeneratedCourse> => {
   const systemPrompt = `You are an expert curriculum designer specializing in creating comprehensive educational courses on any topic.
 Your task is to generate a structured course outline with chapters and lessons for the given topic.
@@ -96,7 +96,7 @@ Requirements:
 1. Create a logical, progressive curriculum that builds from basics to advanced concepts
 2. Each chapter should have a clear, specific title that focuses on one key concept
 3. Each chapter should have a brief, informative description
-4. Each chapter should have 3-8 specific, actionable lessons. Each lesson MUST include a detailed "content" field (2-3 paragraphs) that explains the core concepts of that lesson in depth.
+4. Each chapter should have 3-5 specific, actionable lessons. Each lesson MUST include a detailed "content" field (1-2 paragraphs) that explains the core concepts of that lesson in depth.
 5. Chapters should increase in difficulty and complexity
 6. Price each chapter appropriately (start low, increase slightly with each chapter)
 7. Output only JSON in the following format, no extra text:
@@ -130,7 +130,7 @@ Requirements:
         ],
         model: MODEL_LARGE,
         temperature: 0.7,
-        max_tokens: 8000,
+        max_tokens: 4000,
         response_format: { type: "json_object" },
       });
 

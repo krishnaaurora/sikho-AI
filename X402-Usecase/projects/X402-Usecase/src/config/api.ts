@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:4021/api/v1';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:4021/api/v1';
 
 export const API_ENDPOINTS = {
   COURSES: `${API_BASE_URL}/courses`,
@@ -17,8 +17,10 @@ export const API_ENDPOINTS = {
   AUTH_ME: `${API_BASE_URL}/auth/me`,
   AUTH_FORGOT_PASSWORD: `${API_BASE_URL}/auth/forgot-password`,
   AUTH_RESET_PASSWORD: `${API_BASE_URL}/auth/reset-password`,
+  AUTH_PROFILE_UPDATE: `${API_BASE_URL}/auth/profile`,
   LEARNER_COURSES: `${API_BASE_URL}/learners/courses`,
   LEARNER_UNLOCK_CHAPTER: `${API_BASE_URL}/learners/chapters/unlock`,
-  LEARNER_UNLOCK_CHAPTER_X402: (chapterId: string) => `${API_BASE_URL}/learners/chapters/${chapterId}/unlock`,
+  LEARNER_UNLOCK_CHAPTER_X402: (chapterId: string) => `${API_BASE_URL}/learners/chapters/unlock?chapterId=${chapterId}`,
   AI_EXPLAIN: `${API_BASE_URL}/ai/explain`,
+  AI_ROUTE_INTENT: `${API_BASE_URL}/ai/route-intent`,
 };

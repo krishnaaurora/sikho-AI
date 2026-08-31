@@ -31,6 +31,8 @@ import {
   careerRoadmapMvp
 } from "../controllers/ai/mvp.controller";
 
+import { routeIntent } from "../controllers/ai/router.controller";
+
 const router = express.Router();
 
 import { enforceWorkspacePayment } from "../middlewares/x402.middleware";
@@ -39,15 +41,9 @@ import { enforceWorkspacePayment } from "../middlewares/x402.middleware";
 router.post("/chat", chat);
 router.post("/analyze", analyze);
 router.post("/generate-course", generateCourse);
+router.post("/route-intent", authenticate, requireLearner, routeIntent);
 
-// 1. Explain ($0.002)
-router.post(
-  "/explain",
-  authenticate,
-  requireLearner,
-  enforceWorkspacePayment({ priceUsd: 0.002, description: "Generate a structured explanation of a technical concept adapted to the requested learning style." }),
-  explain
-);
+
 
 // 2. Doubt Solve ($0.002)
 router.post(
