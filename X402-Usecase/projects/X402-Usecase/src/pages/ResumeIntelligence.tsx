@@ -2858,7 +2858,7 @@ const ResumeIntelligence: React.FC = () => {
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 border border-purple-100 text-purple-700 text-[10px] font-black">
                           <span>🔒 Algorand X402 Micropayment</span>
                           <span>•</span>
-                          <span>$0.05 USDC</span>
+                          <span>$0.50 USDC</span>
                         </div>
                         <h3 className="text-xl font-black text-slate-900">Unlock Career Fit &amp; Top Roles</h3>
                         <p className="text-xs text-slate-550 font-semibold leading-relaxed">
@@ -2869,12 +2869,12 @@ const ResumeIntelligence: React.FC = () => {
                       <div className="max-w-xs mx-auto">
                         {careerFitPaymentStep === '402' && (
                           <div className="flex items-center justify-center gap-2 p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs font-black text-purple-700 animate-pulse mb-4">
-                            <span>💸 Preparing $0.05 USDC micropayment challenge...</span>
+                            <span>💸 Preparing $0.50 USDC micropayment challenge...</span>
                           </div>
                         )}
                         {careerFitPaymentStep === 'wallet' && (
                           <div className="flex items-center justify-center gap-2 p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs font-black text-purple-700 animate-bounce mb-4">
-                            <span>🔑 Check your Pera wallet to sign the $0.05 USDC transaction...</span>
+                            <span>🔑 Check your Pera wallet to sign the $0.50 USDC transaction...</span>
                           </div>
                         )}
                         {careerFitPaymentStep === 'verifying' && (
@@ -2884,7 +2884,7 @@ const ResumeIntelligence: React.FC = () => {
                         )}
                         {careerFitPaymentStep === 'complete' && (
                           <div className="flex items-center justify-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-xs font-black text-emerald-700 mb-4">
-                            <span>✓ Payment confirmed ($0.05 USDC) — Unlocking career fit...</span>
+                            <span>✓ Payment confirmed ($0.50 USDC) — Unlocking career fit...</span>
                           </div>
                         )}
 
@@ -2892,12 +2892,12 @@ const ResumeIntelligence: React.FC = () => {
                           onClick={handleUnlockCareerFit}
                           className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-black px-7 py-3.5 rounded-xl shadow-lg shadow-purple-200 hover:opacity-95 transition-all active:scale-[0.99]"
                         >
-                          🔒 Unlock Career Fit — $0.05 USDC
+                          🔒 Unlock Career Fit — $0.50 USDC
                         </button>
 
                         {!activeAddress && (
                           <p className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-200 rounded-lg p-2 mt-4">
-                            ⚠️ Connect your Pera wallet from the top right to sign the $0.05 transaction.
+                            ⚠️ Connect your Pera wallet from the top right to sign the $0.50 transaction.
                           </p>
                         )}
                       </div>

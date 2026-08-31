@@ -103,11 +103,11 @@ router.post(
 // GET   /api/v1/resume/:resumeId/quality     — Fetch analyzed quality metrics
 router.get("/:resumeId/quality", optionalAuthenticate, getQualityAnalysis);
 
-// POST  /api/v1/resume/:resumeId/career-fit  — Trigger career fit analysis (Paid $0.05)
+// POST  /api/v1/resume/:resumeId/career-fit  — Trigger career fit analysis (Paid $0.50)
 router.post(
   "/:resumeId/career-fit",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.05, description: "Resume Career Fit & Top Roles" }),
+  enforceWorkspacePayment({ priceUsd: 0.50, description: "Resume Career Fit & Top Roles" }),
   runCareerFit
 );
 

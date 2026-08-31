@@ -61,7 +61,7 @@ const seedServices = async () => {
   await X402Service.updateOne({ serviceId: "project_generate" }, { $set: { priceUsd: 0.03 } });
   await X402Service.updateOne({ serviceId: "action_plan" }, { $set: { priceUsd: 0.10 } });
   await X402Service.updateOne({ serviceId: "ats_analysis" }, { $set: { priceUsd: 0.05 } });
-  await X402Service.updateOne({ serviceId: "career_fit" }, { $set: { priceUsd: 0.05 } });
+  await X402Service.updateOne({ serviceId: "career_fit" }, { $set: { priceUsd: 0.50 } });
 
   const count = await X402Service.countDocuments();
   if (count === 0) {
@@ -126,7 +126,7 @@ const seedServices = async () => {
         serviceId: "career_fit",
         name: "Resume Career Fit & Top Roles",
         description: "AI-based matching of resume details against target career paths",
-        priceUsd: 0.05,
+        priceUsd: 0.50,
         endpoint: "/api/x402/career-fit",
         status: "Active"
       }
@@ -257,11 +257,11 @@ router.post(
   })
 );
 
-// ─── ENDPOINT 8: RESUME CAREER FIT & TOP ROLES ($0.05) ───
+// ─── ENDPOINT 8: RESUME CAREER FIT & TOP ROLES ($0.50) ───
 router.post(
   "/career-fit",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.05, description: "Resume Career Fit & Top Roles" }),
+  enforceWorkspacePayment({ priceUsd: 0.50, description: "Resume Career Fit & Top Roles" }),
   asyncHandler(async (req: any, res: Response, next: NextFunction) => {
     req.params.resumeId = req.body.resumeId;
     return runCareerFit(req, res, next);
