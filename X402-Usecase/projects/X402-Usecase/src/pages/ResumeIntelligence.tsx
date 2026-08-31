@@ -1854,7 +1854,7 @@ const ResumeIntelligence: React.FC = () => {
                 {([
                   { id: 'quality',       emoji: '🎯', label: 'ATS Analysis',     step: 1, sublabel: 'Score & improvements', locked: false },
                   { id: 'career',        emoji: '🧭', label: 'Career Fit',       step: 2, sublabel: 'Top 5 matches', locked: false },
-                  { id: 'jobs',          emoji: '💼', label: 'Job Opportunities', step: 3, sublabel: 'Live jobs · 🔒 $0.02', locked: !jobDiscoveryUnlocked },
+                  { id: 'jobs',          emoji: '💼', label: 'Job Opportunities', step: 3, sublabel: 'Live jobs · 🔒 $0.50', locked: !jobDiscoveryUnlocked },
                 ] as const).map((item) => {
                   const isActive = currentView === item.id;
                   const isDone = (
@@ -2113,7 +2113,7 @@ const ResumeIntelligence: React.FC = () => {
                           }}
                           className="absolute bottom-3 right-3 bg-indigo-500 hover:bg-indigo-600 text-white text-[10px] font-black px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1"
                         >
-                          Explore for $0.02 USDC <ArrowRight size={11} />
+                          Explore for $0.50 USDC <ArrowRight size={11} />
                         </button>
                       </div>
 
@@ -4044,7 +4044,7 @@ const ResumeIntelligence: React.FC = () => {
                     ) : (
                       <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-black px-3.5 py-1.5 rounded-xl shadow-sm">
                         <span>🔒 X402 Paywall</span>
-                        <span className="text-[10px] bg-amber-200/60 text-amber-900 px-2 py-0.5 rounded-md">$0.02 USDC</span>
+                        <span className="text-[10px] bg-amber-200/60 text-amber-900 px-2 py-0.5 rounded-md">$0.50 USDC</span>
                       </div>
                     )}
                   </div>
@@ -4059,7 +4059,7 @@ const ResumeIntelligence: React.FC = () => {
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-black">
                           <span>🔒 Algorand X402 Micropayment</span>
                           <span>•</span>
-                          <span>$0.02 USDC</span>
+                          <span>$0.50 USDC</span>
                         </div>
                         <h3 className="text-xl font-black text-slate-900">Unlock Live Job Opportunities</h3>
                         <p className="text-xs text-slate-500 font-semibold leading-relaxed">
@@ -4091,12 +4091,12 @@ const ResumeIntelligence: React.FC = () => {
                       {/* Payment step feedback */}
                       {jobDiscoveryPaymentStep === '402' && (
                         <div className="flex items-center justify-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs font-black text-indigo-700 animate-pulse">
-                          <span>💸 Preparing $0.02 USDC micropayment challenge...</span>
+                          <span>💸 Preparing $0.50 USDC micropayment challenge...</span>
                         </div>
                       )}
                       {jobDiscoveryPaymentStep === 'wallet' && (
                         <div className="flex items-center justify-center gap-2 p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs font-black text-purple-700 animate-pulse">
-                          <span>🔑 Check your Pera wallet to sign the $0.02 USDC transaction...</span>
+                          <span>🔑 Check your Pera wallet to sign the $0.50 USDC transaction...</span>
                         </div>
                       )}
                       {jobDiscoveryPaymentStep === 'verifying' && (
@@ -4107,7 +4107,7 @@ const ResumeIntelligence: React.FC = () => {
                       )}
                       {jobDiscoveryPaymentStep === 'complete' && (
                         <div className="flex items-center justify-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-xs font-black text-emerald-700">
-                          <span>✓ Payment confirmed ($0.02 USDC) — Unlocking live jobs...</span>
+                          <span>✓ Payment confirmed ($0.50 USDC) — Unlocking live jobs...</span>
                         </div>
                       )}
 
@@ -4145,7 +4145,7 @@ const ResumeIntelligence: React.FC = () => {
                                 if (res.status === 402) {
                                   if (!activeAddress) {
                                     setJobDiscoveryPaymentStep(null);
-                                    alert('Please connect your Pera wallet first from the top navigation to pay $0.02 USDC.');
+                                    alert('Please connect your Pera wallet first from the top navigation to pay $0.50 USDC.');
                                     return;
                                   }
                                   setJobDiscoveryPaymentStep('402');
@@ -4189,16 +4189,16 @@ const ResumeIntelligence: React.FC = () => {
                             }}
                             className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-black px-7 py-3.5 rounded-xl shadow-lg shadow-indigo-200 hover:opacity-95 transition-all active:scale-[0.99]"
                           >
-                            🔒 Unlock Live Jobs — $0.02 USDC
+                            🔒 Unlock Live Jobs — $0.50 USDC
                           </button>
                           <div className="flex items-center justify-center gap-3 text-[10px] text-slate-400 font-semibold">
                             <span>• Algorand x402 Protocol</span>
-                            <span>• $0.02 USDC</span>
+                            <span>• $0.50 USDC</span>
                             <span>• Instant Verification</span>
                           </div>
                           {!activeAddress && (
                             <p className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-200 rounded-lg p-2">
-                              ⚠️ Connect your Pera wallet from the top right to sign the $0.02 transaction.
+                              ⚠️ Connect your Pera wallet from the top right to sign the $0.50 transaction.
                             </p>
                           )}
                         </div>
@@ -4746,7 +4746,7 @@ const ResumeIntelligence: React.FC = () => {
                       <div>
                         <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Price</span>
                         <span className="text-base font-black text-indigo-700">
-                          ${x402Services.find(s => s.serviceId === 'job_analysis')?.priceUsd || '0.02'} USDC
+                          ${x402Services.find(s => s.serviceId === 'job_analysis')?.priceUsd || '0.50'} USDC
                         </span>
                       </div>
                       <button
@@ -5273,7 +5273,7 @@ const ResumeIntelligence: React.FC = () => {
                 <div>
                   <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Price</span>
                   <span className="text-base font-black text-indigo-705">
-                    ${x402Services.find(s => s.serviceId === 'custom_search')?.priceUsd || '0.02'} USDC
+                    ${x402Services.find(s => s.serviceId === 'custom_search')?.priceUsd || '0.50'} USDC
                   </span>
                 </div>
                 <button
@@ -5345,14 +5345,14 @@ const ResumeIntelligence: React.FC = () => {
                 <div className="space-y-4">
                   <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-xl animate-pulse">💸</div>
                   <h4 className="text-sm font-black text-slate-900">402 Payment Required</h4>
-                  <p className="text-[10px] text-slate-500 font-semibold">Preparing $0.02 USDC custom transition search micropayment challenge...</p>
+                  <p className="text-[10px] text-slate-500 font-semibold">Preparing $0.50 USDC custom transition search micropayment challenge...</p>
                 </div>
               )}
               {customSearchPaymentStep === 'wallet' && (
                 <div className="space-y-4">
                   <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-xl animate-bounce">🔑</div>
                   <h4 className="text-sm font-black text-slate-900">Sign Transaction</h4>
-                  <p className="text-[10px] text-slate-500 font-semibold">Please sign the $0.02 USDC search query settlement transfer in your wallet.</p>
+                  <p className="text-[10px] text-slate-500 font-semibold">Please sign the $0.50 USDC search query settlement transfer in your wallet.</p>
                 </div>
               )}
               {customSearchPaymentStep === 'verifying' && (

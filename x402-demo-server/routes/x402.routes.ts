@@ -50,6 +50,15 @@ const seedServices = async () => {
   } catch (e) {
     // Ignore if index doesn't exist
   }
+  
+  // Ensure existing seeded services also update to latest prices
+  await X402Service.updateOne({ serviceId: "resume_pass" }, { $set: { priceUsd: 0.50 } });
+  await X402Service.updateOne({ serviceId: "custom_search" }, { $set: { priceUsd: 0.50 } });
+  await X402Service.updateOne({ serviceId: "job_analysis" }, { $set: { priceUsd: 0.50 } });
+  await X402Service.updateOne({ serviceId: "resume_improve" }, { $set: { priceUsd: 0.05 } });
+  await X402Service.updateOne({ serviceId: "project_generate" }, { $set: { priceUsd: 0.03 } });
+  await X402Service.updateOne({ serviceId: "action_plan" }, { $set: { priceUsd: 0.10 } });
+
   const count = await X402Service.countDocuments();
   if (count === 0) {
     await X402Service.create([
@@ -65,7 +74,7 @@ const seedServices = async () => {
         serviceId: "custom_search",
         name: "Target Career Exploration Search",
         description: "Live Apify scraper search for custom target career transition goals",
-        priceUsd: 0.02,
+        priceUsd: 0.50,
         endpoint: "/api/x402/target-career-search",
         status: "Active"
       },
@@ -73,7 +82,7 @@ const seedServices = async () => {
         serviceId: "job_analysis",
         name: "Deep Job-Specific Analysis",
         description: "Deep AI-driven gap analysis of your resume against a selected job description",
-        priceUsd: 0.02,
+        priceUsd: 0.50,
         endpoint: "/api/x402/job-analysis",
         status: "Active"
       },
@@ -162,22 +171,22 @@ router.post(
   })
 );
 
-// ─── ENDPOINT 2: TARGET CAREER MARKET SEARCH ($0.02) ───
+// ─── ENDPOINT 2: TARGET CAREER MARKET SEARCH ($0.50) ───
 router.post(
   "/target-career-search",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.02, description: "Target Career Exploration Search" }),
+  enforceWorkspacePayment({ priceUsd: 0.50, description: "Target Career Exploration Search" }),
   asyncHandler(async (req: any, res: Response, next: NextFunction) => {
     req.params.resumeId = req.body.resumeId;
     return discoverJobs(req, res, next);
   })
 );
 
-// ─── ENDPOINT 3: JOB-SPECIFIC ANALYSIS ($0.02) ───
+// ─── ENDPOINT 3: JOB-SPECIFIC ANALYSIS ($0.50) ───
 router.post(
   "/job-analysis",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.02, description: "Deep Job-Specific Analysis" }),
+  enforceWorkspacePayment({ priceUsd: 0.50, description: "Deep Job-Specific Analysis" }),
   asyncHandler(async (req: any, res: Response, next: NextFunction) => {
     req.params.jobId = req.body.jobId;
     req.params.resumeId = req.body.resumeId;
