@@ -57,7 +57,7 @@ const seedServices = async () => {
         serviceId: "resume_pass",
         name: "Resume Intelligence Pass",
         description: "Unlock full Resume Intelligence, ATS analysis, and career fit matching for 7 days",
-        priceUsd: 0.10,
+        priceUsd: 0.50,
         endpoint: "/api/x402/resume-intelligence",
         status: "Active"
       },
@@ -103,6 +103,8 @@ const seedServices = async () => {
       }
     ]);
   }
+  // Ensure existing seeded service also updates to 0.50
+  await X402Service.updateOne({ serviceId: "resume_pass" }, { $set: { priceUsd: 0.50 } });
 };
 
 // GET /api/x402/services -> list pricing
@@ -143,11 +145,11 @@ router.post(
   })
 );
 
-// ─── ENDPOINT 1: RESUME INTELLIGENCE ($0.10) ───
+// ─── ENDPOINT 1: RESUME INTELLIGENCE ($0.50) ───
 router.post(
   "/resume-intelligence",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.10, description: "Resume Intelligence Pass" }),
+  enforceWorkspacePayment({ priceUsd: 0.50, description: "Resume Intelligence Pass" }),
   asyncHandler(async (req: any, res: Response) => {
     const { resumeId } = req.body;
     const resume = await Resume.findById(resumeId);
