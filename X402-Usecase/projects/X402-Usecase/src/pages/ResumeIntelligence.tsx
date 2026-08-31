@@ -685,7 +685,7 @@ const ResumeIntelligence: React.FC = () => {
       setAtsAnalysisPaymentStep('wallet');
 
       // Use the static x402 catalog endpoint — this URL registers on GoPlausible dashboard
-      const paidRes = await x402Fetch(`${backendOrigin}/api/x402/ats-analysis`, {
+      const paidRes = await x402Fetch(`${backendOrigin}/api/v1/x402/ats-analysis`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -750,7 +750,7 @@ const ResumeIntelligence: React.FC = () => {
       setCareerFitPaymentStep('wallet');
 
       // Use the static x402 catalog endpoint — this URL registers on GoPlausible dashboard
-      const paidRes = await x402Fetch(`${backendOrigin}/api/x402/career-fit`, {
+      const paidRes = await x402Fetch(`${backendOrigin}/api/v1/x402/career-fit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
