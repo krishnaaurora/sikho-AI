@@ -683,13 +683,15 @@ const ResumeIntelligence: React.FC = () => {
     try {
       const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
       setAtsAnalysisPaymentStep('wallet');
-      
-      const paidRes = await x402Fetch(`${backendOrigin}/api/v1/resume/${resumeId}/quality`, {
+
+      // Use the static x402 catalog endpoint — this URL registers on GoPlausible dashboard
+      const paidRes = await x402Fetch(`${backendOrigin}/api/x402/ats-analysis`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
+        },
+        body: JSON.stringify({ resumeId })
       });
 
       if (!paidRes.ok) {
@@ -703,7 +705,7 @@ const ResumeIntelligence: React.FC = () => {
       setAtsAnalysisUnlocked(true);
       await new Promise(r => setTimeout(r, 800));
       setAtsAnalysisPaymentStep(null);
-      
+
       const extractionRes = await apiFetch(`/api/v1/resume/${resumeId}/extraction`);
       if (extractionRes.success && extractionRes.data) {
         setExtractedData(extractionRes.data);
@@ -746,13 +748,15 @@ const ResumeIntelligence: React.FC = () => {
     try {
       const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
       setCareerFitPaymentStep('wallet');
-      
-      const paidRes = await x402Fetch(`${backendOrigin}/api/v1/resume/${resumeId}/career-fit`, {
+
+      // Use the static x402 catalog endpoint — this URL registers on GoPlausible dashboard
+      const paidRes = await x402Fetch(`${backendOrigin}/api/x402/career-fit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
+        },
+        body: JSON.stringify({ resumeId })
       });
 
       if (!paidRes.ok) {
