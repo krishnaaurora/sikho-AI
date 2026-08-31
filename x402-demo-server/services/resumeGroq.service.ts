@@ -36,10 +36,10 @@ interface KeySlot {
 // we automatically try these alternatives in order.
 const MODEL_FALLBACK_CHAIN: string[] = [
   "openai/gpt-oss-120b",       // primary — highest quality
-  "llama-3.3-70b-versatile",   // fallback 1 — high quality, 100K TPD separate quota
-  "llama-3.1-8b-instant",      // fallback 2 — fast, 500K TPD separate quota
-  "gemma2-9b-it",              // fallback 3 — lightweight backup
-  "llama3-8b-8192",            // fallback 4 — last resort
+  "qwen/qwen3.8-27b",          // fallback 1 
+  "groq/compound",             // fallback 2
+  "openai/gpt-oss-20b",        // fallback 3
+  "qwen/qwen3.6-27b",          // fallback 4 — last resort
 ];
 
 // ─── Initialise slots from config ─────────────────────────────────
