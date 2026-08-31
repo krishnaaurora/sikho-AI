@@ -29,11 +29,16 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
 
     // Derive service identity and unique operation resource targets
     let serviceId = "job_analysis";
-    if (config.description.toLowerCase().includes("improvement")) {
+    const descLower = config.description.toLowerCase();
+    if (descLower.includes("improvement")) {
       serviceId = "resume_improvement";
-    } else if (config.description.toLowerCase().includes("project")) {
+    } else if (descLower.includes("project")) {
       serviceId = "project_generation";
-    } else if (config.description.toLowerCase().includes("job discovery") || config.description.toLowerCase().includes("find-jobs") || config.description.toLowerCase().includes("exploration")) {
+    } else if (descLower.includes("career fit") || descLower.includes("career-fit")) {
+      serviceId = "career_fit";
+    } else if (descLower.includes("ats") || descLower.includes("quality")) {
+      serviceId = "ats_analysis";
+    } else if (descLower.includes("job discovery") || descLower.includes("find-jobs") || descLower.includes("exploration")) {
       serviceId = "job_discovery";
     }
 
