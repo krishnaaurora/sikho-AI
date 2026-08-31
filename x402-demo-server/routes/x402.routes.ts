@@ -12,6 +12,8 @@ import { discoverJobs } from "../controllers/resume/apify.controller";
 import { analyzeJob } from "../controllers/resume/jobIntelligence.controller";
 import { applyResumeImprovements, generateProjectPlan } from "../controllers/resume/resumeImprovement.controller";
 import { generateCareerActionPlan } from "../services/resumeImprovement.service";
+import { runQualityAnalysis } from "../controllers/resume/quality.controller";
+import { runCareerFit } from "../controllers/resume/careerFit.controller";
 
 const router = express.Router();
 
@@ -58,6 +60,8 @@ const seedServices = async () => {
   await X402Service.updateOne({ serviceId: "resume_improve" }, { $set: { priceUsd: 0.05 } });
   await X402Service.updateOne({ serviceId: "project_generate" }, { $set: { priceUsd: 0.03 } });
   await X402Service.updateOne({ serviceId: "action_plan" }, { $set: { priceUsd: 0.10 } });
+  await X402Service.updateOne({ serviceId: "ats_analysis" }, { $set: { priceUsd: 0.05 } });
+  await X402Service.updateOne({ serviceId: "career_fit" }, { $set: { priceUsd: 0.05 } });
 
   const count = await X402Service.countDocuments();
   if (count === 0) {
@@ -109,11 +113,25 @@ const seedServices = async () => {
         priceUsd: 0.10,
         endpoint: "/api/x402/career-action-plan",
         status: "Active"
+      },
+      {
+        serviceId: "ats_analysis",
+        name: "ATS Quality & Gaps Analysis",
+        description: "Detailed evaluation of resume sections, clarity, and ATS compatibility",
+        priceUsd: 0.05,
+        endpoint: "/api/x402/ats-analysis",
+        status: "Active"
+      },
+      {
+        serviceId: "career_fit",
+        name: "Resume Career Fit & Top Roles",
+        description: "AI-based matching of resume details against target career paths",
+        priceUsd: 0.05,
+        endpoint: "/api/x402/career-fit",
+        status: "Active"
       }
     ]);
   }
-  // Ensure existing seeded service also updates to 0.50
-  await X402Service.updateOne({ serviceId: "resume_pass" }, { $set: { priceUsd: 0.50 } });
 };
 
 // GET /api/x402/services -> list pricing
@@ -225,6 +243,28 @@ router.post(
     const { resumeId, targetCareer } = req.body;
     const actionPlan = await generateCareerActionPlan(resumeId, targetCareer);
     return sendSuccessResponse(res, actionPlan, "Career action plan generated successfully.");
+  })
+);
+
+// ─── ENDPOINT 7: ATS QUALITY & GAPS ANALYSIS ($0.05) ───
+router.post(
+  "/ats-analysis",
+  optionalAuthenticate,
+  enforceWorkspacePayment({ priceUsd: 0.05, description: "ATS Quality & Gaps Analysis" }),
+  asyncHandler(async (req: any, res: Response) => {
+    req.params.resumeId = req.body.resumeId;
+    return runQualityAnalysis(req, res);
+  })
+);
+
+// ─── ENDPOINT 8: RESUME CAREER FIT & TOP ROLES ($0.05) ───
+router.post(
+  "/career-fit",
+  optionalAuthenticate,
+  enforceWorkspacePayment({ priceUsd: 0.05, description: "Resume Career Fit & Top Roles" }),
+  asyncHandler(async (req: any, res: Response) => {
+    req.params.resumeId = req.body.resumeId;
+    return runCareerFit(req, res);
   })
 );
 

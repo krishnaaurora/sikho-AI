@@ -92,14 +92,24 @@ router.post(
   unlockResumePass
 );
 
-// POST  /api/v1/resume/:resumeId/quality    — Trigger quality & ATS analysis
-router.post("/:resumeId/quality", optionalAuthenticate, runQualityAnalysis);
+// POST  /api/v1/resume/:resumeId/quality    — Trigger quality & ATS analysis (Paid $0.05)
+router.post(
+  "/:resumeId/quality",
+  optionalAuthenticate,
+  enforceWorkspacePayment({ priceUsd: 0.05, description: "ATS Quality & Gaps Analysis" }),
+  runQualityAnalysis
+);
 
 // GET   /api/v1/resume/:resumeId/quality     — Fetch analyzed quality metrics
 router.get("/:resumeId/quality", optionalAuthenticate, getQualityAnalysis);
 
-// POST  /api/v1/resume/:resumeId/career-fit  — Trigger career fit analysis
-router.post("/:resumeId/career-fit", optionalAuthenticate, runCareerFit);
+// POST  /api/v1/resume/:resumeId/career-fit  — Trigger career fit analysis (Paid $0.05)
+router.post(
+  "/:resumeId/career-fit",
+  optionalAuthenticate,
+  enforceWorkspacePayment({ priceUsd: 0.05, description: "Resume Career Fit & Top Roles" }),
+  runCareerFit
+);
 
 // GET   /api/v1/resume/:resumeId/career-fit  — Get cached career fit data
 router.get("/:resumeId/career-fit", optionalAuthenticate, getCareerFit);
