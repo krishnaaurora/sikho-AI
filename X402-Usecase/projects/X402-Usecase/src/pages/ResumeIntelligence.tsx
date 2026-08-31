@@ -522,7 +522,7 @@ const ResumeIntelligence: React.FC = () => {
   const [liveJobsList, setLiveJobsList] = useState<any[]>([]);
   const [jobsLoadError, setJobsLoadError] = useState<string | null>(null);
   // Career fit data — top 5 matched roles from AI analysis
-  const [careerFitRoles, setCareerFitRoles] = useState<Array<{role: string; confidence: number; reasons: string[]}>>(DEFAULT_CAREER_ROLES);
+  const [careerFitRoles, setCareerFitRoles] = useState<Array<{role: string; confidence: number; reasons: string[]}>>([]);
   const [careerFitLoading, setCareerFitLoading] = useState(false);
   // Active role filter tab in Job Opportunities view ('all' = show everything)
   const [jobRoleFilter, setJobRoleFilter] = useState<string>('all');
@@ -2909,11 +2909,24 @@ const ResumeIntelligence: React.FC = () => {
                   );
                 }
 
-                // ── Use live data from API, fall back to default top-5 career roles ──
-                const liveRoles = careerFitRoles.length > 0 ? careerFitRoles : DEFAULT_CAREER_ROLES;
+                if (careerFitRoles.length === 0) {
+                  return (
+                    <div className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-10 text-center space-y-6 shadow-sm">
+                      <div className="w-16 h-16 rounded-3xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-3xl mx-auto animate-pulse">
+                        🧭
+                      </div>
+                      <div className="max-w-md mx-auto space-y-2">
+                        <h3 className="text-lg font-black text-slate-900">Analysing Career Fit...</h3>
+                        <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                          Please wait while our AI extracts and analyzes your resume details to determine your best-fit career pathways in real-time.
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
 
                 // Normalise to a display-friendly shape
-                const careers = liveRoles.map((r, i) => ({
+                const careers = careerFitRoles.map((r, i) => ({
                   title: r.role,
                   pct:   Math.min(100, Math.round(r.confidence > 1 ? r.confidence : r.confidence * 100)),
                   label: i === 0 ? 'Primary Career' : `Alternative Career ${i}`,
@@ -4310,20 +4323,26 @@ const ResumeIntelligence: React.FC = () => {
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center mb-2">
                           Will Search &amp; Match Live Jobs For These 5 Roles:
                         </p>
-                        {(careerFitRoles.length > 0 ? careerFitRoles : DEFAULT_CAREER_ROLES).map((r, i) => (
-                          <div key={r.role} className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl px-3.5 py-2.5">
-                            <span className="text-[10px] font-black text-amber-600 w-6 flex-shrink-0">
-                              {i === 0 ? '⭐' : `#${i + 1}`}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-xs font-black text-slate-800 block truncate">{r.role}</span>
-                              <span className="text-[9px] font-bold text-slate-400 block">{i === 0 ? 'Primary Career Path' : 'Alternative Career Path'}</span>
+                        {careerFitRoles.length > 0 ? (
+                          careerFitRoles.map((r, i) => (
+                            <div key={r.role} className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl px-3.5 py-2.5">
+                              <span className="text-[10px] font-black text-amber-600 w-6 flex-shrink-0">
+                                {i === 0 ? '⭐' : `#${i + 1}`}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-xs font-black text-slate-800 block truncate">{r.role}</span>
+                                <span className="text-[9px] font-bold text-slate-400 block">{i === 0 ? 'Primary Career Path' : 'Alternative Career Path'}</span>
+                              </div>
+                              <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
+                                {r.confidence}% match
+                              </span>
                             </div>
-                            <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
-                              {r.confidence}% match
-                            </span>
+                          ))
+                        ) : (
+                          <div className="bg-slate-50 border border-slate-200 border-dashed rounded-2xl p-6 text-center text-xs text-slate-500 font-semibold">
+                            🔒 Unlock Career Fit to analyze your personalized top career paths, or unlock Job Discovery to automatically analyze them.
                           </div>
-                        ))}
+                        )}
                       </div>
 
                       {/* Payment step feedback */}
