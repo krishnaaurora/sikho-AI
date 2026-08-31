@@ -1778,7 +1778,7 @@ const ResumeIntelligence: React.FC = () => {
 
                 <div className="flex flex-col items-center gap-2 pt-2">
                   <span className="text-xs font-black text-slate-400 uppercase tracking-widest block">One-time payment</span>
-                  <span className="text-3xl font-black text-indigo-650">$0.10 USDC</span>
+                  <span className="text-3xl font-black text-indigo-650">$0.50 USDC</span>
                 </div>
 
                 <button
@@ -5201,7 +5201,7 @@ const ResumeIntelligence: React.FC = () => {
                 <div className="space-y-4">
                   <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-xl animate-bounce">🔑</div>
                   <h4 className="text-sm font-black text-slate-900">Sign Transaction</h4>
-                  <p className="text-[10px] text-slate-500 font-semibold">Please sign the $0.10 USDC transaction in your Algorand wallet popup.</p>
+                  <p className="text-[10px] text-slate-500 font-semibold">Please sign the $0.50 USDC transaction in your Algorand wallet popup.</p>
                 </div>
               )}
               {resumeIntelPaymentStep === 'verifying' && (

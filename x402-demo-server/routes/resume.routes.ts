@@ -84,11 +84,11 @@ router.get("/:resumeId/status", optionalAuthenticate, getResumeStatus);
 // GET   /api/v1/resume/:resumeId/extraction — Full extracted data for Extraction Engine UI
 router.get("/:resumeId/extraction", optionalAuthenticate, getResumeExtraction);
 
-// POST  /api/v1/resume/:resumeId/unlock      — Unlock Resume Intelligence pass (Paid $0.10)
+// POST  /api/v1/resume/:resumeId/unlock      — Unlock Resume Intelligence pass (Paid $0.50)
 router.post(
   "/:resumeId/unlock",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.10, description: "Resume Intelligence Pass" }),
+  enforceWorkspacePayment({ priceUsd: 0.50, description: "Resume Intelligence Pass" }),
   unlockResumePass
 );
 
