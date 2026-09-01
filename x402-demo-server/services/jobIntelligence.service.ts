@@ -1,20 +1,8 @@
-﻿import Groq from "groq-sdk";
 import Job, { IJobIntelligence } from "../models/Job.model";
-import { config } from "../config";
+import { resumeGroqChat } from "./resumeGroq.service";
 
-const MODEL = "openai/gpt-oss-120b";
 const BATCH_SIZE = 5;          // jobs analyzed per batch
 const DELAY_MS  = 1200;        // delay between batches to respect rate limits
-
-// ─────────────────────────────────────────────
-//  Groq client (round-robin key rotation)
-// ─────────────────────────────────────────────
-function getGroqClient(): Groq {
-  const keys = (config.groqApiKeys || []).filter(Boolean);
-  if (!keys.length) throw new Error("No Groq API keys configured");
-  const key = keys[Math.floor(Math.random() * keys.length)];
-  return new Groq({ apiKey: key });
-}
 
 // ─────────────────────────────────────────────
 //  LLM Extraction prompt
@@ -97,21 +85,15 @@ export async function analyzeJobIntelligence(jobId: string): Promise<IJobIntelli
   // Mark as processing
   await Job.findByIdAndUpdate(jobId, { intelligenceStatus: "processing" });
 
-  const groq = getGroqClient();
-
   try {
-    const completion = await groq.chat.completions.create({
-      model: MODEL,
+    const rawContent = await resumeGroqChat({
+      system: SYSTEM_PROMPT,
+      user: buildUserPrompt(job.title, job.company, job.description),
       temperature: 0.1,
-      max_tokens: 1024,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user",   content: buildUserPrompt(job.title, job.company, job.description) },
-      ],
+      maxTokens: 1024,
     });
 
-    const rawContent = completion.choices[0]?.message?.content || "";
-    const intelligence = parseIntelligenceResponse(rawContent, MODEL);
+    const intelligence = parseIntelligenceResponse(rawContent, "resumeGroqPool");
 
     await Job.findByIdAndUpdate(jobId, {
       intelligence,

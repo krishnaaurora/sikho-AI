@@ -1,15 +1,4 @@
-﻿import Groq from "groq-sdk";
-import { config } from "../config";
-
-const MODEL = "openai/gpt-oss-120b";
-
-function getGroqClient(): Groq {
-  const keys = (config.groqApiKeys || []).filter(Boolean);
-  if (!keys.length) throw new Error("No Groq API keys configured");
-  const key = keys[Math.floor(Math.random() * keys.length)];
-  return new Groq({ apiKey: key });
-}
-
+import { resumeGroqJson } from "./resumeGroq.service";
 export interface SkillItem {
   skill: string;
   level?: string; // "Beginner" | "Intermediate" | "Advanced" | "Expert"
@@ -62,8 +51,6 @@ export async function analyzeSkillGap(
   structuredData: Record<string, any>,
   targetRole: string
 ): Promise<SkillGapResult> {
-  const groq = getGroqClient();
-
   const context = `
 Target Role: ${targetRole}
 
@@ -86,20 +73,14 @@ Full text excerpt (first 5000 chars):
 ${rawText.substring(0, 5000)}
 `;
 
-  const completion = await groq.chat.completions.create({
-    model: MODEL,
-    messages: [
-      { role: "system", content: SKILL_GAP_PROMPT },
-      { role: "user", content: context },
-    ],
-    temperature: 0.15,
-    max_tokens: 2000,
-    response_format: { type: "json_object" },
-  });
-
-  const raw = completion.choices[0]?.message?.content || "{}";
   try {
-    const parsed = JSON.parse(raw.trim());
+    const parsed = await resumeGroqJson<any>({
+      system: SKILL_GAP_PROMPT,
+      user: context,
+      temperature: 0.15,
+      maxTokens: 2000,
+      jsonMode: true,
+    });
     return {
       targetRole: parsed.targetRole || targetRole,
       existingSkills: parsed.existingSkills || [],
