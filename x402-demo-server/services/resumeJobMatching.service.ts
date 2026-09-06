@@ -1,4 +1,3 @@
-import Groq from "groq-sdk";
 import Resume, { ISkillEvidence } from "../models/Resume.model";
 import Job, { IJobIntelligence } from "../models/Job.model";
 import ResumeJobMatch, {
@@ -7,19 +6,6 @@ import ResumeJobMatch, {
   IMissingItem,
   IMatchScores,
 } from "../models/ResumeJobMatch.model";
-import { config } from "../config";
-
-const MODEL = "openai/gpt-oss-120b";
-
-// ─────────────────────────────────────────────
-//  Groq client
-// ─────────────────────────────────────────────
-function getGroqClient(): Groq {
-  const keys = (config.groqApiKeys || []).filter(Boolean);
-  if (!keys.length) throw new Error("No Groq API keys configured");
-  const key = keys[Math.floor(Math.random() * keys.length)];
-  return new Groq({ apiKey: key });
-}
 
 // ─────────────────────────────────────────────
 //  Helpers — normalise for comparison
