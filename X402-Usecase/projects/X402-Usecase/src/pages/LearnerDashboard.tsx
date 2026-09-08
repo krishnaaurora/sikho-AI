@@ -325,7 +325,7 @@ const LearnerDashboard: React.FC = () => {
 
               {/* Tile 3: Career */}
               <div 
-                onClick={() => navigate('/resume-intelligence')}
+                onClick={() => navigate('/interview-prep')}
                 className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-amber-300 transition-all group relative flex flex-col justify-between"
               >
                 <div>
