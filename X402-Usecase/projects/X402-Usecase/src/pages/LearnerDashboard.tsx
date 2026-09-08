@@ -323,9 +323,9 @@ const LearnerDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Tile 3: Career */}
+              {/* Tile 3: Interview Prep */}
               <div 
-                onClick={() => navigate('/resume-intelligence')}
+                onClick={() => navigate('/interview-prep')}
                 className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-amber-300 transition-all group relative flex flex-col justify-between"
               >
                 <div>
@@ -337,12 +337,13 @@ const LearnerDashboard: React.FC = () => {
                       <ArrowRight size={12} />
                     </div>
                   </div>
-                  <h3 className="font-bold text-slate-800 text-sm mb-1">Career</h3>
-                  <p className="text-xs text-slate-400 font-medium leading-relaxed">Resume analysis & roadmap planner</p>
+                  <h3 className="font-bold text-slate-800 text-sm mb-1">Interview Prep</h3>
+                  <p className="text-xs text-slate-400 font-medium leading-relaxed">AI mock interviews & evaluation</p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-100 flex gap-1.5">
                   <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Plan</span>
-                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Prepare</span>
+                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Mock</span>
+                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Evaluate</span>
                 </div>
               </div>
 
