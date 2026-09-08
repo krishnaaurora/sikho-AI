@@ -77,6 +77,7 @@ const RegisterPage: React.FC = () => {
         email: registerData.email,
         password: registerData.password,
         confirmPassword: registerData.confirmPassword,
+
         country: registerData.country,
       });
       navigate('/dashboard/learner', { replace: true });
