@@ -14,6 +14,7 @@ import RegisterPage from './pages/RegisterPage'
 import ExplainPage from './pages/ExplainPage'
 import ApiPlayground from './pages/ApiPlayground'
 import ResumeIntelligence from './pages/ResumeIntelligence'
+import InterviewPrep from './pages/InterviewPrep'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { getAlgodConfigFromViteEnvironment, getKmdConfigFromViteEnvironment } from './utils/network/getAlgoClientConfigs'
 
@@ -128,6 +129,11 @@ function AppContent() {
             <Route path="/resume-intelligence" element={
               <ProtectedRoute>
                 <ResumeIntelligence />
+              </ProtectedRoute>
+            } />
+            <Route path="/interview-prep" element={
+              <ProtectedRoute requiredRole="learner">
+                <InterviewPrep />
               </ProtectedRoute>
             } />
             <Route path="/dashboard/admin" element={

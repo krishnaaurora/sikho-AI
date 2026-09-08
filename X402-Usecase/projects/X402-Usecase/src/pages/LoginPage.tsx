@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Mail, Lock, ArrowRight, Sparkles } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Sparkles, Eye, EyeOff } from 'lucide-react';
 import authSidebarImg from '../assets/auth_sidebar.png';
 
 const LoginPage: React.FC = () => {
@@ -12,6 +12,7 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loginData, setLoginData] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -130,20 +131,27 @@ const LoginPage: React.FC = () => {
                   <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                     Password
                   </label>
-                  <div className="relative rounded-xl shadow-sm">
+                <div className="relative rounded-xl shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Lock className="h-5 w-5 text-slate-400" />
                     </div>
                     <input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       required
                       value={loginData.password}
                       onChange={(e) =>
                         setLoginData({ ...loginData, password: e.target.value })
                       }
-                      className="block w-full pl-10 pr-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-white/50 dark:bg-slate-950/50 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                      className="block w-full pl-10 pr-10 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-white/50 dark:bg-slate-950/50 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                       placeholder="••••••••"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
 
