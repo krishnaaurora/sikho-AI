@@ -139,8 +139,8 @@ const RegisterPage: React.FC = () => {
         confirmPassword: registerData.confirmPassword,
         country: registerData.country
       });
-      // Immediately move to Welcome
-      setStep(2);
+      // Redirect to login after successful registration
+      navigate('/login');
     } catch (err: any) {
       setError(err.message || 'Registration failed');
     } finally {
