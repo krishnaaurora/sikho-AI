@@ -5,6 +5,8 @@ import { Button } from '../components/ui/button';
 import { Mail, Lock, ArrowRight, Sparkles, Eye, EyeOff } from 'lucide-react';
 import authSidebarImg from '../assets/auth_sidebar.png';
 
+import { InteractiveDotsCanvas } from '../components/ui/InteractiveDotsCanvas';
+
 const LoginPage: React.FC = () => {
   const { login, user } = useAuth();
   const navigate = useNavigate();
@@ -51,8 +53,8 @@ const LoginPage: React.FC = () => {
         <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px] animate-pulse" />
         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-accent/10 rounded-full blur-[100px]" />
         
-        {/* Diagonal dot decoration */}
-        <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:16px_16px]" />
+        {/* Interactive canvas dot decoration */}
+        <InteractiveDotsCanvas dotSpacing={20} dotRadius={1.5} interactiveRadius={140} />
 
         {/* Top-Left Logo */}
         <Link to="/" className="absolute top-8 left-8 flex items-center gap-2.5 z-20 group">
@@ -131,7 +133,7 @@ const LoginPage: React.FC = () => {
                   <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                     Password
                   </label>
-                <div className="relative rounded-xl shadow-sm">
+                  <div className="relative rounded-xl shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Lock className="h-5 w-5 text-slate-400" />
                     </div>
@@ -147,10 +149,12 @@ const LoginPage: React.FC = () => {
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPassword(v => !v)}
-                      className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600"
+                      onClick={() => setShowPassword(p => !p)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                      tabIndex={-1}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
                 </div>
