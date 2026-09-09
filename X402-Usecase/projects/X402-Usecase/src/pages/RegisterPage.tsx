@@ -5,10 +5,12 @@ import { Button } from '../components/ui/button';
 import { 
   Mail, Lock, User, Sparkles, ArrowRight, ArrowLeft, Check, 
   Search, Plus, X, UploadCloud, Rocket, HelpCircle, Briefcase, 
-  GraduationCap, ChevronDown, CheckCircle2, Clock, Globe, Laptop
+  GraduationCap, ChevronDown, CheckCircle2, Clock, Globe, Laptop,
+  Eye, EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { authApi } from '../utils/api';
+import { InteractiveDotsCanvas } from '../components/ui/InteractiveDotsCanvas';
 
 const RegisterPage: React.FC = () => {
   const { register, user, checkAuth } = useAuth();
@@ -16,6 +18,8 @@ const RegisterPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // 1: REGISTER, 2: WELCOME, 3: ABOUT YOU, 4: CAREER DIRECTION, 
   // 5: CAREER DETAILS / DISCOVERY, 6: SKILLS, 7: EXPERIENCE, 
@@ -369,123 +373,162 @@ const RegisterPage: React.FC = () => {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
-            className="w-full max-w-md bg-white border border-slate-100 rounded-3xl p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)]"
+            className="w-full min-h-screen bg-slate-50 dark:bg-slate-950 flex fixed inset-0 z-50 overflow-y-auto"
           >
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center justify-center gap-1.5">
-                Career<span className="text-indigo-600 bg-gradient-to-r from-indigo-600 via-purple-650 to-pink-500 bg-clip-text text-transparent">X402</span>
-              </h2>
-              <p className="text-slate-500 text-sm font-semibold mt-1">Create your account to start your career journey</p>
+            {/* Left side: Hero banner with Interactive Dots */}
+            <div className="hidden lg:relative lg:flex lg:w-1/2 bg-slate-950 overflow-hidden flex-col justify-between p-12">
+              <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_80%,transparent_100%)] opacity-70" />
+              <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px] animate-pulse" />
+              <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-accent/10 rounded-full blur-[100px]" />
+              
+              <InteractiveDotsCanvas dotSpacing={20} dotRadius={1.5} interactiveRadius={140} />
+
+              <Link to="/" className="relative z-20 flex items-center gap-2.5 group w-fit">
+                <img src="/logo.png" alt="Logo" className="h-14 w-auto object-contain rounded-xl group-hover:scale-105 transition-transform" />
+              </Link>
+
+              <div className="relative z-20 text-white max-w-lg mb-8">
+                <span className="px-3 py-1 bg-primary/20 text-primary border border-primary/30 text-xs font-semibold rounded-full uppercase tracking-wider">
+                  AI-Powered Learning Platform
+                </span>
+                <h3 className="text-4xl font-extrabold tracking-tight mt-4 leading-tight">
+                  Start Your Personalized Learning Journey
+                </h3>
+                <p className="mt-4 text-base text-slate-300 leading-relaxed">
+                  Join thousands of learners building future-proof skills with AI-curated roadmaps and blockchain-backed achievement credentials.
+                </p>
+              </div>
             </div>
 
-            {error && (
-              <div className="p-3 mb-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-bold flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0 animate-pulse" />
-                {error}
+            {/* Right side: Registration Form */}
+            <div className="flex-1 flex flex-col justify-start sm:justify-center py-8 sm:py-12 px-6 sm:px-12 lg:px-20 bg-white dark:bg-slate-900/40 backdrop-blur-md relative overflow-y-auto min-h-screen">
+              <div className="mx-auto w-full max-w-md my-auto">
+                <div className="text-left mb-5">
+                  <div className="lg:hidden mb-3">
+                    <img src="/logo.png" alt="Sikho AI Logo" className="h-10 w-auto object-contain rounded-xl" />
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Create your account</h2>
+                  <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium mt-1">Start your AI-driven learning journey today</p>
+                </div>
+
+                {error && (
+                  <div className="p-3.5 mb-5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0 animate-pulse" />
+                    {error}
+                  </div>
+                )}
+
+                <form onSubmit={handleRegister} className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={registerData.fullName}
+                      onChange={e => setRegisterData({ ...registerData, fullName: e.target.value })}
+                      className="w-full px-3.5 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 text-sm font-semibold outline-none focus:border-indigo-500"
+                      placeholder="Jai Krishna"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Email Address</label>
+                    <input
+                      type="email"
+                      required
+                      value={registerData.email}
+                      onChange={e => setRegisterData({ ...registerData, email: e.target.value })}
+                      className="w-full px-3.5 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 text-sm font-semibold outline-none focus:border-indigo-500"
+                      placeholder="jai@example.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={registerData.password}
+                        onChange={e => setRegisterData({ ...registerData, password: e.target.value })}
+                        className="w-full px-3.5 py-2 pr-10 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 text-sm font-semibold outline-none focus:border-indigo-500"
+                        placeholder="Create a password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(p => !p)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                        tabIndex={-1}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Confirm Password</label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        required
+                        value={registerData.confirmPassword}
+                        onChange={e => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
+                        className="w-full px-3.5 py-2 pr-10 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 text-sm font-semibold outline-none focus:border-indigo-500"
+                        placeholder="Confirm your password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(p => !p)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                        tabIndex={-1}
+                        aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Country</label>
+                    <select
+                      required
+                      value={registerData.country}
+                      onChange={e => setRegisterData({ ...registerData, country: e.target.value })}
+                      className="w-full px-3.5 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-semibold outline-none focus:border-indigo-500"
+                    >
+                      <option value="" disabled>Select your country</option>
+                      {countries.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-2 py-0.5">
+                    <input
+                      type="checkbox"
+                      id="terms"
+                      checked={registerData.termsAccepted}
+                      onChange={e => setRegisterData({ ...registerData, termsAccepted: e.target.checked })}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                    />
+                    <label htmlFor="terms" className="text-xs text-slate-500 dark:text-slate-400 font-semibold leading-none">
+                      I agree to the <span className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer">Terms &amp; Privacy Policy</span>
+                    </label>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-md transition-colors mt-1"
+                  >
+                    {isLoading ? "Creating Account..." : "Create Account →"}
+                  </Button>
+                </form>
+
+                <div className="mt-4 text-center text-xs font-bold text-slate-400">
+                  Already have an account?{' '}
+                  <Link to="/login" className="text-indigo-600 dark:text-indigo-400 hover:underline">Login</Link>
+                </div>
               </div>
-            )}
-
-            <form onSubmit={handleRegister} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  value={registerData.fullName}
-                  onChange={e => setRegisterData({ ...registerData, fullName: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 text-slate-900 placeholder-slate-400 text-sm font-semibold outline-none focus:border-indigo-500"
-                  placeholder="Jai Krishna"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Email Address</label>
-                <input
-                  type="email"
-                  required
-                  value={registerData.email}
-                  onChange={e => setRegisterData({ ...registerData, email: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 text-slate-900 placeholder-slate-400 text-sm font-semibold outline-none focus:border-indigo-500"
-                  placeholder="jai@example.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Password</label>
-                <input
-                  type="password"
-                  required
-                  value={registerData.password}
-                  onChange={e => setRegisterData({ ...registerData, password: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 text-slate-900 placeholder-slate-400 text-sm font-semibold outline-none focus:border-indigo-500"
-                  placeholder="Create a password"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Confirm Password</label>
-                <input
-                  type="password"
-                  required
-                  value={registerData.confirmPassword}
-                  onChange={e => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 text-slate-900 placeholder-slate-400 text-sm font-semibold outline-none focus:border-indigo-500"
-                  placeholder="Confirm your password"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Country</label>
-                <select
-                  required
-                  value={registerData.country}
-                  onChange={e => setRegisterData({ ...registerData, country: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50/50 text-slate-900 text-sm font-semibold outline-none focus:border-indigo-500"
-                >
-                  <option value="" disabled>Select your country</option>
-                  {countries.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2 py-1">
-                <input
-                  type="checkbox"
-                  id="terms"
-                  checked={registerData.termsAccepted}
-                  onChange={e => setRegisterData({ ...registerData, termsAccepted: e.target.checked })}
-                  className="rounded border-slate-300 text-indigo-650 focus:ring-indigo-500 h-4 w-4"
-                />
-                <label htmlFor="terms" className="text-xs text-slate-500 font-semibold leading-none">
-                  I agree to the <span className="text-indigo-600 font-bold hover:underline cursor-pointer">Terms &amp; Privacy Policy</span>
-                </label>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-755 text-white font-bold text-sm rounded-xl shadow-md transition-colors"
-              >
-                {isLoading ? "Creating Account..." : "Create Account →"}
-              </Button>
-            </form>
-
-            <div className="relative my-6 text-center">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100" /></div>
-              <span className="relative bg-white px-3 text-[10px] font-black text-slate-400 uppercase tracking-wider">or continue with</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button className="flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 py-2.5 rounded-xl text-xs font-bold text-slate-700 transition-colors">
-                Google
-              </button>
-              <button className="flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 py-2.5 rounded-xl text-xs font-bold text-slate-700 transition-colors">
-                GitHub
-              </button>
-            </div>
-
-            <div className="mt-6 text-center text-xs font-bold text-slate-400">
-              Already have an account?{' '}
-              <Link to="/login" className="text-indigo-600 hover:underline">Login</Link>
             </div>
           </motion.div>
         )}
