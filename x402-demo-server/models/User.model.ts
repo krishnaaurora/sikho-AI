@@ -59,11 +59,16 @@ export interface IUser extends Document {
   careerDiscoveryAnswers?: any;
   openSource?: any;
   skillProficiencies?: any;
+  welcomeEmailSent?: boolean;
   comparePassword: (candidatePassword: string) => Promise<boolean>;
 }
 
 const UserSchema: Schema = new Schema(
   {
+    welcomeEmailSent: {
+      type: Boolean,
+      default: false,
+    },
     fullName: {
       type: String,
       required: [true, "Full name is required"],

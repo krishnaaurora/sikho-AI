@@ -96,6 +96,25 @@ export const registerService = async (
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
 
+  // Send welcome email asynchronously without blocking registration or throwing on error
+  if (!user.welcomeEmailSent) {
+    import("../email.service.js")
+      .then(({ sendWelcomeEmail }) => {
+        sendWelcomeEmail(user.email, user.fullName)
+          .then(async (sent: boolean) => {
+            if (sent) {
+              await User.findByIdAndUpdate(user._id, { welcomeEmailSent: true });
+            }
+          })
+          .catch((err: any) => {
+            console.error("Error in welcome email dispatch:", err);
+          });
+      })
+      .catch((err: any) => {
+        console.error("Failed to load email service:", err);
+      });
+  }
+
   return { user: toUserResponse(user), accessToken, refreshToken };
 };
 
