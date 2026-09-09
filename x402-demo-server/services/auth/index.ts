@@ -4,6 +4,7 @@ import User, { IUser, UserRole } from "../../models/User.model";
 import { jwtConfig } from "../../config";
 import { AppError } from "../../utils/errors";
 import { toUserResponse } from "../../types/user.types";
+import { emailService } from "../email.service";
 
 // JWT Service
 export const generateAccessToken = (user: IUser) => {
@@ -89,8 +90,23 @@ export const registerService = async (
     email,
     password,
     role: UserRole.LEARNER,
+    welcomeEmailSent: false,
     ...extraOnboarding
   });
+
+  // Automatically trigger welcome email asynchronously (non-blocking, duplicate-protected)
+  (async () => {
+    try {
+      if (!user.welcomeEmailSent) {
+        const sent = await emailService.sendWelcomeEmail(user.email, user.fullName);
+        if (sent) {
+          await User.findByIdAndUpdate(user._id, { welcomeEmailSent: true });
+        }
+      }
+    } catch (err: any) {
+      console.error(`[RegisterService] Failed to send welcome email to ${user.email}:`, err?.message || err);
+    }
+  })();
 
   // Generate tokens
   const accessToken = generateAccessToken(user);
