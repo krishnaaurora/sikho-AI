@@ -59,6 +59,7 @@ export interface IUser extends Document {
   careerDiscoveryAnswers?: any;
   openSource?: any;
   skillProficiencies?: any;
+  welcomeEmailSent?: boolean;
   comparePassword: (candidatePassword: string) => Promise<boolean>;
 }
 
@@ -227,6 +228,7 @@ const UserSchema: Schema = new Schema(
     careerDiscoveryAnswers: { type: Schema.Types.Mixed },
     openSource: { type: Schema.Types.Mixed },
     skillProficiencies: { type: Schema.Types.Mixed },
+    welcomeEmailSent: { type: Boolean, default: false },
   },
   {
     timestamps: true,
