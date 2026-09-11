@@ -92,14 +92,24 @@ router.post(
   unlockResumePass
 );
 
-// POST  /api/v1/resume/:resumeId/quality    — Trigger quality & ATS analysis
-router.post("/:resumeId/quality", optionalAuthenticate, runQualityAnalysis);
+// POST  /api/v1/resume/:resumeId/quality    — Trigger quality & ATS analysis (Paid $0.05)
+router.post(
+  "/:resumeId/quality",
+  optionalAuthenticate,
+  enforceWorkspacePayment({ priceUsd: 0.05, description: "ATS Quality & Gaps Analysis" }),
+  runQualityAnalysis
+);
 
 // GET   /api/v1/resume/:resumeId/quality     — Fetch analyzed quality metrics
 router.get("/:resumeId/quality", optionalAuthenticate, getQualityAnalysis);
 
-// POST  /api/v1/resume/:resumeId/career-fit  — Trigger career fit analysis
-router.post("/:resumeId/career-fit", optionalAuthenticate, runCareerFit);
+// POST  /api/v1/resume/:resumeId/career-fit  — Trigger career fit analysis (Paid $0.50)
+router.post(
+  "/:resumeId/career-fit",
+  optionalAuthenticate,
+  enforceWorkspacePayment({ priceUsd: 0.50, description: "Resume Career Fit & Top Roles" }),
+  runCareerFit
+);
 
 // GET   /api/v1/resume/:resumeId/career-fit  — Get cached career fit data
 router.get("/:resumeId/career-fit", optionalAuthenticate, getCareerFit);
@@ -113,7 +123,7 @@ router.post("/:resumeId/intent", optionalAuthenticate, extractIntent);
 // POST  /api/v1/resume/:resumeId/discover-jobs — Real-time job discovery (free — no payment gate)
 router.post("/:resumeId/discover-jobs", optionalAuthenticate, discoverJobs);
 
-// GET & POST /api/v1/resume/find-jobs — Personalised job discovery (x402 $0.02)
+// GET & POST /api/v1/resume/find-jobs — Personalised job discovery (x402 $0.50)
 //   Returns 402 Payment Required if no payment header provided
 //   Page 1: Gemini + Google Search  |  Page 2+: Greenhouse + Lever + Ashby
 //
@@ -125,7 +135,7 @@ router.get(
   "/find-jobs",
   optionalAuthenticate,
   enforceWorkspacePayment({
-    priceUsd: 0.02,
+    priceUsd: 0.50,
     description: "Sikho AI Resume Intelligence — Personalised Real-Time Job Discovery",
     mimeType: "application/json",
     discoveryInput: {
@@ -191,7 +201,7 @@ router.post(
   "/find-jobs",
   optionalAuthenticate,
   enforceWorkspacePayment({
-    priceUsd: 0.02,
+    priceUsd: 0.50,
     description: "Sikho AI Resume Intelligence — Personalised Real-Time Job Discovery",
     mimeType: "application/json",
     discoveryInput: {
@@ -265,7 +275,7 @@ router.get("/jobs", listJobs);
 router.post("/jobs/backfill-intelligence", backfillIntelligence);
 
 // POST  /api/v1/resume/jobs/:jobId/analyze         — Analyze single job
-router.post("/jobs/:jobId/analyze", optionalAuthenticate, enforceWorkspacePayment({ priceUsd: 0.02, description: "Job-Specific Resume Analysis" }), analyzeJob);
+router.post("/jobs/:jobId/analyze", optionalAuthenticate, enforceWorkspacePayment({ priceUsd: 0.50, description: "Job-Specific Resume Analysis" }), analyzeJob);
 
 // GET   /api/v1/resume/jobs/:jobId/intelligence    — Fetch job intelligence
 router.get("/jobs/:jobId/intelligence", getJobIntelligence);
