@@ -156,7 +156,7 @@ interface PrepResult {
   resources?: Resource[];
 }
 
-const PYTHON_API_BASE = 'http://localhost:8000';
+const PYTHON_API_BASE = import.meta.env.VITE_INTERVIEW_API_URL ?? 'http://localhost:8000';
 
 const DIFFICULTY_CONFIG: Record<string, { label: string; color: string }> = {
   easy:   { label: 'Easy',   color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
@@ -455,7 +455,7 @@ const InterviewPrep: React.FC = () => {
     } catch (err: any) {
       setError(
         err.message?.includes('Failed to fetch')
-          ? 'Cannot connect to Interview Prep server (localhost:8000). Please ensure your Python backend is running.'
+          ? `Cannot connect to Interview Prep server (${PYTHON_API_BASE}). Please ensure the backend is running.`
           : err.message || 'An error occurred during analysis.'
       );
     } finally {
