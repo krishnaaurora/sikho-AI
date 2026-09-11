@@ -12,8 +12,6 @@ import { discoverJobs } from "../controllers/resume/apify.controller";
 import { analyzeJob } from "../controllers/resume/jobIntelligence.controller";
 import { applyResumeImprovements, generateProjectPlan } from "../controllers/resume/resumeImprovement.controller";
 import { generateCareerActionPlan } from "../services/resumeImprovement.service";
-import { runQualityAnalysis } from "../controllers/resume/quality.controller";
-import { runCareerFit } from "../controllers/resume/careerFit.controller";
 
 const router = express.Router();
 
@@ -52,17 +50,6 @@ const seedServices = async () => {
   } catch (e) {
     // Ignore if index doesn't exist
   }
-  
-  // Ensure existing seeded services also update to latest prices
-  await X402Service.updateOne({ serviceId: "resume_pass" }, { $set: { priceUsd: 0.50 } });
-  await X402Service.updateOne({ serviceId: "custom_search" }, { $set: { priceUsd: 0.50 } });
-  await X402Service.updateOne({ serviceId: "job_analysis" }, { $set: { priceUsd: 0.50 } });
-  await X402Service.updateOne({ serviceId: "resume_improve" }, { $set: { priceUsd: 0.05 } });
-  await X402Service.updateOne({ serviceId: "project_generate" }, { $set: { priceUsd: 0.03 } });
-  await X402Service.updateOne({ serviceId: "action_plan" }, { $set: { priceUsd: 0.10 } });
-  await X402Service.updateOne({ serviceId: "ats_analysis" }, { $set: { priceUsd: 0.05, endpoint: "/api/v1/x402/ats-analysis" } });
-  await X402Service.updateOne({ serviceId: "career_fit" }, { $set: { priceUsd: 0.50, endpoint: "/api/v1/x402/career-fit" } });
-
   const count = await X402Service.countDocuments();
   if (count === 0) {
     await X402Service.create([
@@ -78,7 +65,7 @@ const seedServices = async () => {
         serviceId: "custom_search",
         name: "Target Career Exploration Search",
         description: "Live Apify scraper search for custom target career transition goals",
-        priceUsd: 0.50,
+        priceUsd: 0.02,
         endpoint: "/api/x402/target-career-search",
         status: "Active"
       },
@@ -86,7 +73,7 @@ const seedServices = async () => {
         serviceId: "job_analysis",
         name: "Deep Job-Specific Analysis",
         description: "Deep AI-driven gap analysis of your resume against a selected job description",
-        priceUsd: 0.50,
+        priceUsd: 0.02,
         endpoint: "/api/x402/job-analysis",
         status: "Active"
       },
@@ -115,23 +102,72 @@ const seedServices = async () => {
         status: "Active"
       },
       {
-        serviceId: "ats_analysis",
-        name: "ATS Quality & Gaps Analysis",
-        description: "Detailed evaluation of resume sections, clarity, and ATS compatibility",
-        priceUsd: 0.05,
-        endpoint: "/api/v1/x402/ats-analysis",
+        serviceId: "interview_questions",
+        name: "Technical Interview Questions AI Pass",
+        description: "Unlock tailored architectural & technical interview questions with STAR answers",
+        priceUsd: 0.03,
+        endpoint: "/api/v1/interview-pro/interview-questions",
         status: "Active"
       },
       {
-        serviceId: "career_fit",
-        name: "Resume Career Fit & Top Roles",
-        description: "AI-based matching of resume details against target career paths",
-        priceUsd: 0.50,
-        endpoint: "/api/v1/x402/career-fit",
+        serviceId: "learning_path",
+        name: "Learning Path 3-Module Batch Unlock",
+        description: "Unlock next batch of 3 in-depth concept & scenario modules",
+        priceUsd: 0.09,
+        endpoint: "/api/v1/interview-pro/learning-path",
+        status: "Active"
+      },
+      {
+        serviceId: "study_resources",
+        name: "Curated Study Resources Pass",
+        description: "Unlock curated technical primers, system design docs, and indexing guides",
+        priceUsd: 0.03,
+        endpoint: "/api/v1/interview-pro/study-resources",
         status: "Active"
       }
     ]);
   }
+  // Ensure existing seeded services also update or insert
+  await X402Service.updateOne({ serviceId: "resume_pass" }, { $set: { priceUsd: 0.50 } });
+  await X402Service.updateOne(
+    { serviceId: "interview_questions" },
+    {
+      $set: {
+        name: "Technical Interview Questions AI Pass",
+        description: "Unlock tailored architectural & technical interview questions with STAR answers",
+        priceUsd: 0.03,
+        endpoint: "/api/v1/interview-pro/interview-questions",
+        status: "Active"
+      }
+    },
+    { upsert: true }
+  );
+  await X402Service.updateOne(
+    { serviceId: "learning_path" },
+    {
+      $set: {
+        name: "Learning Path 3-Module Batch Unlock",
+        description: "Unlock next batch of 3 in-depth concept & scenario modules",
+        priceUsd: 0.09,
+        endpoint: "/api/v1/interview-pro/learning-path",
+        status: "Active"
+      }
+    },
+    { upsert: true }
+  );
+  await X402Service.updateOne(
+    { serviceId: "study_resources" },
+    {
+      $set: {
+        name: "Curated Study Resources Pass",
+        description: "Unlock curated technical primers, system design docs, and indexing guides",
+        priceUsd: 0.03,
+        endpoint: "/api/v1/interview-pro/study-resources",
+        status: "Active"
+      }
+    },
+    { upsert: true }
+  );
 };
 
 // GET /api/x402/services -> list pricing
@@ -189,22 +225,22 @@ router.post(
   })
 );
 
-// ─── ENDPOINT 2: TARGET CAREER MARKET SEARCH ($0.50) ───
+// ─── ENDPOINT 2: TARGET CAREER MARKET SEARCH ($0.02) ───
 router.post(
   "/target-career-search",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.50, description: "Target Career Exploration Search" }),
+  enforceWorkspacePayment({ priceUsd: 0.02, description: "Target Career Exploration Search" }),
   asyncHandler(async (req: any, res: Response, next: NextFunction) => {
     req.params.resumeId = req.body.resumeId;
     return discoverJobs(req, res, next);
   })
 );
 
-// ─── ENDPOINT 3: JOB-SPECIFIC ANALYSIS ($0.50) ───
+// ─── ENDPOINT 3: JOB-SPECIFIC ANALYSIS ($0.02) ───
 router.post(
   "/job-analysis",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.50, description: "Deep Job-Specific Analysis" }),
+  enforceWorkspacePayment({ priceUsd: 0.02, description: "Deep Job-Specific Analysis" }),
   asyncHandler(async (req: any, res: Response, next: NextFunction) => {
     req.params.jobId = req.body.jobId;
     req.params.resumeId = req.body.resumeId;
@@ -243,28 +279,6 @@ router.post(
     const { resumeId, targetCareer } = req.body;
     const actionPlan = await generateCareerActionPlan(resumeId, targetCareer);
     return sendSuccessResponse(res, actionPlan, "Career action plan generated successfully.");
-  })
-);
-
-// ─── ENDPOINT 7: ATS QUALITY & GAPS ANALYSIS ($0.05) ───
-router.post(
-  "/ats-analysis",
-  optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.05, description: "ATS Quality & Gaps Analysis" }),
-  asyncHandler(async (req: any, res: Response, next: NextFunction) => {
-    req.params.resumeId = req.body.resumeId;
-    return runQualityAnalysis(req, res, next);
-  })
-);
-
-// ─── ENDPOINT 8: RESUME CAREER FIT & TOP ROLES ($0.50) ───
-router.post(
-  "/career-fit",
-  optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.50, description: "Resume Career Fit & Top Roles" }),
-  asyncHandler(async (req: any, res: Response, next: NextFunction) => {
-    req.params.resumeId = req.body.resumeId;
-    return runCareerFit(req, res, next);
   })
 );
 

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { 
   Sparkles, Play, Code2, HelpCircle, Terminal, Microscope, 
   UserCheck, Compass, MessageSquare, AlertCircle, FileSpreadsheet,
-  Wallet
+  Wallet, ShieldAlert
 } from 'lucide-react';
 import { useWallet } from '@txnlab/use-wallet-react';
 // @ts-ignore
@@ -27,7 +27,29 @@ const ENDPOINTS: EndpointInfo[] = [
   { path: "/api/v1/ai/research-analysis", name: "7. Research Analysis", price: "$0.010", icon: <Microscope size={16} />, placeholderInput: JSON.stringify({ title: "Attention Is All You Need", abstract: "We propose Transformer, a model architecture relying entirely on self-attention mechanisms..." }, null, 2) },
   { path: "/api/v1/ai/interactive-lab", name: "8. Interactive Lab", price: "$0.003", icon: <Compass size={16} />, placeholderInput: JSON.stringify({ labId: "http-request-response", topic: "HTTP" }, null, 2) },
   { path: "/api/v1/ai/resume-analysis", name: "9. Resume Analysis", price: "$0.004", icon: <UserCheck size={16} />, placeholderInput: JSON.stringify({ resumeText: "Sneha, Backend Developer. Skills: Python, Node.js.", targetRole: "Software Engineer" }, null, 2) },
-  { path: "/api/v1/ai/career-roadmap", name: "10. Career Roadmap", price: "$0.005", icon: <Compass size={16} />, placeholderInput: JSON.stringify({ targetRole: "ML Engineer", currentSkills: ["Python", "Machine Learning"], experienceLevel: "Beginner" }, null, 2) }
+  { path: "/api/v1/ai/career-roadmap", name: "10. Career Roadmap", price: "$0.005", icon: <Compass size={16} />, placeholderInput: JSON.stringify({ targetRole: "ML Engineer", currentSkills: ["Python", "Machine Learning"], experienceLevel: "Beginner" }, null, 2) },
+  { path: "https://prism-99h2.onrender.com/code-review-accurate", name: "11. Senior Code Review (x402 Global Challenge)", price: "$0.200", icon: <ShieldAlert size={16} />, placeholderInput: JSON.stringify({ file_path: "src/index.ts", raw_url: "https://raw.githubusercontent.com/algorandfoundation/algokit-utils-ts/main/src/index.ts" }, null, 2) },
+  { 
+    path: "/api/v1/interview-pro/interview-questions", 
+    name: "12. Technical Interview Questions (x402 AI Pass)", 
+    price: "$0.030", 
+    icon: <MessageSquare size={16} />, 
+    placeholderInput: JSON.stringify({ role: "Full Stack Software Engineer", experience: "Senior", gaps: ["System Design", "Database Indexing", "Distributed Caching"] }, null, 2) 
+  },
+  { 
+    path: "/api/v1/interview-pro/learning-path", 
+    name: "13. Learning Path 3-Module Batch (x402 AI Pass)", 
+    price: "$0.090", 
+    icon: <Compass size={16} />, 
+    placeholderInput: JSON.stringify({ batch: 2, role: "Full Stack Software Engineer", modulesToUnlock: 3 }, null, 2) 
+  },
+  { 
+    path: "/api/v1/interview-pro/study-resources", 
+    name: "14. Curated Study Resources (x402 AI Pass)", 
+    price: "$0.030", 
+    icon: <HelpCircle size={16} />, 
+    placeholderInput: JSON.stringify({ topic: "System Design & Modern Backend Architecture", gaps: ["Distributed Systems", "SQL Indexing"] }, null, 2) 
+  }
 ];
 
 function getCustomPlaceholder(endpointPath: string, query: string): string {
@@ -55,6 +77,12 @@ function getCustomPlaceholder(endpointPath: string, query: string): string {
       obj.resumeText = query;
     } else if (endpointPath === "/api/v1/ai/career-roadmap") {
       obj.targetRole = query;
+    } else if (endpointPath === "/api/v1/interview-pro/interview-questions") {
+      obj.role = query;
+    } else if (endpointPath === "/api/v1/interview-pro/learning-path") {
+      obj.role = query;
+    } else if (endpointPath === "/api/v1/interview-pro/study-resources") {
+      obj.topic = query;
     }
     return JSON.stringify(obj, null, 2);
   } catch (_) {
@@ -101,6 +129,7 @@ const ApiPlayground: React.FC = () => {
     }
   }, [pathParam, queryParam]);
   
+  const [httpMethod, setHttpMethod] = useState<'POST' | 'GET'>('POST');
   const [httpStatus, setHttpStatus] = useState<number | null>(null);
   const [responseHeaders, setResponseHeaders] = useState<Record<string, string>>({});
   const [responseBody, setResponseBody] = useState<any>(null);
@@ -133,11 +162,36 @@ const ApiPlayground: React.FC = () => {
     }
 
     try {
-      const response = await fetch(selectedEndpoint.path, {
-        method: "POST",
-        headers,
-        body: inputJson
-      });
+      let url = selectedEndpoint.path;
+      let options: RequestInit = {
+        method: httpMethod,
+        headers
+      };
+
+      if (httpMethod === 'POST') {
+        options.body = inputJson;
+      } else {
+        // Build URL query string from input JSON for GET requests
+        if (inputJson.trim()) {
+          try {
+            const parsed = JSON.parse(inputJson);
+            const params = new URLSearchParams();
+            Object.entries(parsed).forEach(([key, val]) => {
+              if (Array.isArray(val)) {
+                params.append(key, val.join(","));
+              } else if (val !== null && val !== undefined) {
+                params.append(key, String(val));
+              }
+            });
+            const qs = params.toString();
+            if (qs) {
+              url += (url.includes('?') ? '&' : '?') + qs;
+            }
+          } catch (_) {}
+        }
+      }
+
+      const response = await fetch(url, options);
 
       setHttpStatus(response.status);
       const headersObj: Record<string, string> = {};
@@ -277,12 +331,33 @@ const ApiPlayground: React.FC = () => {
           <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5 shadow-sm">
             
             {/* Active Endpoint Spec */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <div>
-                <span className="text-[10px] font-mono bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded font-bold uppercase">
-                  POST
-                </span>
-                <span className="ml-2 font-mono text-xs font-bold text-slate-700">{selectedEndpoint.path}</span>
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setHttpMethod('GET')}
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition ${
+                      httpMethod === 'GET'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    GET
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHttpMethod('POST')}
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition ${
+                      httpMethod === 'POST'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    POST
+                  </button>
+                </div>
+                <span className="font-mono text-xs font-bold text-slate-700">{selectedEndpoint.path}</span>
               </div>
               <span className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 px-3 py-1 rounded-full">
                 Cost: {selectedEndpoint.price} USDC

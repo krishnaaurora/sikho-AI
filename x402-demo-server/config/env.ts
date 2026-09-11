@@ -41,6 +41,16 @@ export const env = {
     process.env.GROQ_API_KEY_26,
     process.env.GROQ_API_KEY_27,
   ].filter(Boolean) as string[],
+  GROQ_INTERVIEW_PREP_KEYS: [
+    process.env.GROQ_API_KEY_20,
+    process.env.GROQ_API_KEY_21,
+    process.env.GROQ_API_KEY_22,
+    process.env.GROQ_API_KEY_23,
+    process.env.GROQ_API_KEY_24,
+    process.env.GROQ_API_KEY_25,
+    process.env.GROQ_API_KEY_26,
+    process.env.GROQ_API_KEY_27,
+  ].filter(Boolean) as string[],
   // ─── Resume Intelligence dedicated key pool ────────────────────
   // All 27 keys are used for round-robin rotation across ATS analysis,
   // career fit, resume extraction, and improvements.
@@ -91,4 +101,9 @@ export const env = {
    * Must be the Vercel production URL — NOT localhost.
    */
   PUBLIC_SITE_URL: process.env.PUBLIC_SITE_URL || "https://sikho-ai-37ni.vercel.app",
+  /**
+   * Canonical public-facing backend domain for GoPlausible x402 resource tracking.
+   * Ensures all endpoints register under merchant c2e058960979f0f2 on the dashboard.
+   */
+  PUBLIC_BACKEND_URL: process.env.PUBLIC_BACKEND_URL || process.env.RENDER_EXTERNAL_URL || "https://sikho-ai.onrender.com",
 };

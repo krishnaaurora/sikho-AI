@@ -39,7 +39,16 @@ interface AuthContextType {
   checkAuth: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const defaultAuthContext: AuthContextType = {
+  user: null,
+  isLoading: false,
+  login: async () => {},
+  register: async () => {},
+  logout: async () => {},
+  checkAuth: async () => {},
+};
+
+const AuthContext = createContext<AuthContextType>(defaultAuthContext);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -49,7 +58,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true);
     try {
       const response = await authApi.getCurrentUser();
-      if (response.success && response.data?.user) {
+      if (response && response.success && response.data?.user) {
         setUser(response.data.user);
       } else {
         setUser(null);
@@ -63,7 +72,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, password: string) => {
     const response = await authApi.login({ email, password });
-    if (response.success && response.data?.user) {
+    if (response && response.success && response.data?.user) {
       setUser(response.data.user);
     }
   };
@@ -99,8 +108,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return context || defaultAuthContext;
 };
+

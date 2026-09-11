@@ -98,6 +98,21 @@ const Navbar = () => {
                     </>
                   ) : (
                     <>
+                      <Button
+                        variant="ghost"
+                        className={`rounded-xl flex items-center gap-1.5 transition-all text-xs font-semibold px-3 py-2 ${
+                          location.pathname === '/interview-prep'
+                            ? 'bg-amber-100/80 text-amber-800 border border-amber-300 shadow-sm'
+                            : 'text-slate-700 hover:text-amber-700 hover:bg-amber-50/80 border border-transparent'
+                        }`}
+                        asChild
+                      >
+                        <Link to="/interview-prep">
+                          <Sparkles className="h-4 w-4 text-amber-500" />
+                          <span>Interview Prep</span>
+                        </Link>
+                      </Button>
+
                       {activeAddress ? (
                         <Button
                           variant="outline"
@@ -162,6 +177,13 @@ const Navbar = () => {
               /* LANDING NAVBAR LAYOUT (LOGGED OUT) */
               <>
                 <div className="hidden md:flex items-center gap-8">
+                  <Link
+                    to="/interview-prep"
+                    className="relative text-sm font-semibold text-slate-600 hover:text-amber-600 transition-colors duration-200 flex items-center gap-1.5"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                    <span>Interview Prep</span>
+                  </Link>
                   {[
                     { name: "AI Tools", href: "#ai-tools", color: "hover:after:bg-blue-500" },
                     { name: "Workflow Demo", href: "#workflow-demo", color: "hover:after:bg-purple-500" }
@@ -276,6 +298,13 @@ const Navbar = () => {
 
                         <Button variant="ghost" className="w-full justify-start rounded-xl" asChild onClick={() => setIsOpen(false)}>
                           <Link to={dashboardPath}>Dashboard</Link>
+                        </Button>
+                        
+                        <Button variant="ghost" className="w-full justify-start rounded-xl text-amber-700 bg-amber-50/50 hover:bg-amber-100/50 font-semibold" asChild onClick={() => setIsOpen(false)}>
+                          <Link to="/interview-prep" className="flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-amber-500" />
+                            <span>Interview Prep Studio</span>
+                          </Link>
                         </Button>
                         
                         <Button variant="ghost" className="w-full justify-start rounded-xl" onClick={() => setIsOpen(false)}>

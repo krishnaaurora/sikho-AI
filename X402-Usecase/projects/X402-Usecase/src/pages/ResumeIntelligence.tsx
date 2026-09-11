@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { useImageUpload } from '../hooks/useImageUpload';
 import { cn } from '../lib/utils';
@@ -68,6 +68,7 @@ const DEFAULT_CAREER_ROLES: Array<{role: string; confidence: number; reasons: st
 const ResumeIntelligence: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { activeAddress, signTransactions } = useWallet();
   // Derive the backend origin — strip any /api/v1 or /api suffix, keep protocol+host+port intact.
   // API_BASE_URL is e.g. "http://localhost:4021/api/v1" → "http://localhost:4021"
@@ -89,7 +90,7 @@ const ResumeIntelligence: React.FC = () => {
   const [hasResume, setHasResume] = useState(false);
   const [extractedData, setExtractedData] = useState<any | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
-  const [currentView, setCurrentView] = useState<'overview' | 'quality' | 'skills' | 'career' | 'discovery' | 'experience' | 'gaps' | 'market' | 'projects' | 'target' | 'targetmatch' | 'improve' | 'match' | 'action' | 'versions' | 'progress' | 'jobdisc' | 'jobintel' | 'payment' | 'rematch' | 'projectplan' | 'jobs' | 'applications'>('quality');
+  const [currentView, setCurrentView] = useState<'overview' | 'quality' | 'skills' | 'career' | 'readiness' | 'discovery' | 'experience' | 'gaps' | 'market' | 'projects' | 'target' | 'targetmatch' | 'improve' | 'match' | 'action' | 'versions' | 'progress' | 'jobdisc' | 'jobintel' | 'payment' | 'rematch' | 'projectplan' | 'jobs' | 'applications'>('quality');
   const [activeTab, setActiveTab] = useState<string>('Personal Info');
   const [jobAnalysisPaid, setJobAnalysisPaid] = useState<Record<number, boolean>>({});
   const [paymentStep, setPaymentStep] = useState<'paywall' | '402' | 'wallet' | 'verifying' | 'complete' | null>(null);
@@ -106,8 +107,17 @@ const ResumeIntelligence: React.FC = () => {
   const [selectedTx, setSelectedTx] = useState<any | null>(null);
   const [selectedBucket, setSelectedBucket] = useState<'100%' | '75%' | '50%' | '20%' | '0%'>('100%');
 
+  // Auto-switch to readiness view if navigating to /interview-prep
+  useEffect(() => {
+    if (location.pathname === '/interview-prep') {
+      setHasResume(true);
+      setResumeIntelUnlocked(true);
+      setCurrentView('readiness' as any);
+    }
+  }, [location.pathname]);
+
   // Gating & Pricing Model States (Phase 31)
-  const [resumeIntelUnlocked, setResumeIntelUnlocked] = useState(true);
+  const [resumeIntelUnlocked, setResumeIntelUnlocked] = useState(false);
   const [jobDiscoveryUnlocked, setJobDiscoveryUnlocked] = useState(false);
   const [jobDiscoveryPaymentStep, setJobDiscoveryPaymentStep] = useState<'402' | 'wallet' | 'verifying' | 'complete' | null>(null);
   const [activePaymentService, setActivePaymentService] = useState<'job_discovery' | 'job_analysis' | null>(null);
@@ -119,10 +129,6 @@ const ResumeIntelligence: React.FC = () => {
   const [careerActionPlanPaid, setCareerActionPlanPaid] = useState(false);
   const [careerActionPlanPaymentStep, setCareerActionPlanPaymentStep] = useState<'paywall' | '402' | 'wallet' | 'verifying' | 'complete' | null>(null);
   const [projectBlueprint, setProjectBlueprint] = useState<any | null>(null);
-  const [atsAnalysisUnlocked, setAtsAnalysisUnlocked] = useState(false);
-  const [atsAnalysisPaymentStep, setAtsAnalysisPaymentStep] = useState<'paywall' | '402' | 'wallet' | 'verifying' | 'complete' | null>(null);
-  const [careerFitUnlocked, setCareerFitUnlocked] = useState(false);
-  const [careerFitPaymentStep, setCareerFitPaymentStep] = useState<'paywall' | '402' | 'wallet' | 'verifying' | 'complete' | null>(null);
 
   // Moved nested page subview states to top-level
   const [searchQuery, setSearchQuery] = useState('');
@@ -192,7 +198,7 @@ const ResumeIntelligence: React.FC = () => {
 
   // ─── API helper ───────────────────────────────────────────────────
   const apiFetch = useCallback(async (path: string, options: RequestInit = {}) => {
-    const token = localStorage.getItem('token') || document.cookie.split('; ').find(row => row.startsWith('accessToken='))?.split('=')[1];
+    const token = localStorage.getItem('accessToken') || localStorage.getItem('token') || document.cookie.split('; ').find(row => row.startsWith('accessToken='))?.split('=')[1];
     const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(options.headers as any) };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     // All resume API calls go to backendOrigin (port 4021), x402/v1 calls also go there
@@ -282,13 +288,16 @@ const ResumeIntelligence: React.FC = () => {
       return;
     }
 
-    // Auto-unlock Resume Intelligence (calls backend unlock — works immediately when BYPASS_PAYMENT=true)
+    // Check if Resume Intelligence pass is already unlocked
     try {
-      await apiFetch(`/api/v1/resume/${rid}/unlock`, { method: 'POST' });
-      setResumeIntelUnlocked(true);
+      const unlockStatus = await apiFetch(`/api/v1/resume/${rid}/unlock`, { method: 'POST' });
+      if (unlockStatus.success) {
+        setResumeIntelUnlocked(true);
+      }
     } catch (unlockErr) {
-      // 402 returned — user will need to pay via the UI button
-      console.info('[Pipeline] Resume Intelligence requires payment');
+      // 402 returned — user must pay $0.50 USDC via x402 pass paywall
+      setResumeIntelUnlocked(false);
+      console.info('[Pipeline] Resume Intelligence requires x402 payment pass');
     }
 
     // Step 2, 3, 9 in parallel!
@@ -451,17 +460,6 @@ const ResumeIntelligence: React.FC = () => {
   useEffect(() => {
     fetchX402Data();
   }, [fetchX402Data, currentView]);
-
-  useEffect(() => {
-    if (extractedData) {
-      if (extractedData.qualityScore > 0) {
-        setAtsAnalysisUnlocked(true);
-      }
-      if (extractedData.topRoles?.length > 0) {
-        setCareerFitUnlocked(true);
-      }
-    }
-  }, [extractedData]);
   
 
 
@@ -522,7 +520,7 @@ const ResumeIntelligence: React.FC = () => {
   const [liveJobsList, setLiveJobsList] = useState<any[]>([]);
   const [jobsLoadError, setJobsLoadError] = useState<string | null>(null);
   // Career fit data — top 5 matched roles from AI analysis
-  const [careerFitRoles, setCareerFitRoles] = useState<Array<{role: string; confidence: number; reasons: string[]}>>([]);
+  const [careerFitRoles, setCareerFitRoles] = useState<Array<{role: string; confidence: number; reasons: string[]}>>(DEFAULT_CAREER_ROLES);
   const [careerFitLoading, setCareerFitLoading] = useState(false);
   // Active role filter tab in Job Opportunities view ('all' = show everything)
   const [jobRoleFilter, setJobRoleFilter] = useState<string>('all');
@@ -649,138 +647,27 @@ const ResumeIntelligence: React.FC = () => {
           return;
         }
       }
+      // Not computed yet — trigger POST
+      const postRes = await apiFetch(`/api/v1/resume/${rid}/career-fit`, { method: 'POST' });
+      if (postRes.success && postRes.data?.topRoles?.length > 0) {
+        const normalised = (postRes.data.topRoles as any[]).map((r: any) => ({
+          role:       r.role || r.career || '',
+          confidence: Math.round(r.confidence > 1 ? r.confidence : r.confidence * 100),
+          reasons:    r.reasons && r.reasons.length > 0 ? r.reasons : [
+            `Strong alignment with ${r.role || r.career} core requirements`,
+            `Relevant skills and background experience`,
+            `Demonstrated competency in key technologies`
+          ],
+        })).filter((r: any) => r.role);
+        if (normalised.length > 0) {
+          setCareerFitRoles(normalised);
+          if (!selectedCareerOverview || !normalised.some(n => n.role === selectedCareerOverview)) {
+            setSelectedCareerOverview(normalised[0].role);
+          }
+        }
+      }
     } catch (e) { console.warn('[CareerFit] Fetch failed:', e); }
     finally { setCareerFitLoading(false); }
-  };
-
-  const handleUnlockAtsAnalysis = async () => {
-    if (!resumeId) {
-      alert("Please upload a resume first.");
-      return;
-    }
-    if (!activeAddress) {
-      alert("Please connect your wallet first from the navigation bar.");
-      return;
-    }
-    setAtsAnalysisPaymentStep('402');
-    const token = localStorage.getItem('accessToken');
-    try {
-      // Try direct unlock check first (works if already paid/idempotent or bypassed)
-      const res = await apiFetch(`/api/v1/resume/${resumeId}/quality`, { method: 'POST' });
-      if (res.success) {
-        setAtsAnalysisUnlocked(true);
-        setAtsAnalysisPaymentStep(null);
-        const extractionRes = await apiFetch(`/api/v1/resume/${resumeId}/extraction`);
-        if (extractionRes.success && extractionRes.data) {
-          setExtractedData(extractionRes.data);
-        }
-        return;
-      }
-    } catch (err: any) {
-      setAtsAnalysisPaymentStep('402');
-    }
-
-    try {
-      const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
-      setAtsAnalysisPaymentStep('wallet');
-
-      // Use the static x402 catalog endpoint — this URL registers on GoPlausible dashboard
-      const paidRes = await x402Fetch(`${backendOrigin}/api/v1/x402/ats-analysis`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ resumeId })
-      });
-
-      if (!paidRes.ok) {
-        const errData = await paidRes.json().catch(() => ({}));
-        throw new Error(errData.reason || errData.error || errData.message || `Payment failed with status ${paidRes.status}`);
-      }
-
-      setAtsAnalysisPaymentStep('verifying');
-      await new Promise(r => setTimeout(r, 1200));
-      setAtsAnalysisPaymentStep('complete');
-      setAtsAnalysisUnlocked(true);
-      await new Promise(r => setTimeout(r, 800));
-      setAtsAnalysisPaymentStep(null);
-
-      const extractionRes = await apiFetch(`/api/v1/resume/${resumeId}/extraction`);
-      if (extractionRes.success && extractionRes.data) {
-        setExtractedData(extractionRes.data);
-      }
-    } catch (payErr: any) {
-      console.error('ATS Analysis payment failed:', payErr);
-      setAtsAnalysisPaymentStep(null);
-      alert(payErr?.message || 'Payment failed. Please ensure your Pera wallet is connected and funded with USDC.');
-    }
-  };
-
-  const handleUnlockCareerFit = async () => {
-    if (!resumeId) {
-      alert("Please upload a resume first.");
-      return;
-    }
-    if (!activeAddress) {
-      alert("Please connect your wallet first from the navigation bar.");
-      return;
-    }
-    setCareerFitPaymentStep('402');
-    const token = localStorage.getItem('accessToken');
-    try {
-      // Try direct unlock check first (works if already paid/idempotent or bypassed)
-      const res = await apiFetch(`/api/v1/resume/${resumeId}/career-fit`, { method: 'POST' });
-      if (res.success) {
-        setCareerFitUnlocked(true);
-        setCareerFitPaymentStep(null);
-        const extractionRes = await apiFetch(`/api/v1/resume/${resumeId}/extraction`);
-        if (extractionRes.success && extractionRes.data) {
-          setExtractedData(extractionRes.data);
-        }
-        fetchCareerFitRoles(resumeId);
-        return;
-      }
-    } catch (err: any) {
-      setCareerFitPaymentStep('402');
-    }
-
-    try {
-      const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
-      setCareerFitPaymentStep('wallet');
-
-      // Use the static x402 catalog endpoint — this URL registers on GoPlausible dashboard
-      const paidRes = await x402Fetch(`${backendOrigin}/api/v1/x402/career-fit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ resumeId })
-      });
-
-      if (!paidRes.ok) {
-        const errData = await paidRes.json().catch(() => ({}));
-        throw new Error(errData.reason || errData.error || errData.message || `Payment failed with status ${paidRes.status}`);
-      }
-
-      setCareerFitPaymentStep('verifying');
-      await new Promise(r => setTimeout(r, 1200));
-      setCareerFitPaymentStep('complete');
-      setCareerFitUnlocked(true);
-      await new Promise(r => setTimeout(r, 800));
-      setCareerFitPaymentStep(null);
-      
-      const extractionRes = await apiFetch(`/api/v1/resume/${resumeId}/extraction`);
-      if (extractionRes.success && extractionRes.data) {
-        setExtractedData(extractionRes.data);
-      }
-      fetchCareerFitRoles(resumeId);
-    } catch (payErr: any) {
-      console.error('Career Fit payment failed:', payErr);
-      setCareerFitPaymentStep(null);
-      alert(payErr?.message || 'Payment failed. Please ensure your Pera wallet is connected and funded with USDC.');
-    }
   };
 
   // Auto-load jobs when user opens the Jobs view (only if unlocked and not already loaded/loading)
@@ -1978,15 +1865,16 @@ const ResumeIntelligence: React.FC = () => {
               {/* Nav Items */}
               <div className="space-y-1">
                 {([
-                  { id: 'quality',       emoji: '🎯', label: 'ATS Analysis',     step: 1, sublabel: atsAnalysisUnlocked ? 'Score & improvements' : '🔒 Unlock — $0.05', locked: !atsAnalysisUnlocked },
-                  { id: 'career',        emoji: '🧭', label: 'Career Fit',       step: 2, sublabel: careerFitUnlocked ? 'Top 5 matches' : '🔒 Unlock — $0.50', locked: !careerFitUnlocked },
-                  { id: 'jobs',          emoji: '💼', label: 'Job Opportunities', step: 3, sublabel: jobDiscoveryUnlocked ? 'Live jobs' : '🔒 Unlock — $0.50', locked: !jobDiscoveryUnlocked },
+                  { id: 'quality',       emoji: '🎯', label: 'ATS Analysis',        step: 1, sublabel: 'Score & improvements', locked: false },
+                  { id: 'career',        emoji: '🧭', label: 'Career Fit',          step: 2, sublabel: 'Top 5 matches', locked: false },
+                  { id: 'readiness',     emoji: '⚡', label: 'Job Readiness Spark', step: 3, sublabel: 'Skill gaps & readiness', locked: false },
+                  { id: 'jobs',          emoji: '💼', label: 'Job Opportunities',   step: 4, sublabel: 'Live jobs · 🔒 $0.02', locked: !jobDiscoveryUnlocked },
                 ] as const).map((item) => {
                   const isActive = currentView === item.id;
                   const isDone = (
-                    (item.id === 'quality' && atsAnalysisUnlocked) ||
-                    (item.id === 'career' && careerFitUnlocked) ||
-                    (item.id === 'jobs' && jobDiscoveryUnlocked)
+                    (item.step === 1 && ['career','jobs','applications'].includes(currentView)) ||
+                    (item.step === 2 && ['jobs','applications'].includes(currentView)) ||
+                    (item.step === (4 as any) && currentView === 'applications')
                   );
                   return (
                     <button
@@ -2004,7 +1892,7 @@ const ResumeIntelligence: React.FC = () => {
                         isDone ? 'bg-emerald-50 border border-emerald-200' :
                         'bg-slate-100 border border-slate-200'
                       }`}>
-                        {isDone ? '✓' : item.emoji}
+                        {isDone && !isActive ? '✓' : item.emoji}
                       </div>
                       {/* Labels */}
                       <div className="flex-1 min-w-0">
@@ -2239,7 +2127,7 @@ const ResumeIntelligence: React.FC = () => {
                           }}
                           className="absolute bottom-3 right-3 bg-indigo-500 hover:bg-indigo-600 text-white text-[10px] font-black px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1"
                         >
-                          Explore for $0.50 USDC <ArrowRight size={11} />
+                          Explore for $0.02 USDC <ArrowRight size={11} />
                         </button>
                       </div>
 
@@ -2303,61 +2191,7 @@ const ResumeIntelligence: React.FC = () => {
 
               {/* PAGE: QUALITY & ATS ANALYSIS */}
               {currentView === 'quality' && (
-                !atsAnalysisUnlocked ? (
-                  <div className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-10 text-center space-y-6 shadow-sm">
-                    <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl mx-auto shadow-lg shadow-indigo-100">
-                      🎯
-                    </div>
-                    <div className="max-w-md mx-auto space-y-2">
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-black">
-                        <span>🔒 Algorand X402 Micropayment</span>
-                        <span>•</span>
-                        <span>$0.05 USDC</span>
-                      </div>
-                      <h3 className="text-xl font-black text-slate-900">Unlock Resume Quality &amp; ATS Score</h3>
-                      <p className="text-xs text-slate-550 font-semibold leading-relaxed">
-                        Analyze your resume sections, impact language, formatting, and ATS compatibility using our advanced AI-powered grader.
-                      </p>
-                    </div>
-
-                    <div className="max-w-xs mx-auto">
-                      {atsAnalysisPaymentStep === '402' && (
-                        <div className="flex items-center justify-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs font-black text-indigo-700 animate-pulse mb-4">
-                          <span>💸 Preparing $0.05 USDC micropayment challenge...</span>
-                        </div>
-                      )}
-                      {atsAnalysisPaymentStep === 'wallet' && (
-                        <div className="flex items-center justify-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs font-black text-indigo-700 animate-bounce mb-4">
-                          <span>🔑 Check your Pera wallet to sign the $0.05 USDC transaction...</span>
-                        </div>
-                      )}
-                      {atsAnalysisPaymentStep === 'verifying' && (
-                        <div className="flex items-center justify-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs font-black text-indigo-700 animate-spin mb-4">
-                          <span>⏳ Settling transaction on Algorand blockchain...</span>
-                        </div>
-                      )}
-                      {atsAnalysisPaymentStep === 'complete' && (
-                        <div className="flex items-center justify-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-xs font-black text-emerald-700 mb-4">
-                          <span>✓ Payment confirmed ($0.05 USDC) — Unlocking report...</span>
-                        </div>
-                      )}
-
-                      <button
-                        onClick={handleUnlockAtsAnalysis}
-                        className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-black px-7 py-3.5 rounded-xl shadow-lg shadow-indigo-200 hover:opacity-95 transition-all active:scale-[0.99]"
-                      >
-                        🔒 Unlock ATS Analysis — $0.05 USDC
-                      </button>
-                      
-                      {!activeAddress && (
-                        <p className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-200 rounded-lg p-2 mt-4">
-                          ⚠️ Connect your Pera wallet from the top right to sign the $0.05 transaction.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
                   
                   {/* Top Header */}
                   <div className="flex items-center justify-between">
@@ -2573,7 +2407,6 @@ const ResumeIntelligence: React.FC = () => {
                   </div>
 
                 </motion.div>
-                )
               )}
 
               {/* PAGE 5: SKILL & EVIDENCE INTELLIGENCE */}
@@ -2852,81 +2685,11 @@ const ResumeIntelligence: React.FC = () => {
 
               {/* PAGE: AUTO CAREER DETECTION */}
               {currentView === 'career' && (() => {
-                if (!careerFitUnlocked) {
-                  return (
-                    <div className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-10 text-center space-y-6 shadow-sm">
-                      <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-3xl mx-auto shadow-lg shadow-purple-100">
-                        🧭
-                      </div>
-                      <div className="max-w-md mx-auto space-y-2">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 border border-purple-100 text-purple-700 text-[10px] font-black">
-                          <span>🔒 Algorand X402 Micropayment</span>
-                          <span>•</span>
-                          <span>$0.50 USDC</span>
-                        </div>
-                        <h3 className="text-xl font-black text-slate-900">Unlock Career Fit &amp; Top Roles</h3>
-                        <p className="text-xs text-slate-550 font-semibold leading-relaxed">
-                          AI-powered matching of your resume against top career paths, with confidence scores and detailed fit reasoning for each role.
-                        </p>
-                      </div>
-
-                      <div className="max-w-xs mx-auto">
-                        {careerFitPaymentStep === '402' && (
-                          <div className="flex items-center justify-center gap-2 p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs font-black text-purple-700 animate-pulse mb-4">
-                            <span>💸 Preparing $0.50 USDC micropayment challenge...</span>
-                          </div>
-                        )}
-                        {careerFitPaymentStep === 'wallet' && (
-                          <div className="flex items-center justify-center gap-2 p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs font-black text-purple-700 animate-bounce mb-4">
-                            <span>🔑 Check your Pera wallet to sign the $0.50 USDC transaction...</span>
-                          </div>
-                        )}
-                        {careerFitPaymentStep === 'verifying' && (
-                          <div className="flex items-center justify-center gap-2 p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs font-black text-purple-700 animate-spin mb-4">
-                            <span>⏳ Settling transaction on Algorand blockchain...</span>
-                          </div>
-                        )}
-                        {careerFitPaymentStep === 'complete' && (
-                          <div className="flex items-center justify-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-xs font-black text-emerald-700 mb-4">
-                            <span>✓ Payment confirmed ($0.50 USDC) — Unlocking career fit...</span>
-                          </div>
-                        )}
-
-                        <button
-                          onClick={handleUnlockCareerFit}
-                          className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-black px-7 py-3.5 rounded-xl shadow-lg shadow-purple-200 hover:opacity-95 transition-all active:scale-[0.99]"
-                        >
-                          🔒 Unlock Career Fit — $0.50 USDC
-                        </button>
-
-                        {!activeAddress && (
-                          <p className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-200 rounded-lg p-2 mt-4">
-                            ⚠️ Connect your Pera wallet from the top right to sign the $0.50 transaction.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
-
-                if (careerFitRoles.length === 0) {
-                  return (
-                    <div className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-10 text-center space-y-6 shadow-sm">
-                      <div className="w-16 h-16 rounded-3xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-3xl mx-auto animate-pulse">
-                        🧭
-                      </div>
-                      <div className="max-w-md mx-auto space-y-2">
-                        <h3 className="text-lg font-black text-slate-900">Analysing Career Fit...</h3>
-                        <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                          Please wait while our AI extracts and analyzes your resume details to determine your best-fit career pathways in real-time.
-                        </p>
-                      </div>
-                    </div>
-                  );
-                }
+                // ── Use live data from API, fall back to default top-5 career roles ──
+                const liveRoles = careerFitRoles.length > 0 ? careerFitRoles : DEFAULT_CAREER_ROLES;
 
                 // Normalise to a display-friendly shape
-                const careers = careerFitRoles.map((r, i) => ({
+                const careers = liveRoles.map((r, i) => ({
                   title: r.role,
                   pct:   Math.min(100, Math.round(r.confidence > 1 ? r.confidence : r.confidence * 100)),
                   label: i === 0 ? 'Primary Career' : `Alternative Career ${i}`,
@@ -3086,6 +2849,319 @@ const ResumeIntelligence: React.FC = () => {
                         )}
                       </>
                     )}
+                  </motion.div>
+                );
+              })()}
+
+
+              {/* PAGE: JOB READINESS SPARK */}
+              {(currentView as string) === 'readiness' && (() => {
+                const existingSkills = [
+                  { skill: 'Python', level: 'Advanced', evidenceIn: 'Projects, Work Experience' },
+                  { skill: 'Data Structures & Algorithms', level: 'Intermediate', evidenceIn: 'Education' },
+                  { skill: 'SQL & Database Design', level: 'Intermediate', evidenceIn: 'Projects' },
+                  { skill: 'Machine Learning Fundamentals', level: 'Intermediate', evidenceIn: 'Projects' },
+                  { skill: 'Git & Version Control', level: 'Advanced', evidenceIn: 'Projects' },
+                ];
+                const skillsToStrengthen = [
+                  { skill: 'PyTorch / Deep Learning', priority: 'High', reason: 'Surface-level project usage; deeper model optimization needed', learnTime: '2-3 weeks' },
+                  { skill: 'REST API & FastAPI', priority: 'Medium', reason: 'Basic routes created; needs production async & middleware expertise', learnTime: '1-2 weeks' },
+                ];
+                const missingSkills = [
+                  { skill: 'Docker & Containerization', priority: 'High', reason: 'Essential for deploying ML microservices into staging/prod', learnTime: '1-2 weeks' },
+                  { skill: 'MLOps & CI/CD Pipelines', priority: 'High', reason: 'Crucial for automated model retraining & deployment', learnTime: '2-4 weeks' },
+                  { skill: 'Cloud Platform (AWS/GCP)', priority: 'Medium', reason: 'Expected for deploying scalable backend endpoints', learnTime: '2-3 weeks' },
+                ];
+                const readinessScore = 78;
+
+                return (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-xl font-black text-slate-900">Job Readiness Spark</h2>
+                          <span className="text-[10px] font-black bg-gradient-to-r from-amber-500 to-indigo-600 text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider">AI Powered</span>
+                        </div>
+                        <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                          Real-time breakdown of your current readiness for <strong className="text-indigo-600">{targetRole || 'Machine Learning Engineer'}</strong>.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Readiness Gauge Card */}
+                    <div className="bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+                      <div className="space-y-2 max-w-lg">
+                        <span className="text-[10px] font-black text-indigo-300 uppercase tracking-widest block">Readiness Assessment</span>
+                        <h3 className="text-2xl font-black leading-tight">
+                          You are <span className="text-emerald-400">{readinessScore}% ready</span> for {targetRole || 'your target role'}!
+                        </h3>
+                        <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                          Your resume shows solid foundation in core technical areas. Bridging 2 critical missing skills will boost your match score to 92%+.
+                        </p>
+                      </div>
+
+                      <div className="relative w-32 h-32 flex-shrink-0 flex items-center justify-center">
+                        <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+                          <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="3.5" />
+                          <circle cx="18" cy="18" r="15.5" fill="none" stroke="#10b981" strokeWidth="3.5" strokeDasharray={`${readinessScore} 100`} strokeLinecap="round" />
+                        </svg>
+                        <div className="absolute flex flex-col items-center justify-center">
+                          <span className="text-2xl font-black text-emerald-400">{readinessScore}%</span>
+                          <span className="text-[8px] font-bold text-slate-300 uppercase">Readiness</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3 Skill Columns */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Column 1: Existing Skills */}
+                      <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="text-emerald-500">✓</span> Existing Skills ({existingSkills.length})
+                          </h3>
+                        </div>
+                        <div className="space-y-2.5">
+                          {existingSkills.map(item => (
+                            <div key={item.skill} className="bg-slate-50 border border-slate-100 rounded-2xl p-3 space-y-1">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs font-bold text-slate-800">{item.skill}</span>
+                                <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">{item.level}</span>
+                              </div>
+                              <span className="text-[9.5px] text-slate-400 font-medium block">Evidence: {item.evidenceIn}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Column 2: Skills To Strengthen */}
+                      <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="text-amber-500">⚡</span> Skills To Strengthen ({skillsToStrengthen.length})
+                          </h3>
+                        </div>
+                        <div className="space-y-2.5">
+                          {skillsToStrengthen.map(item => (
+                            <div key={item.skill} className="bg-slate-50 border border-slate-100 rounded-2xl p-3 space-y-1.5">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs font-bold text-slate-800">{item.skill}</span>
+                                <span className="text-[9px] font-black text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">{item.learnTime}</span>
+                              </div>
+                              <p className="text-[9.5px] text-slate-500 font-medium leading-relaxed">{item.reason}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Column 3: Missing Skills */}
+                      <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="text-red-500">🚨</span> Critical Missing Skills ({missingSkills.length})
+                          </h3>
+                        </div>
+                        <div className="space-y-2.5">
+                          {missingSkills.map(item => (
+                            <div key={item.skill} className="bg-slate-50 border border-slate-100 rounded-2xl p-3 space-y-1.5">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs font-bold text-slate-800">{item.skill}</span>
+                                <span className="text-[9px] font-black text-red-700 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">{item.priority} Priority</span>
+                              </div>
+                              <p className="text-[9.5px] text-slate-500 font-medium leading-relaxed">{item.reason}</p>
+                              <div className="pt-1 flex items-center justify-between text-[9px] text-slate-400 font-bold">
+                                <span>Est. time: {item.learnTime}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })()}
+
+
+              {/* PAGE: JOB READINESS SPARK */}
+              {currentView === 'readiness' && (() => {
+                // Build skill lists from extracted data or fall back to demo data
+                const rawSkills: string[] = extractedData?.structuredData?.skills || [];
+                const existingSkills = rawSkills.length > 0
+                  ? rawSkills.slice(0, 6)
+                  : ['Python', 'Machine Learning', 'TensorFlow', 'SQL', 'Pandas', 'Git'];
+
+                const strengthenSkills = rawSkills.length > 6
+                  ? rawSkills.slice(6, 12)
+                  : ['FastAPI', 'Docker', 'MLflow', 'Kubernetes', 'CI/CD', 'AWS'];
+
+                const missingReadinessSkills = [
+                  { skill: 'System Design', priority: 'High', time: '3–4 weeks' },
+                  { skill: 'LLM Fine-tuning', priority: 'High', time: '2–3 weeks' },
+                  { skill: 'Behavioral STAR Stories', priority: 'Medium', time: '1 week' },
+                  { skill: 'Data Structures & Algorithms', priority: 'High', time: '4–6 weeks' },
+                ];
+
+                const readinessScore = Math.min(95, Math.max(45,
+                  extractedData ? 62 + Math.min(30, existingSkills.length * 3) : 62
+                ));
+
+                const circumference = 2 * Math.PI * 52;
+                const dashOffset = circumference - (readinessScore / 100) * circumference;
+
+                return (
+                  <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+
+                    {/* Header */}
+                    <div>
+                      <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                        <span className="text-2xl">⚡</span> Job Readiness Spark
+                      </h2>
+                      <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                        Your personalised interview-readiness breakdown — skills you have, need to strengthen, and gaps to close.
+                      </p>
+                    </div>
+
+                    {/* Score + Gauge */}
+                    <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row gap-6 items-center">
+                      {/* SVG Gauge */}
+                      <div className="relative w-36 h-36 flex-shrink-0">
+                        <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+                          <circle cx="60" cy="60" r="52" fill="none" stroke="#f1f5f9" strokeWidth="10" />
+                          <circle
+                            cx="60" cy="60" r="52" fill="none"
+                            stroke="url(#readinessGrad)" strokeWidth="10"
+                            strokeLinecap="round"
+                            strokeDasharray={circumference}
+                            strokeDashoffset={dashOffset}
+                            style={{ transition: 'stroke-dashoffset 1.2s ease' }}
+                          />
+                          <defs>
+                            <linearGradient id="readinessGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#6366f1" />
+                              <stop offset="100%" stopColor="#a855f7" />
+                            </linearGradient>
+                          </defs>
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-3xl font-black text-slate-900">{readinessScore}</span>
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">/100</span>
+                        </div>
+                      </div>
+
+                      {/* Score breakdown */}
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <h3 className="text-sm font-black text-slate-900">Overall Readiness</h3>
+                          <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                            {readinessScore >= 75 ? 'You are well-prepared for most interviews.' :
+                             readinessScore >= 55 ? 'Good foundation — a few key gaps to address.' :
+                             'Significant preparation needed before applying.'}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          {[
+                            { label: 'Technical', pct: Math.min(100, readinessScore + 8), color: 'bg-indigo-500' },
+                            { label: 'Behavioral', pct: Math.max(30, readinessScore - 15), color: 'bg-purple-500' },
+                            { label: 'Domain', pct: Math.min(100, readinessScore + 3), color: 'bg-emerald-500' },
+                          ].map(({ label, pct, color }) => (
+                            <div key={label} className="bg-slate-50 rounded-2xl border border-slate-100 p-3 text-center">
+                              <span className="text-[9px] font-black text-slate-400 uppercase block">{label}</span>
+                              <span className="text-lg font-black text-slate-800 block mt-0.5">{pct}%</span>
+                              <div className="mt-1.5 h-1 bg-slate-200 rounded-full overflow-hidden">
+                                <div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%`, transition: 'width 1s ease' }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Three skill columns */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                      {/* ✅ You Already Have */}
+                      <div className="bg-white border border-emerald-100 rounded-3xl p-5 shadow-sm space-y-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-xs">✅</span>
+                          <h3 className="text-xs font-black text-slate-900">You Already Have</h3>
+                        </div>
+                        <p className="text-[10px] text-slate-500 font-medium">Skills employers see on day 1.</p>
+                        <div className="space-y-1.5">
+                          {existingSkills.map((sk) => (
+                            <div key={sk} className="flex items-center gap-2 bg-emerald-50/60 border border-emerald-100 rounded-xl px-3 py-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                              <span className="text-[11px] font-bold text-emerald-800">{sk}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 🔧 Strengthen */}
+                      <div className="bg-white border border-amber-100 rounded-3xl p-5 shadow-sm space-y-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center text-xs">🔧</span>
+                          <h3 className="text-xs font-black text-slate-900">Strengthen</h3>
+                        </div>
+                        <p className="text-[10px] text-slate-500 font-medium">You know these — deepen the mastery.</p>
+                        <div className="space-y-1.5">
+                          {strengthenSkills.map((sk) => (
+                            <div key={sk} className="flex items-center gap-2 bg-amber-50/60 border border-amber-100 rounded-xl px-3 py-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                              <span className="text-[11px] font-bold text-amber-800">{sk}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 🚨 Critical Gaps */}
+                      <div className="bg-white border border-red-100 rounded-3xl p-5 shadow-sm space-y-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center text-xs">🚨</span>
+                          <h3 className="text-xs font-black text-slate-900">Critical Gaps</h3>
+                        </div>
+                        <p className="text-[10px] text-slate-500 font-medium">Learn these before your next interview.</p>
+                        <div className="space-y-2">
+                          {missingReadinessSkills.map(({ skill, priority, time }) => (
+                            <div key={skill} className="bg-red-50/60 border border-red-100 rounded-xl px-3 py-2 space-y-0.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-bold text-red-800">{skill}</span>
+                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border ${
+                                  priority === 'High' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+                                }`}>{priority}</span>
+                              </div>
+                              <span className="text-[9px] text-slate-400 font-semibold">⏱ {time}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Steps CTA */}
+                    <div className="bg-gradient-to-r from-indigo-900 to-purple-950 rounded-3xl p-6 text-white space-y-4">
+                      <h3 className="text-sm font-black flex items-center gap-2">🗺️ Your 30-Day Readiness Roadmap</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {[
+                          { week: 'Week 1–2', title: 'Close Technical Gaps', desc: 'System Design + DSA daily practice', icon: '🔬' },
+                          { week: 'Week 2–3', title: 'Build Projects', desc: 'One end-to-end ML project with LLM integration', icon: '🛠️' },
+                          { week: 'Week 3–4', title: 'Mock Interviews', desc: 'Behavioral STAR stories + 5 mock sessions', icon: '🎤' },
+                        ].map(({ week, title, desc, icon }) => (
+                          <div key={week} className="bg-white/10 border border-white/15 rounded-2xl p-4 space-y-1">
+                            <span className="text-[9px] font-black text-indigo-300 uppercase tracking-widest block">{week}</span>
+                            <div className="text-base">{icon}</div>
+                            <h4 className="text-xs font-black text-white">{title}</h4>
+                            <p className="text-[10px] text-slate-300 font-medium">{desc}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => setCurrentView('jobs')}
+                        className="w-full sm:w-auto mt-2 bg-white text-indigo-700 text-xs font-black px-6 py-2.5 rounded-xl shadow hover:bg-slate-50 transition-all"
+                      >
+                        Browse Matched Jobs →
+                      </button>
+                    </div>
+
                   </motion.div>
                 );
               })()}
@@ -4295,7 +4371,7 @@ const ResumeIntelligence: React.FC = () => {
                     ) : (
                       <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-black px-3.5 py-1.5 rounded-xl shadow-sm">
                         <span>🔒 X402 Paywall</span>
-                        <span className="text-[10px] bg-amber-200/60 text-amber-900 px-2 py-0.5 rounded-md">$0.50 USDC</span>
+                        <span className="text-[10px] bg-amber-200/60 text-amber-900 px-2 py-0.5 rounded-md">$0.02 USDC</span>
                       </div>
                     )}
                   </div>
@@ -4310,7 +4386,7 @@ const ResumeIntelligence: React.FC = () => {
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-black">
                           <span>🔒 Algorand X402 Micropayment</span>
                           <span>•</span>
-                          <span>$0.50 USDC</span>
+                          <span>$0.02 USDC</span>
                         </div>
                         <h3 className="text-xl font-black text-slate-900">Unlock Live Job Opportunities</h3>
                         <p className="text-xs text-slate-500 font-semibold leading-relaxed">
@@ -4323,37 +4399,31 @@ const ResumeIntelligence: React.FC = () => {
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center mb-2">
                           Will Search &amp; Match Live Jobs For These 5 Roles:
                         </p>
-                        {careerFitRoles.length > 0 ? (
-                          careerFitRoles.map((r, i) => (
-                            <div key={r.role} className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl px-3.5 py-2.5">
-                              <span className="text-[10px] font-black text-amber-600 w-6 flex-shrink-0">
-                                {i === 0 ? '⭐' : `#${i + 1}`}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <span className="text-xs font-black text-slate-800 block truncate">{r.role}</span>
-                                <span className="text-[9px] font-bold text-slate-400 block">{i === 0 ? 'Primary Career Path' : 'Alternative Career Path'}</span>
-                              </div>
-                              <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
-                                {r.confidence}% match
-                              </span>
+                        {(careerFitRoles.length > 0 ? careerFitRoles : DEFAULT_CAREER_ROLES).map((r, i) => (
+                          <div key={r.role} className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl px-3.5 py-2.5">
+                            <span className="text-[10px] font-black text-amber-600 w-6 flex-shrink-0">
+                              {i === 0 ? '⭐' : `#${i + 1}`}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-black text-slate-800 block truncate">{r.role}</span>
+                              <span className="text-[9px] font-bold text-slate-400 block">{i === 0 ? 'Primary Career Path' : 'Alternative Career Path'}</span>
                             </div>
-                          ))
-                        ) : (
-                          <div className="bg-slate-50 border border-slate-200 border-dashed rounded-2xl p-6 text-center text-xs text-slate-500 font-semibold">
-                            🔒 Unlock Career Fit to analyze your personalized top career paths, or unlock Job Discovery to automatically analyze them.
+                            <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
+                              {r.confidence}% match
+                            </span>
                           </div>
-                        )}
+                        ))}
                       </div>
 
                       {/* Payment step feedback */}
                       {jobDiscoveryPaymentStep === '402' && (
                         <div className="flex items-center justify-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs font-black text-indigo-700 animate-pulse">
-                          <span>💸 Preparing $0.50 USDC micropayment challenge...</span>
+                          <span>💸 Preparing $0.02 USDC micropayment challenge...</span>
                         </div>
                       )}
                       {jobDiscoveryPaymentStep === 'wallet' && (
                         <div className="flex items-center justify-center gap-2 p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs font-black text-purple-700 animate-pulse">
-                          <span>🔑 Check your Pera wallet to sign the $0.50 USDC transaction...</span>
+                          <span>🔑 Check your Pera wallet to sign the $0.02 USDC transaction...</span>
                         </div>
                       )}
                       {jobDiscoveryPaymentStep === 'verifying' && (
@@ -4364,7 +4434,7 @@ const ResumeIntelligence: React.FC = () => {
                       )}
                       {jobDiscoveryPaymentStep === 'complete' && (
                         <div className="flex items-center justify-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-xs font-black text-emerald-700">
-                          <span>✓ Payment confirmed ($0.50 USDC) — Unlocking live jobs...</span>
+                          <span>✓ Payment confirmed ($0.02 USDC) — Unlocking live jobs...</span>
                         </div>
                       )}
 
@@ -4402,7 +4472,7 @@ const ResumeIntelligence: React.FC = () => {
                                 if (res.status === 402) {
                                   if (!activeAddress) {
                                     setJobDiscoveryPaymentStep(null);
-                                    alert('Please connect your Pera wallet first from the top navigation to pay $0.50 USDC.');
+                                    alert('Please connect your Pera wallet first from the top navigation to pay $0.02 USDC.');
                                     return;
                                   }
                                   setJobDiscoveryPaymentStep('402');
@@ -4424,7 +4494,7 @@ const ResumeIntelligence: React.FC = () => {
 
                                   if (!paidRes.ok) {
                                     const errData = await paidRes.json().catch(() => ({}));
-                                    throw new Error(errData.reason || errData.error || errData.message || `Payment failed with status ${paidRes.status}`);
+                                    throw new Error(errData.message || `Payment failed with status ${paidRes.status}`);
                                   }
 
                                   setJobDiscoveryPaymentStep('verifying');
@@ -4446,16 +4516,16 @@ const ResumeIntelligence: React.FC = () => {
                             }}
                             className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-black px-7 py-3.5 rounded-xl shadow-lg shadow-indigo-200 hover:opacity-95 transition-all active:scale-[0.99]"
                           >
-                            🔒 Unlock Live Jobs — $0.50 USDC
+                            🔒 Unlock Live Jobs — $0.02 USDC
                           </button>
                           <div className="flex items-center justify-center gap-3 text-[10px] text-slate-400 font-semibold">
                             <span>• Algorand x402 Protocol</span>
-                            <span>• $0.50 USDC</span>
+                            <span>• $0.02 USDC</span>
                             <span>• Instant Verification</span>
                           </div>
                           {!activeAddress && (
                             <p className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-200 rounded-lg p-2">
-                              ⚠️ Connect your Pera wallet from the top right to sign the $0.50 transaction.
+                              ⚠️ Connect your Pera wallet from the top right to sign the $0.02 transaction.
                             </p>
                           )}
                         </div>
@@ -5003,7 +5073,7 @@ const ResumeIntelligence: React.FC = () => {
                       <div>
                         <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Price</span>
                         <span className="text-base font-black text-indigo-700">
-                          ${x402Services.find(s => s.serviceId === 'job_analysis')?.priceUsd || '0.50'} USDC
+                          ${x402Services.find(s => s.serviceId === 'job_analysis')?.priceUsd || '0.02'} USDC
                         </span>
                       </div>
                       <button
@@ -5530,7 +5600,7 @@ const ResumeIntelligence: React.FC = () => {
                 <div>
                   <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Price</span>
                   <span className="text-base font-black text-indigo-705">
-                    ${x402Services.find(s => s.serviceId === 'custom_search')?.priceUsd || '0.50'} USDC
+                    ${x402Services.find(s => s.serviceId === 'custom_search')?.priceUsd || '0.02'} USDC
                   </span>
                 </div>
                 <button
@@ -5602,14 +5672,14 @@ const ResumeIntelligence: React.FC = () => {
                 <div className="space-y-4">
                   <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-xl animate-pulse">💸</div>
                   <h4 className="text-sm font-black text-slate-900">402 Payment Required</h4>
-                  <p className="text-[10px] text-slate-500 font-semibold">Preparing $0.50 USDC custom transition search micropayment challenge...</p>
+                  <p className="text-[10px] text-slate-500 font-semibold">Preparing $0.02 USDC custom transition search micropayment challenge...</p>
                 </div>
               )}
               {customSearchPaymentStep === 'wallet' && (
                 <div className="space-y-4">
                   <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-xl animate-bounce">🔑</div>
                   <h4 className="text-sm font-black text-slate-900">Sign Transaction</h4>
-                  <p className="text-[10px] text-slate-500 font-semibold">Please sign the $0.50 USDC search query settlement transfer in your wallet.</p>
+                  <p className="text-[10px] text-slate-500 font-semibold">Please sign the $0.02 USDC search query settlement transfer in your wallet.</p>
                 </div>
               )}
               {customSearchPaymentStep === 'verifying' && (

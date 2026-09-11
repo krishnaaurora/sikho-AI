@@ -10,6 +10,7 @@ import aiRoutes from "./ai.routes";
 import analyticsRoutes from "./analytics.routes";
 import resumeRoutes from "./resume.routes";
 import x402Routes from "./x402.routes";
+import interviewProRoutes from "./interview_pro.routes";
 
 const router = express.Router();
 
@@ -24,5 +25,6 @@ router.use("/ai", aiRoutes);
 router.use("/analytics", analyticsRoutes);
 router.use("/resume", resumeRoutes);
 router.use("/x402", x402Routes);
+router.use("/interview-pro", interviewProRoutes);
 
 export default router;

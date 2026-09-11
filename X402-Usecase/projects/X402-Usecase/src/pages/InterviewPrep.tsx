@@ -1,1486 +1,2313 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useWallet } from '@txnlab/use-wallet-react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft,
-  BookOpen,
-  CheckCircle2,
-  Code2,
-  ExternalLink,
-  FileText,
-  Lightbulb,
-  Loader2,
-  Sparkles,
-  Upload,
-  Target,
-  Plus,
-  X,
-  Edit3,
-  Check,
-  Play,
-  TrendingUp,
-  AlertTriangle,
-  Award,
-  Terminal,
-  Brain,
-  ChevronRight,
-  Layers,
-  Clock,
-  Briefcase,
-  Lock,
-  Building2,
-  CheckCircle,
-  Globe,
-  Database,
-  Zap,
-  BookMarked,
-  BarChart2,
-  MessageSquare,
-  PanelLeftClose,
-  PanelLeftOpen,
+  UploadCloud, FileText, ChevronDown, ChevronUp, ChevronRight,
+  BookOpen, ExternalLink, Sparkles, Clock, CheckCircle2,
+  AlertCircle, Play, RotateCcw, Layers, MessageSquare, Zap, Target,
+  Code2, Check, ArrowLeft, ArrowRight, ShieldCheck, BookmarkCheck,
+  Award, Copy, Terminal, Compass, Mic, MicOff, Send, Lightbulb,
+  BrainCircuit, HelpCircle, CheckCheck, Cpu, ArrowUpRight, CheckCircle,
+  Lock, KeyRound, ShieldAlert
 } from 'lucide-react';
-import { submitCodeReview, CodeReviewResult } from '../services/codeReviewService';
+import { useNavigate } from 'react-router-dom';
+import { useWallet } from '@txnlab/use-wallet-react';
 import { createX402Fetch } from '../utils/x402';
 import { API_BASE_URL } from '../config/api';
 
-export interface Module {
-  id?: string;
-  title: string;
-  duration: string;
-  difficulty: string;
-  summary: string;
-  keyConcepts: string[];
-  personalizedTips: string[];
-  completed?: boolean;
-}
-
-export interface Chapter {
-  id?: string;
-  title: string;
-  modules: Module[];
-}
-
-export interface LearningPath {
-  chapters: Chapter[];
-  project?: { title: string; description: string; deliverables: string[] };
-}
-
-export interface Milestone {
-  title: string;
-  actionType: string;
-  score?: number;
-  timestamp: string;
-}
-
-export interface CareerMissionData {
-  _id?: string;
-  targetRole: string;
-  targetCompany?: string;
-  experienceLevel: string;
-  daysUntilInterview: number;
-  resumeSkills: string[];
-  jdSkills: string[];
-  matchedSkills: string[];
-  missingSkills: string[];
-  learningPath: LearningPath;
-  progress: number;
-  milestones: Milestone[];
-}
-
-export interface ExtractionResult {
-  targetRole: string;
-  targetCompany: string;
-  resumeSkills: string[];
-  jdSkills: string[];
-  matchedSkills: string[];
-  missingSkills: string[];
-}
-
-export interface PracticeQuestion {
-  id: string;
+// ─── Interfaces ──────────────────────────────────────────────────────────────
+interface InterviewQuestion {
   question: string;
+  difficulty: 'easy' | 'medium' | 'hard';
   category: string;
-  difficulty: string;
-  hints?: string[];
   sampleAnswer?: string;
 }
 
-export interface PracticeResult {
-  moduleTitle: string;
-  questions: PracticeQuestion[];
-}
-
-export interface EvaluationResult {
-  score: number;
-  strengths: string[];
-  missingKeywords: string[];
-  constructiveFeedback: string;
-  idealAnswer: string;
-}
-
-export interface InterviewQuestionItem {
-  id: string;
-  question: string;
-  questionType: string;
-  difficulty: string;
-  expectedSkills: string[];
-  userAnswer?: string;
-  evaluation?: EvaluationResult;
-  score?: number;
-}
-
-export interface InterviewRoundItem {
-  id: string;
-  roundType: string;
+interface KeyConcept {
   title: string;
   description: string;
-  order: number;
-  status: 'pending' | 'in_progress' | 'completed';
-  score?: number;
-  questions: InterviewQuestionItem[];
 }
 
-export interface ReadinessScore {
-  technical: number;
-  coding: number;
-  communication: number;
-  behavioral: number;
-  overall: number;
-  feedback: string;
-  recommendedAction?: string;
+interface CodeSnippet {
+  language: string;
+  code: string;
 }
 
-export interface InterviewMissionData {
-  _id?: string;
-  careerMissionId: string;
-  companyName: string;
-  companySource: 'jd' | 'user' | 'role_only';
-  jobTitle: string;
-  experienceLevel: string;
-  status: 'locked' | 'in_progress' | 'completed';
-  rounds: InterviewRoundItem[];
-  currentRoundIndex: number;
-  currentQuestionIndex: number;
-  readinessScore?: ReadinessScore;
+interface RealWorldApplication {
+  domain: string;
+  pattern: string;
+  productionNote: string;
 }
 
-export interface CompanyResource {
+interface ModuleDetail {
+  id: string;
   title: string;
-  type: string;
-  description: string;
+  difficulty?: string;
+  estimatedTime?: string;
+  overview?: string;
+  why?: string;
+  what?: string;
+  how?: string;
+  realWorld?: RealWorldApplication[];
+  scenario?: string;
+  progressiveHints?: string[];
+  followUpQuestions?: string[];
+  keyConcepts?: KeyConcept[];
+  codeExample?: CodeSnippet;
+  completed?: boolean;
+}
+
+interface LearningTrack {
+  trackTitle: string;
+  description?: string;
+  modules: ModuleDetail[];
+}
+
+interface Chapter {
+  id?: string;
+  title: string;
+  description?: string;
+  modules?: Array<{ title: string; completed?: boolean; description?: string }>;
+  skills?: string[];
+  estimatedTime?: string;
+  completed?: boolean;
+}
+
+interface Resource {
+  title: string;
   url: string;
-  estimatedTime: string;
+  type: string;
+  category: string;
 }
 
-export interface UseCase {
-  title: string;
-  company: string;
-  problem: string;
-  solution: string;
-  skills: string[];
-  impact: string;
+export interface GapMissingSkill {
+  skill: string;
+  category: string;
+  priority: 'High' | 'Medium' | 'Low';
+  importanceInJd?: string;
+  reason: string;
+  recommendation: string;
 }
 
-export interface CaseStudy {
-  title: string;
-  scenario: string;
-  challenge: string;
-  approach: string;
-  outcome: string;
-  interviewAngle: string;
-  skills: string[];
+export interface GapStrengthenSkill {
+  skill: string;
+  category: string;
+  priority: 'High' | 'Medium' | 'Low';
+  currentEvidence: string;
+  targetDepth: string;
+  recommendation: string;
 }
 
-export interface CompanyInsights {
-  overview: string;
-  techStack: string[];
-  interviewStyle: string;
-  hiringFocus: string[];
+export interface GapExperience {
+  area: string;
+  gap: string;
+  impact: 'Critical' | 'Moderate' | 'Minor';
+  howToBridge: string;
 }
 
-export interface CompanyResourcesData {
-  companyInsights: CompanyInsights;
-  officialResources: CompanyResource[];
-  realWorldUseCases: UseCase[];
-  caseStudies: CaseStudy[];
-  practiceTopics: string[];
+export interface GapStrength {
+  skill: string;
+  evidence: string;
+  relevanceToJd: string;
 }
 
-type Step = 'upload' | 'review' | 'dashboard';
-type MainTab = 'curriculum' | 'interview_mission';
-type CurriculumSubTab = 'modules' | 'resources';
-type ResourcesSubTab = 'insights' | 'resources' | 'usecases' | 'casestudies';
-type ActiveActionType = 'practice' | 'evaluate' | 'interview_start_round' | 'interview_submit_answer' | 'interview_start_mock' | 'company_resources' | 'generate_resources' | null;
+export interface GapActionPlanPhase {
+  phase: string;
+  timeframe: string;
+  focus: string;
+  tasks: string[];
+}
 
-export default function InterviewPrep() {
+export interface GapAnalysisData {
+  overallMatchScore: number;
+  skillsMatchScore: number;
+  experienceMatchScore: number;
+  domainFitScore: number;
+  summary: string;
+  missingSkills: GapMissingSkill[];
+  strengthenSkills: GapStrengthenSkill[];
+  experienceGaps: GapExperience[];
+  matchedStrengths: GapStrength[];
+  quickWins: string[];
+  actionPlan: GapActionPlanPhase[];
+}
+
+interface ScenarioEvaluation {
+  overallScore: number;
+  conceptUnderstanding: number;
+  realWorldUnderstanding: number;
+  engineeringReasoning: number;
+  interviewReadiness: number;
+  whatYouIdentified: string[];
+  whatToConsider: string[];
+  seniorEngineerSolution: string;
+  followUpQuestions: string[];
+}
+
+interface PrepResult {
+  resumeMatchScore: number;
+  estimatedLearningTime?: number;
+  experienceLevel?: string;
+  existingSkills?: string[];
+  focusAreas?: string[];
+  gapAnalysis?: GapAnalysisData;
+  learningTracks?: LearningTrack[];
+  chapters: Chapter[];
+  interviewQuestions: InterviewQuestion[];
+  resources?: Resource[];
+}
+
+const PYTHON_API_BASE = 'http://localhost:8000';
+
+const DIFFICULTY_CONFIG: Record<string, { label: string; color: string }> = {
+  easy:   { label: 'Easy',   color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+  medium: { label: 'Medium', color: 'text-amber-700 bg-amber-50 border-amber-200' },
+  hard:   { label: 'Hard',   color: 'text-rose-700 bg-rose-50 border-rose-200' },
+};
+
+const InterviewPrep: React.FC = () => {
   const navigate = useNavigate();
-  const { activeAddress, signTransactions } = useWallet();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const jdFileInputRef = useRef<HTMLInputElement>(null);
 
-  const [step, setStep] = useState<Step>('upload');
-  const [activeTab, setActiveTab] = useState<MainTab>('curriculum');
-  const [curriculumSubTab, setCurriculumSubTab] = useState<CurriculumSubTab>('modules');
-  const [resourcesSubTab, setResourcesSubTab] = useState<ResourcesSubTab>('insights');
-
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [resumeMode, setResumeMode] = useState<'file' | 'paste'>('file');
+  const [file, setFile] = useState<File | null>(null);
+  const [resumeText, setResumeText] = useState('');
+  const [isDragActive, setIsDragActive] = useState(false);
+  const [jdMode, setJdMode] = useState<'paste' | 'file'>('paste');
+  const [jobDescription, setJobDescription] = useState('');
   const [jdFile, setJdFile] = useState<File | null>(null);
-  const [jdText, setJdText] = useState('');
-  const [inputMode, setInputMode] = useState<'file' | 'text'>('text');
-  const [level, setLevel] = useState('Beginner');
-  const [days, setDays] = useState(7);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [error, setError] = useState('');
+  const [experienceLevel, setExperienceLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
+  const [daysToInterview, setDaysToInterview] = useState(7);
 
-  const [extraction, setExtraction] = useState<ExtractionResult | null>(null);
-  const [editedRole, setEditedRole] = useState('');
-  const [editedCompany, setEditedCompany] = useState('');
-  const [companySourceMode, setCompanySourceMode] = useState<'jd' | 'user' | 'role_only'>('role_only');
-  const [editableMissingSkills, setEditableMissingSkills] = useState<string[]>([]);
-  const [newSkillInput, setNewSkillInput] = useState('');
-  const [isAddingSkill, setIsAddingSkill] = useState(false);
-  const [generatingPlan, setGeneratingPlan] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<PrepResult | null>(null);
 
-  const [mission, setMission] = useState<CareerMissionData | null>(null);
-  const [selectedModule, setSelectedModule] = useState<Module | null>(null);
-  const [interviewMission, setInterviewMission] = useState<InterviewMissionData | null>(null);
-  const [currentAnswerInput, setCurrentAnswerInput] = useState('');
+  // Active view tabs: "gaps" (AI Gap Analysis), "learningPath" (the interactive 9-step learning studio), "questions", "resources"
+  const [activeMainTab, setActiveMainTab] = useState<'gaps' | 'learningPath' | 'questions' | 'resources'>('gaps');
+  
+  // Gap filter state
+  const [gapFilter, setGapFilter] = useState<'all' | 'missing' | 'strengthen' | 'experience' | 'strengths' | 'actionPlan'>('all');
 
-  const [practiceResult, setPracticeResult] = useState<PracticeResult | null>(null);
-  const [selectedPracticeIndex, setSelectedPracticeIndex] = useState(0);
-  const [userPracticeAnswer, setUserPracticeAnswer] = useState('');
-  const [practiceEvaluation, setPracticeEvaluation] = useState<EvaluationResult | null>(null);
+  // Learning Path Navigation State
+  const [activeTrackIndex, setActiveTrackIndex] = useState(0);
+  const [activeModuleIndex, setActiveModuleIndex] = useState(0);
+  const [copiedCode, setCopiedCode] = useState(false);
 
-  const [companyResources, setCompanyResources] = useState<CompanyResourcesData | null>(null);
-  const [completedModules, setCompletedModules] = useState<string[]>([]);
-  const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set([0]));
-  const [resourcesExpanded, setResourcesExpanded] = useState(true);
-  const [selectedResource, setSelectedResource] = useState<string | null>(null);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
-  const [sidebarNavMode, setSidebarNavMode] = useState<'modules' | 'resources' | 'interview_mission'>('modules');
-  const [interviewSubTab, setInterviewSubTab] = useState<'dashboard' | 'company_prep' | 'ai_mock' | 'evaluation'>('dashboard');
-  const [showUnlockModal, setShowUnlockModal] = useState(false);
-  const [showLockedAlertModal, setShowLockedAlertModal] = useState(false);
-  const [codingCodeInput, setCodingCodeInput] = useState('#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your optimal solution here\n    return 0;\n}');
-  const [codingLanguage, setCodingLanguage] = useState('cpp');
-  const [codeReviewLoading, setCodeReviewLoading] = useState(false);
-  const [codeReviewResult, setCodeReviewResult] = useState<CodeReviewResult | null>(null);
-  const [selectedInterviewType, setSelectedInterviewType] = useState<'Technical' | 'Coding' | 'HR'>('Technical');
+  // ─── Scenario Engineering & 9-Step State ───
+  const [studentApproach, setStudentApproach] = useState('');
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [revealedHintIndex, setRevealedHintIndex] = useState(-1);
+  const [isEvaluatingScenario, setIsEvaluatingScenario] = useState(false);
+  const [evaluationsMap, setEvaluationsMap] = useState<Record<string, ScenarioEvaluation>>({});
+  const [followUpResponses, setFollowUpResponses] = useState<Record<string, Record<number, string>>>({});
+  const [moduleMastery, setModuleMastery] = useState<Record<string, { concept: number; realWorld: number; engineering: number; interview: number; completed: boolean }>>({});
+  const [speechRecognitionSupported, setSpeechRecognitionSupported] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
-  const [activeAction, setActiveAction] = useState<ActiveActionType>(null);
-  const [paymentStep, setPaymentStep] = useState<'paywall' | '402' | 'wallet' | 'verifying' | 'complete' | null>(null);
-  const [actionPrice, setActionPrice] = useState('0.005');
-  const [actionTitle, setActionTitle] = useState('');
+  // Filter states for questions tab
+  const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [difficultyFilter, setDifficultyFilter] = useState('All');
 
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/interview-prep/mission`, { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success && d.data) {
-          setMission(d.data);
-          const firstMod = d.data.learningPath?.chapters?.[0]?.modules?.[0];
-          if (firstMod) setSelectedModule(firstMod);
-          // Do not auto-skip to dashboard, let user see upload page
-          fetchInterviewMission(d.data._id);
-        }
-      })
-      .catch(() => { });
-  }, []);
+  // ─── x402 Payment States & Unlocks ──────────────────────────────────────────
+  const { activeAddress, signTransactions } = useWallet();
+  const [isQuestionsUnlocked, setIsQuestionsUnlocked] = useState(false);
+  const [unlockedBatchCount, setUnlockedBatchCount] = useState(0); // Modules locked until unlocked 3 at a time via x402
+  const [isResourcesUnlocked, setIsResourcesUnlocked] = useState(false);
+  const [isPayingFor, setIsPayingFor] = useState<'questions' | 'learningPath' | 'resources' | null>(null);
 
-  const fetchInterviewMission = (careerMissionId: string) => {
-    fetch(`${API_BASE_URL}/interview/create`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ careerMissionId }),
-      credentials: 'include',
-    })
-      .then((r) => r.json())
-      .then((d) => { if (d.success && d.data) setInterviewMission(d.data); })
-      .catch(() => { });
-  };
+  const hasResume = !!file || !!resumeText.trim();
+  const hasJd = !!jobDescription.trim() || !!jdFile;
 
-  const handleAnalyze = async () => {
-    if (!resumeFile) { setError('Please upload a resume file.'); return; }
-    if (inputMode === 'file' && !jdFile) { setError('Please upload a JD file.'); return; }
-    if (inputMode === 'text' && !jdText.trim()) { setError('Please paste the JD text.'); return; }
-    setAnalyzing(true); setError('');
-    try {
-      const formData = new FormData();
-      formData.append('resume', resumeFile);
-      if (inputMode === 'file' && jdFile) formData.append('jobDescription', jdFile);
-      else formData.append('jobDescriptionText', jdText);
-      const res = await fetch(`${API_BASE_URL}/interview-prep/analyze`, { method: 'POST', body: formData, credentials: 'include' });
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.message || 'Analysis failed');
-      const ext: ExtractionResult = data.data;
-      setExtraction(ext);
-      setEditedRole(ext.targetRole || 'Software Engineer');
-      const co = ext.targetCompany?.trim() || '';
-      setEditedCompany(co);
-      setCompanySourceMode(co ? 'jd' : 'role_only');
-      setEditableMissingSkills(ext.missingSkills || []);
-      setStep('review');
-    } catch (err: any) {
-      setError(err.message || 'Analysis failed.');
-    } finally { setAnalyzing(false); }
-  };
-
-  const handleGenerateMission = async () => {
-    if (!editedRole.trim()) { setError('Target role is required.'); return; }
-    setGeneratingPlan(true); setError('');
-    try {
-      const payload = {
-        targetRole: editedRole,
-        targetCompany: companySourceMode === 'role_only' ? '' : editedCompany,
-        experienceLevel: level, daysUntilInterview: days,
-        resumeSkills: extraction?.resumeSkills || [],
-        jdSkills: extraction?.jdSkills || [],
-        matchedSkills: extraction?.matchedSkills || [],
-        missingSkills: editableMissingSkills,
-      };
-      const res = await fetch(`${API_BASE_URL}/interview-prep/mission`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload), credentials: 'include',
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.message || 'Failed to create mission');
-      setMission(data.data);
-      const firstMod = data.data.learningPath?.chapters?.[0]?.modules?.[0];
-      if (firstMod) setSelectedModule(firstMod);
-      if (data.data._id) fetchInterviewMission(data.data._id);
-      setStep('dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Failed to generate plan.');
-    } finally { setGeneratingPlan(false); }
-  };
-
-  const handleRemoveSkill = (s: string) => setEditableMissingSkills((p) => p.filter((x) => x !== s));
-  const handleAddSkill = () => {
-    if (!newSkillInput.trim()) return;
-    if (!editableMissingSkills.includes(newSkillInput.trim()))
-      setEditableMissingSkills((p) => [...p, newSkillInput.trim()]);
-    setNewSkillInput(''); setIsAddingSkill(false);
-  };
-
-  const triggerAction = (type: ActiveActionType, price: string, title: string) => {
-    if (!activeAddress) { alert('Please connect your Algorand wallet first.'); return; }
-    setActiveAction(type); setActionPrice(price); setActionTitle(title); setPaymentStep('paywall');
-  };
-
-  const executePaidAction = async () => {
-    if (!activeAddress) return;
-    setPaymentStep('402');
+  // ─── x402 Payment Handlers ───
+  const unlockQuestions = async () => {
+    if (!activeAddress) {
+      alert("Please connect your Algorand wallet (Pera/Defly/Lute) using the Connect Wallet button in the header.");
+      return;
+    }
+    setIsPayingFor('questions');
     try {
       const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
-      setPaymentStep('wallet');
-      let endpoint = ''; let bodyData: any = {};
-      if (activeAction === 'practice') {
-        endpoint = '/api/v1/interview-prep/practice';
-        bodyData = { missionId: mission?._id, moduleTitle: selectedModule?.title || 'Core Problem Solving', missingSkills: mission?.missingSkills || [], targetRole: mission?.targetRole };
-      } else if (activeAction === 'evaluate') {
-        endpoint = '/api/v1/interview-prep/evaluate-answer';
-        const currentQ = practiceResult?.questions?.[selectedPracticeIndex]?.question || 'Technical Problem';
-        bodyData = { missionId: mission?._id, question: currentQ, userAnswer: userPracticeAnswer, targetRole: mission?.targetRole };
-      } else if (activeAction === 'company_resources') {
-        endpoint = '/api/v1/interview-prep/company-resources';
-        bodyData = { missionId: mission?._id, targetRole: mission?.targetRole, targetCompany: mission?.targetCompany || '', missingSkills: mission?.missingSkills || [], experienceLevel: mission?.experienceLevel };
-      } else if (activeAction === 'interview_start_round') {
-        endpoint = '/api/v1/interview/start-round';
-        bodyData = { missionId: interviewMission?._id, roundIndex: interviewMission?.currentRoundIndex || 0 };
-      } else if (activeAction === 'interview_submit_answer') {
-        endpoint = '/api/v1/interview/submit-answer';
-        bodyData = { missionId: interviewMission?._id, roundIndex: interviewMission?.currentRoundIndex || 0, questionIndex: interviewMission?.currentQuestionIndex || 0, userAnswer: currentAnswerInput };
-      } else if (activeAction === 'interview_start_mock') {
-        endpoint = '/api/v1/interview/start-mock';
-        bodyData = { missionId: interviewMission?._id };
-      }
-      const res = await x402Fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyData) });
-      setPaymentStep('verifying');
-      const data = await res.json();
-      if (!data.success) throw new Error(data.message || 'Action failed');
-      if (activeAction === 'practice') { setPracticeResult(data.data.practiceData); setSelectedPracticeIndex(0); setUserPracticeAnswer(''); setPracticeEvaluation(null); }
-      else if (activeAction === 'evaluate') { setPracticeEvaluation(data.data.evaluation); }
-      else if (activeAction === 'company_resources') { setCompanyResources(data.data.resources); setCurriculumSubTab('resources'); setResourcesSubTab('insights'); }
-      else if (['interview_submit_answer', 'interview_start_round', 'interview_start_mock'].includes(activeAction || '')) {
-        if (data.data.mission) setInterviewMission(data.data.mission); else if (data.data) setInterviewMission(data.data);
-        setCurrentAnswerInput('');
-      }
-      const freshRes = await fetch(`${API_BASE_URL}/interview-prep/mission`, { credentials: 'include' });
-      const freshData = await freshRes.json();
-      if (freshData.success && freshData.data) setMission(freshData.data);
-      setPaymentStep('complete');
-      setTimeout(() => setPaymentStep(null), 1000);
-    } catch (err: any) {
-      console.error('[x402 Action Error]', err);
-      alert(`Action failed: ${err.message || err}`);
-      setPaymentStep(null);
-    }
-  };
-
-  // ── STEP 1: UPLOAD ──
-  if (step === 'upload') {
-    return (
-      <main className="min-h-screen bg-slate-50 text-slate-900 py-10 px-4">
-        <div className="mx-auto max-w-4xl">
-          <button onClick={() => navigate('/dashboard/learner')} className="mb-6 flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors">
-            <ArrowLeft size={16} /> Back to Dashboard
-          </button>
-          <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 p-8 text-white">
-              <div className="flex items-center gap-3">
-                <span className="p-2.5 bg-white/10 rounded-xl"><Sparkles size={24} className="text-yellow-300" /></span>
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight">AI Skill-Gap Analysis & Interview Mission</h1>
-                  <p className="text-xs text-blue-100 mt-1">Upload your resume and Job Description. Groq AI extracts target role, company, and skill gaps.</p>
-                </div>
-              </div>
-            </div>
-            <div className="p-8 space-y-8">
-              <div className="grid gap-6 md:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-xs font-bold text-slate-700 flex items-center gap-2"><FileText size={16} className="text-blue-600" /> Upload Resume</label>
-                  <label className="cursor-pointer block">
-                    <input className="hidden" type="file" accept=".pdf,.doc,.docx,.txt" onChange={(e) => setResumeFile(e.target.files?.[0] || null)} />
-                    <div className={`flex min-h-44 flex-col items-center justify-center rounded-xl border-2 border-dashed p-5 transition-all ${resumeFile ? 'border-emerald-400 bg-emerald-50/50' : 'border-slate-200 bg-slate-50/60 hover:border-blue-400'}`}>
-                      <Upload className={resumeFile ? 'text-emerald-600' : 'text-slate-400'} size={32} />
-                      <p className="mt-3 text-xs font-bold">{resumeFile ? resumeFile.name : 'Drop resume here or click to browse'}</p>
-                      <p className="mt-1 text-[10px] text-slate-400">PDF, DOC, DOCX or TXT</p>
-                    </div>
-                  </label>
-                </div>
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-700 flex items-center gap-2"><Target size={16} className="text-blue-600" /> Target Job Description</label>
-                    <div className="flex rounded-lg bg-slate-100 p-0.5 border border-slate-200 text-[10px] font-bold">
-                      {['text', 'file'].map((m) => (
-                        <button key={m} onClick={() => setInputMode(m as any)} className={`px-3 py-1 rounded-md transition-all ${inputMode === m ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>{m === 'text' ? 'Paste Text' : 'Upload File'}</button>
-                      ))}
-                    </div>
-                  </div>
-                  {inputMode === 'file' ? (
-                    <label className="cursor-pointer block">
-                      <input className="hidden" type="file" accept=".pdf,.doc,.docx,.txt" onChange={(e) => setJdFile(e.target.files?.[0] || null)} />
-                      <div className={`flex min-h-44 flex-col items-center justify-center rounded-xl border-2 border-dashed p-5 transition-all ${jdFile ? 'border-emerald-400 bg-emerald-50/50' : 'border-slate-200 bg-slate-50/60 hover:border-blue-400'}`}>
-                        <Upload className={jdFile ? 'text-emerald-600' : 'text-slate-400'} size={32} />
-                        <p className="mt-3 text-xs font-bold">{jdFile ? jdFile.name : 'Drop JD file here or click to browse'}</p>
-                        <p className="mt-1 text-[10px] text-slate-400">PDF, DOC, DOCX or TXT</p>
-                      </div>
-                    </label>
-                  ) : (
-                    <textarea value={jdText} onChange={(e) => setJdText(e.target.value)} placeholder="Paste job description here..." className="w-full min-h-44 rounded-xl border border-slate-200 bg-slate-50/60 p-4 text-xs font-mono text-slate-800 focus:border-indigo-500 focus:bg-white focus:outline-none placeholder:text-slate-400" />
-                  )}
-                </div>
-              </div>
-              <div className="grid gap-6 md:grid-cols-2 pt-2 border-t border-slate-100">
-                <div>
-                  <p className="mb-2 text-xs font-bold text-slate-700">Target Experience Level</p>
-                  <div className="flex gap-2">
-                    {['Beginner', 'Intermediate', 'Advanced'].map((lvl) => (
-                      <button key={lvl} onClick={() => setLevel(lvl)} className={`flex-1 rounded-lg border py-2 text-xs font-bold transition-all ${level === lvl ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>{lvl}</button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <p className="text-xs font-bold text-slate-700">Days to Interview</p>
-                    <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">{days} Days Left</span>
-                  </div>
-                  <input className="w-full accent-indigo-600 mt-2" type="range" min="1" max="60" value={days} onChange={(e) => setDays(+e.target.value)} />
-                </div>
-              </div>
-              {error && <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700 flex items-center gap-2"><AlertTriangle size={16} className="shrink-0" />{error}</div>}
-              <button disabled={!resumeFile || (inputMode === 'file' ? !jdFile : !jdText.trim()) || analyzing} onClick={handleAnalyze} className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-40 text-white font-bold text-sm rounded-full shadow-md flex items-center justify-center gap-2 transition-all">
-                {analyzing ? <><Loader2 className="animate-spin" size={18} />Extracting Role & Company from JD…</> : <><Sparkles size={18} className="text-yellow-300" />Analyze & Extract Skill Gaps</>}
-              </button>
-            </div>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  // ── STEP 2: REVIEW ──
-  if (step === 'review' && extraction) {
-    return (
-      <main className="min-h-screen bg-[#f8fafc] text-slate-900 py-10 px-4">
-        <div className="mx-auto max-w-4xl space-y-6">
-          <button onClick={() => setStep('upload')} className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors"><ArrowLeft size={16} /> Edit Uploaded Documents</button>
-          <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm flex items-center gap-4">
-            <span className="p-3 bg-blue-50 text-blue-600 rounded-2xl border border-blue-100"><Sparkles size={26} /></span>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900">AI Skill-Gap Analysis</h1>
-              <p className="text-xs text-slate-500 mt-0.5">Review your target career parameters and the skills you need to learn.</p>
-            </div>
-          </div>
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 flex items-center gap-3">
-            <CheckCircle className="text-emerald-600" size={22} />
-            <div>
-              <h3 className="text-xs font-bold text-slate-900">Job Description Processed</h3>
-              <p className="text-[11px] text-slate-500">We have analyzed your JD and extracted the key information.</p>
-            </div>
-          </div>
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm space-y-4">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-700"><span className="p-1.5 bg-blue-50 text-blue-600 rounded-lg"><Briefcase size={16} /></span>Target Role</div>
-              <input type="text" value={editedRole} onChange={(e) => setEditedRole(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-base font-bold text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none" />
-              <span className="text-[10px] font-semibold text-slate-400">Identified from your JD</span>
-            </div>
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm space-y-4">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-700"><span className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg"><Building2 size={16} /></span>Target Company</div>
-              {companySourceMode === 'jd' && editedCompany ? (
-                <div>
-                  <div className="flex items-center gap-2">
-                    <input type="text" value={editedCompany} onChange={(e) => setEditedCompany(e.target.value)} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-base font-bold text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none" />
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-full shrink-0">✓ Identified</span>
-                  </div>
-                  <span className="text-[10px] font-semibold text-slate-400 mt-1 block">Identified from your uploaded JD</span>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-xs font-bold text-slate-700">Which company is this JD for?</p>
-                  <input type="text" value={editedCompany} onChange={(e) => { setEditedCompany(e.target.value); if (e.target.value.trim()) setCompanySourceMode('user'); }} placeholder="Enter company name (e.g. Google, Microsoft)" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-none placeholder:text-slate-400" />
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => setCompanySourceMode('user')} disabled={!editedCompany.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-sm disabled:opacity-40">Confirm Company</button>
-                    <button onClick={() => { setCompanySourceMode('role_only'); setEditedCompany(''); }} className="text-slate-500 hover:text-slate-700 text-[11px] font-bold underline">Continue without company</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm space-y-6">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-4"><Target size={18} className="text-blue-600" /> Skill Gap Summary</h3>
-            <div className="grid gap-4 md:grid-cols-3">
-              {[
-                { count: extraction.resumeSkills.length, label: 'Skills in your resume', bg: 'bg-emerald-50/40', icon: <FileText size={20} className="text-emerald-700" />, iconBg: 'bg-emerald-100', textColor: 'text-emerald-800', subColor: 'text-emerald-600' },
-                { count: extraction.jdSkills.length, label: 'Skills required in JD', bg: 'bg-blue-50/40', icon: <BookOpen size={20} className="text-blue-700" />, iconBg: 'bg-blue-100', textColor: 'text-blue-800', subColor: 'text-blue-600' },
-                { count: extraction.matchedSkills.length, label: 'Skills already matched', bg: 'bg-amber-50/40', icon: <CheckCircle size={20} className="text-amber-700" />, iconBg: 'bg-amber-100', textColor: 'text-amber-800', subColor: 'text-amber-600' },
-              ].map((card, i) => (
-                <div key={i} className={`rounded-xl border border-slate-100 ${card.bg} p-4 flex items-center gap-3`}>
-                  <span className={`p-2.5 ${card.iconBg} rounded-xl`}>{card.icon}</span>
-                  <div><span className={`text-lg font-bold ${card.textColor}`}>{card.count}</span><p className={`text-[11px] font-semibold ${card.subColor}`}>{card.label}</p></div>
-                </div>
-              ))}
-            </div>
-            <div className="rounded-xl border border-rose-100 bg-rose-50/30 p-5 space-y-4">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="text-rose-500" size={20} />
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900">{editableMissingSkills.length} skills to strengthen</h4>
-                    <p className="text-[11px] text-slate-500">Focus on these to match the job requirements.</p>
-                  </div>
-                </div>
-                {!isAddingSkill && <button onClick={() => setIsAddingSkill(true)} className="flex items-center gap-1 bg-white border border-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm hover:bg-slate-50"><Plus size={14} /> Add Skill</button>}
-              </div>
-              {isAddingSkill && (
-                <div className="flex gap-2">
-                  <input type="text" value={newSkillInput} onChange={(e) => setNewSkillInput(e.target.value)} placeholder="Enter custom missing skill" className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none" />
-                  <button onClick={handleAddSkill} className="bg-indigo-600 text-white font-bold text-xs px-4 py-1.5 rounded-lg">Add</button>
-                  <button onClick={() => setIsAddingSkill(false)} className="text-slate-400 text-xs px-2">Cancel</button>
-                </div>
-              )}
-              <div className="flex flex-wrap gap-2">
-                {editableMissingSkills.map((skill) => (
-                  <span key={skill} className="bg-rose-100/70 text-rose-800 text-xs font-bold px-3 py-1.5 rounded-lg border border-rose-200/80 flex items-center gap-2">
-                    {skill}<button onClick={() => handleRemoveSkill(skill)} className="text-rose-400 hover:text-rose-700"><X size={14} /></button>
-                  </span>
-                ))}
-              </div>
-            </div>
-            {error && <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700">{error}</div>}
-            <button disabled={generatingPlan} onClick={handleGenerateMission} className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm rounded-full shadow-md flex items-center justify-center gap-2 transition-all">
-              {generatingPlan ? <><Loader2 className="animate-spin" size={18} />Compiling Learning Path & Interview Mission…</> : <><Sparkles size={18} className="text-yellow-300" />Generate Career Mission & Learning Path</>}
-            </button>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  if (!mission) return <main className="min-h-screen bg-slate-50 flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600" size={32} /></main>;
-
-  const totalModules = mission.learningPath?.chapters?.reduce((acc, chap) => acc + (chap.modules?.length || 0), 0) || 0;
-  const isLearningCompleted = totalModules > 0 && completedModules.length >= totalModules;
-  const currentProgress = totalModules > 0 ? Math.round((completedModules.length / totalModules) * 100) : 0;
-
-  const handleMarkModuleComplete = (moduleTitle: string) => {
-    if (!completedModules.includes(moduleTitle)) {
-      const newCompleted = [...completedModules, moduleTitle];
-      setCompletedModules(newCompleted);
-
-      if (totalModules > 0 && newCompleted.length >= totalModules) {
-        setShowUnlockModal(true);
-        setSidebarNavMode('interview_mission');
-        setInterviewSubTab('dashboard');
-      }
-    }
-  };
-
-  const handleRunCodeReview = async () => {
-    if (!codingCodeInput.trim()) return;
-    setCodeReviewLoading(true);
-    setCodeReviewResult(null);
-    try {
-      const res = await submitCodeReview({
-        code: codingCodeInput,
-        language: codingLanguage,
-        problemStatement: 'Write an optimal algorithm to process streaming data with O(1) lookup time.'
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+      const url = `${API_BASE_URL}/interview-pro/interview-questions?role=Full+Stack+Software+Engineer&experience=${encodeURIComponent(experienceLevel)}`;
+      const res = await x402Fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        credentials: 'include',
       });
-      setCodeReviewResult(res);
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || errJson.reason || `x402 payment verification failed with status ${res.status}`);
+      }
+      const data = await res.json();
+      const newQs = data?.data?.questions || data?.questions || [];
+      if (newQs.length > 0 && result) {
+        setResult({
+          ...result,
+          interviewQuestions: [...newQs, ...(result.interviewQuestions || [])]
+        });
+      }
+      setIsQuestionsUnlocked(true);
     } catch (err: any) {
-      setError(err.message || 'Code review failed.');
+      console.error("unlockQuestions error:", err);
+      alert(`Interview Questions unlock failed: ${err.message || 'Payment cancelled or network error.'}`);
     } finally {
-      setCodeReviewLoading(false);
+      setIsPayingFor(null);
     }
   };
 
-  // ── STEP 3: DASHBOARD ──
-  const totalModules2 = 0; // unused alias kept for TS
-  const resourceItems = [
-    { key: 'company_questions', label: 'Company Questions', colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50 border-indigo-100', desc: "Questions related to the company's work and projects", detail: `Prepare for questions about the company's products, engineering culture, and real-world challenges. Focus on their core business, mission, and recent engineering decisions.` },
-    { key: 'company_projects', label: 'Company Projects', colorClass: 'text-blue-600', bgClass: 'bg-blue-50 border-blue-100', desc: 'Real projects, technologies, and practical work', detail: `Explore the company's major projects, open-source contributions, and flagship products. Understanding the tech stack and architectural decisions is key.` },
-    { key: 'case_studies', label: 'Case Studies', colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50 border-emerald-100', desc: 'Real-world problems and how they are solved', detail: `Study real engineering challenges the company has solved. Each case study walks through the problem, solution approach, trade-offs, and business impact.` },
-    { key: 'technical_resources', label: 'Technical Resources', colorClass: 'text-amber-600', bgClass: 'bg-amber-50 border-amber-100', desc: 'Technologies, tools, and concepts used in the company', detail: `Deep-dive into core technologies, frameworks, and tools. Covers system design patterns, internal tooling, DevOps practices, and relevant libraries.` },
-    { key: 'interview_questions', label: 'Interview Questions', colorClass: 'text-rose-600', bgClass: 'bg-rose-50 border-rose-100', desc: 'Questions to prepare for company interviews', detail: `A curated list of technical and behavioral interview questions. Covers data structures, algorithms, system design, and cultural-fit questions.` },
-  ];
-  const activeResource = resourceItems.find(r => r.key === selectedResource);
-  const isCollapsed = isSidebarCollapsed && !isSidebarHovered;
+  const unlockLearningPathBatch = async () => {
+    if (!activeAddress) {
+      alert("Please connect your Algorand wallet (Pera/Defly/Lute) using the Connect Wallet button in the header.");
+      return;
+    }
+    const nextBatch = unlockedBatchCount + 1;
+    setIsPayingFor('learningPath');
+    try {
+      const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+      const url = `${API_BASE_URL}/interview-pro/learning-path?batch=${nextBatch}&role=Full+Stack+Software+Engineer&modulesToUnlock=3`;
+      const res = await x402Fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || errJson.reason || `x402 payment verification failed with status ${res.status}`);
+      }
+      const data = await res.json();
+      const newModules = data?.data?.modules || data?.modules || [];
+      if (newModules.length > 0 && result) {
+        const updatedChapters = [...(result.chapters || [])];
+        if (updatedChapters.length > 0) {
+          const firstCh = updatedChapters[0];
+          const existingMods = firstCh.modules || [];
+          firstCh.modules = [
+            ...existingMods,
+            ...newModules.map((m: any) => ({ title: m.title, completed: false, description: m.why }))
+          ];
+        }
+        setResult({
+          ...result,
+          chapters: updatedChapters
+        });
+      }
+      setUnlockedBatchCount(prev => prev + 1);
+    } catch (err: any) {
+      console.error("unlockLearningPathBatch error:", err);
+      alert(`Learning Path batch unlock failed: ${err.message || 'Payment cancelled or network error.'}`);
+    } finally {
+      setIsPayingFor(null);
+    }
+  };
+
+  const unlockStudyResources = async () => {
+    if (!activeAddress) {
+      alert("Please connect your Algorand wallet (Pera/Defly/Lute) using the Connect Wallet button in the header.");
+      return;
+    }
+    setIsPayingFor('resources');
+    try {
+      const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+      const url = `${API_BASE_URL}/interview-pro/study-resources?topic=System+Design+%26+Modern+Backend+Architecture`;
+      const res = await x402Fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || errJson.reason || `x402 payment verification failed with status ${res.status}`);
+      }
+      const data = await res.json();
+      const newResources = data?.data?.resources || data?.resources || [];
+      if (newResources.length > 0 && result) {
+        setResult({
+          ...result,
+          resources: newResources
+        });
+      }
+      setIsResourcesUnlocked(true);
+    } catch (err: any) {
+      console.error("unlockStudyResources error:", err);
+      alert(`Study resources unlock failed: ${err.message || 'Payment cancelled or network error.'}`);
+    } finally {
+      setIsPayingFor(null);
+    }
+  };
+
+  // Initialize Speech Recognition if available
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setSpeechRecognitionSupported(true);
+      const rec = new SpeechRecognition();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = 'en-US';
+
+      rec.onresult = (event: any) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        if (transcript) {
+          setStudentApproach(prev => prev + (prev ? ' ' : '') + transcript);
+        }
+      };
+
+      rec.onerror = () => {
+        setIsRecordingVoice(false);
+      };
+
+      rec.onend = () => {
+        setIsRecordingVoice(false);
+      };
+
+      recognitionRef.current = rec;
+    }
+  }, []);
+
+  const toggleVoiceRecording = () => {
+    if (!recognitionRef.current) return;
+    if (isRecordingVoice) {
+      recognitionRef.current.stop();
+      setIsRecordingVoice(false);
+    } else {
+      try {
+        recognitionRef.current.start();
+        setIsRecordingVoice(true);
+      } catch (e) {
+        setIsRecordingVoice(false);
+      }
+    }
+  };
+
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    setIsDragActive(e.type === 'dragenter' || e.type === 'dragover');
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    setIsDragActive(false);
+    const f = e.dataTransfer.files?.[0];
+    if (f) setFile(f);
+  }, []);
+
+  const analyse = async () => {
+    if (!hasResume && !hasJd) {
+      setError('⚠️ Both Resume and Job Description are required. Please upload or paste both to proceed.');
+      return;
+    }
+    if (!hasResume) {
+      setError('⚠️ Please upload or paste your Resume before running the analysis.');
+      return;
+    }
+    if (!hasJd) {
+      setError('⚠️ Please provide the target Job Description (paste text or upload file) to proceed.');
+      return;
+    }
+
+    setIsLoading(true); setError(null); setResult(null);
+    try {
+      const formData = new FormData();
+      if (file) {
+        formData.append('file', file);
+      }
+      if (resumeText.trim()) {
+        formData.append('resume_text_form', resumeText.trim());
+      }
+      if (jobDescription.trim()) {
+        formData.append('job_description', jobDescription.trim());
+      }
+      if (jdFile) {
+        formData.append('jd_file', jdFile);
+      }
+      formData.append('experience_level', experienceLevel);
+      formData.append('days_to_interview', String(daysToInterview));
+
+      const res = await fetch(`${PYTHON_API_BASE}/upload`, { method: 'POST', body: formData });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({ detail: `Error ${res.status}` }));
+        throw new Error(errJson.detail || errJson.message || `Error ${res.status}`);
+      }
+      const data: PrepResult = await res.json();
+      setResult(data);
+      setActiveMainTab('gaps');
+      setGapFilter('all');
+      setActiveTrackIndex(0);
+      setActiveModuleIndex(0);
+      setRevealedHintIndex(-1);
+      setStudentApproach('');
+    } catch (err: any) {
+      setError(
+        err.message?.includes('Failed to fetch')
+          ? 'Cannot connect to Interview Prep server (localhost:8000). Please ensure your Python backend is running.'
+          : err.message || 'An error occurred during analysis.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const reset = () => {
+    setFile(null); setResumeText(''); setJobDescription(''); setJdFile(null);
+    setResult(null); setError(null); setIsLoading(false);
+    setExpandedQuestion(null);
+    setEvaluationsMap({});
+    setStudentApproach('');
+    setRevealedHintIndex(-1);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (jdFileInputRef.current) jdFileInputRef.current.value = '';
+  };
+
+  // Harmonized tracks for rendering
+  const tracks: LearningTrack[] = useMemo(() => {
+    if (!result) return [];
+    if (result.learningTracks && result.learningTracks.length > 0) {
+      return result.learningTracks;
+    }
+    // Convert chapters to structured tracks
+    return (result.chapters || []).map((ch, chIdx) => ({
+      trackTitle: ch.title,
+      description: ch.description,
+      modules: (ch.modules || [{ title: ch.title, completed: ch.completed }]).map((m, mIdx) => ({
+        id: `mod-${chIdx}-${mIdx}`,
+        title: m.title,
+        difficulty: chIdx === 0 ? 'Beginner' : 'Intermediate',
+        estimatedTime: ch.estimatedTime || '30 mins',
+        overview: ch.description || 'Master core concepts and prepare for interview-grade technical challenges.',
+        why: `Why does ${m.title} exist? Searching, computing, or managing state sequentially fails at modern scale. This concept provides optimized time complexity and bounded resource usage.`,
+        what: `${m.title} provides a fundamental architecture to store, manipulate, and query data with predictable operational guarantees.`,
+        how: `Internally, it executes via a pipeline of inputs, algorithmic transformations, hash/index lookups, and memory-efficient data structures.`,
+        realWorld: [
+          { domain: '🛒 E-Commerce', pattern: 'High-speed Product & Cart Lookup', productionNote: 'Implemented using in-memory caches and indexed storage.' },
+          { domain: '🏦 Banking & FinTech', pattern: 'Transaction ID & Account Ledger', productionNote: 'Backed by ACID relational databases with foreign keys.' },
+          { domain: '🌐 Web Applications', pattern: 'Session Authentication & Tokens', productionNote: 'Stored in distributed Redis clusters with TTL expiration.' },
+          { domain: '⚡ Microservices', pattern: 'Idempotency Keys & Request Deduplication', productionNote: 'Evaluated at the API Gateway middleware layer.' }
+        ],
+        scenario: `You are building a high-traffic production application with millions of daily requests. Repeated queries are causing high latency. How would you solve this using ${m.title}? Explain your approach, trade-offs, and failure handling.`,
+        progressiveHints: [
+          'Think about what data is read frequently versus written rarely.',
+          'Consider placing an in-memory caching layer with TTL expiration.',
+          'Review cache invalidation strategies (Cache-Aside vs Write-Through).'
+        ],
+        followUpQuestions: [
+          'How do you prevent cache stampede when multiple requests miss simultaneously?',
+          'What happens if the primary cache node fails?',
+          'How do you maintain consistency between the cache and underlying database?'
+        ],
+        keyConcepts: (ch.skills || ['Core Concepts', 'Implementation']).map(s => ({
+          title: s,
+          description: `Key technical principles and common interview patterns for ${s}.`
+        }))
+      }))
+    }));
+  }, [result]);
+
+  const currentTrack = tracks[activeTrackIndex] || tracks[0];
+  const currentModule = currentTrack?.modules?.[activeModuleIndex] || currentTrack?.modules?.[0];
+  const currentModuleKey = currentModule ? `${activeTrackIndex}-${activeModuleIndex}-${currentModule.id || currentModule.title}` : '';
+  const currentEvaluation = evaluationsMap[currentModuleKey] || null;
+
+  // Handle Engineering Scenario AI Evaluation
+  const handleEvaluateScenario = async () => {
+    if (!studentApproach.trim() || !currentModule) return;
+    setIsEvaluatingScenario(true);
+    try {
+      const res = await fetch(`${PYTHON_API_BASE}/evaluate-scenario`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          concept_title: currentModule.title,
+          scenario_text: currentModule.scenario || `How would you apply ${currentModule.title} in a high-scale system?`,
+          student_answer: studentApproach.trim(),
+          experience_level: experienceLevel,
+          target_role: 'Software Engineer'
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`Evaluation request failed (${res.status})`);
+      }
+
+      const evalData: ScenarioEvaluation = await res.json();
+      setEvaluationsMap(prev => ({
+        ...prev,
+        [currentModuleKey]: evalData
+      }));
+
+      // Update multi-dimensional mastery
+      setModuleMastery(prev => ({
+        ...prev,
+        [currentModuleKey]: {
+          concept: evalData.conceptUnderstanding || evalData.overallScore,
+          realWorld: evalData.realWorldUnderstanding || evalData.overallScore,
+          engineering: evalData.engineeringReasoning || evalData.overallScore,
+          interview: evalData.interviewReadiness || evalData.overallScore,
+          completed: true
+        }
+      }));
+    } catch (err: any) {
+      alert(`AI Evaluation error: ${err.message || 'Could not evaluate approach'}`);
+    } finally {
+      setIsEvaluatingScenario(false);
+    }
+  };
+
+  const handleNextConcept = () => {
+    if (!currentTrack) return;
+    if (activeModuleIndex < currentTrack.modules.length - 1) {
+      setActiveModuleIndex(prev => prev + 1);
+    } else if (activeTrackIndex < tracks.length - 1) {
+      setActiveTrackIndex(prev => prev + 1);
+      setActiveModuleIndex(0);
+    }
+    setStudentApproach('');
+    setRevealedHintIndex(-1);
+    window.scrollTo({ top: 300, behavior: 'smooth' });
+  };
+
+  const handleCopyCode = (codeText: string) => {
+    navigator.clipboard.writeText(codeText);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const categories = useMemo(() => {
+    if (!result?.interviewQuestions) return [];
+    return ['All', ...Array.from(new Set(result.interviewQuestions.map(q => q.category).filter(Boolean)))];
+  }, [result]);
+
+  const filteredQs = useMemo(() => {
+    if (!result?.interviewQuestions) return [];
+    return result.interviewQuestions.filter(q =>
+      (categoryFilter === 'All' || q.category === categoryFilter) &&
+      (difficultyFilter === 'All' || q.difficulty === difficultyFilter)
+    );
+  }, [result, categoryFilter, difficultyFilter]);
+
+  const gapData = result?.gapAnalysis;
+  const missingCount = gapData?.missingSkills?.length || 0;
+  const strengthenCount = gapData?.strengthenSkills?.length || 0;
+  const experienceCount = gapData?.experienceGaps?.length || 0;
+  const strengthsCount = gapData?.matchedStrengths?.length || result?.existingSkills?.length || 0;
+
+  // Track overall completion
+  const totalModulesCount = tracks.reduce((acc, t) => acc + t.modules.length, 0);
+  const completedModulesCount = Object.values(moduleMastery).filter(m => m.completed).length;
+  const overallMasteryScore = completedModulesCount > 0
+    ? Math.round(Object.values(moduleMastery).reduce((acc, m) => acc + (m.concept + m.engineering + m.interview + m.realWorld) / 4, 0) / completedModulesCount)
+    : (gapData?.overallMatchScore || 70);
 
   return (
-    <main className="min-h-screen bg-[#f8fafc] text-slate-900 pb-16">
+    <div className="pt-16 min-h-screen bg-[#F8FAFC] font-sans antialiased text-slate-800">
 
-      {/* ── HEADER ── */}
-      <header className="border-b border-slate-200 bg-white sticky top-0 z-40 shadow-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setStep('upload')} className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors">
-              <ArrowLeft size={16} /> New Analysis
-            </button>
-            <div className="h-4 w-px bg-slate-200" />
-            <h1 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Briefcase size={16} className="text-blue-600" />{mission.targetRole}
-              {mission.targetCompany && <span className="text-indigo-600">@ {mission.targetCompany}</span>}
-            </h1>
-          </div>
+      {/* ── TOP NAV BAR ────────────────────────────────────────────────────── */}
+      <header className="bg-white border-b border-slate-200/80 sticky top-16 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">{mission.experienceLevel} Level</span>
-            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">{mission.daysUntilInterview} Days Left</span>
-            {/* Learning progress badge */}
-            <span className={`text-[10px] font-bold px-3 py-1 rounded-full border ${isLearningCompleted ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-amber-700 bg-amber-50 border-amber-200'}`}>
-              {isLearningCompleted ? '✓ Learning Done' : `${completedModules.length}/${totalModules} Modules`}
-            </span>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+              <Zap size={20} className="text-yellow-300" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Interview Prep &amp; AI Gap Intelligence</h1>
+              </div>
+              <p className="text-xs text-slate-500 font-medium hidden sm:block">Resume &amp; JD Gap Extraction, 9-Step Learning Path &amp; Interview Readiness</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            {result && (
+              <button
+                onClick={reset}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 transition shadow-sm"
+              >
+                <RotateCcw size={13} />
+                <span className="hidden md:inline">Analyse Another</span>
+              </button>
+            )}
+            <button
+              onClick={() => navigate('/dashboard/learner')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition shadow-sm shadow-indigo-600/20"
+            >
+              <ArrowLeft size={14} />
+              <span>Back to Dashboard</span>
+            </button>
           </div>
         </div>
       </header>
 
-      {/* ── MAIN CONTENT: SIDEBAR + CONTENT AREA ── */}
-      <div className={`mx-auto max-w-7xl px-6 py-6 grid gap-6 transition-all duration-300 ${isCollapsed ? 'xl:grid-cols-[72px_minmax(0,1fr)]' : 'xl:grid-cols-[280px_minmax(0,1fr)]'}`}>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
-        {/* ── LEFT COLLAPSIBLE SIDEBAR ── */}
-        <aside
-          onMouseEnter={() => setIsSidebarHovered(true)}
-          onMouseLeave={() => setIsSidebarHovered(false)}
-          className={`rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden self-start sticky top-20 transition-all duration-300 ${isCollapsed ? 'w-[72px]' : 'w-full'}`}
-        >
-          {isCollapsed ? (
-            /* ── COLLAPSED SIDEBAR ── */
-            <div className="py-4 flex flex-col items-center gap-4 select-none">
-              <button
-                onClick={(e) => { e.stopPropagation(); setIsSidebarCollapsed(false); }}
-                title="Expand Sidebar"
-                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
-              >
-                <ArrowLeft size={18} />
-              </button>
-              <div className="w-8 h-px bg-slate-100" />
-              {/* Modules icon */}
-              <button
-                onClick={(e) => { e.stopPropagation(); setSidebarNavMode('modules'); setSelectedResource(null); }}
-                title="Learning Modules"
-                className={`p-3 rounded-2xl transition-all ${sidebarNavMode === 'modules' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'}`}
-              >
-                <FileText size={20} />
-              </button>
-              {/* Resources icon */}
-              <button
-                onClick={(e) => { e.stopPropagation(); setSidebarNavMode('resources'); setSelectedModule(null); if (!selectedResource) setSelectedResource('company_questions'); }}
-                title="Company Resources"
-                className={`p-3 rounded-2xl transition-all ${sidebarNavMode === 'resources' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'}`}
-              >
-                <BookMarked size={20} />
-              </button>
-              {/* Interview Mission icon */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!isLearningCompleted) { setShowLockedAlertModal(true); }
-                  else { setSidebarNavMode('interview_mission'); setSelectedModule(null); setSelectedResource(null); }
-                }}
-                title={isLearningCompleted ? 'Interview Mission (Unlocked)' : 'Interview Mission (Locked — complete learning first)'}
-                className={`p-3 rounded-2xl transition-all ${sidebarNavMode === 'interview_mission' ? 'bg-amber-500 text-white shadow-md' : isLearningCompleted ? 'text-amber-500 hover:bg-amber-50' : 'text-slate-300 hover:bg-slate-100'}`}
-              >
-                {isLearningCompleted ? <Sparkles size={20} /> : <Lock size={20} />}
-              </button>
+        {/* ── SCREEN 1: UPLOAD & CONFIGURATION ──────────────────────────────── */}
+        {!result ? (
+          <div className="max-w-4xl mx-auto space-y-6">
+
+            <div className="text-center space-y-2 py-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-bold tracking-wide uppercase">
+                <Sparkles size={13} className="text-indigo-600" /> AI Resume &amp; JD Gap Extraction
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                Identify Resume Gaps &amp; Target Role Deficits
+              </h2>
+              <p className="text-sm text-slate-500 max-w-xl mx-auto font-medium">
+                Upload your resume and your target job description. Our AI analyzes both documents side-by-side to highlight missing requirements, skills to strengthen, and tailored prep missions.
+              </p>
             </div>
-          ) : (
-            /* ── EXPANDED SIDEBAR ── */
-            <div>
-              {/* Header */}
-              <div className="px-3.5 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-slate-100 flex items-center justify-between gap-2 select-none">
-                <div className="flex items-center gap-2 min-w-0">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setIsSidebarCollapsed(true); }}
-                    className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-white/80 rounded-lg transition-colors shrink-0"
-                    title="Collapse Sidebar"
-                  >
-                    <ArrowLeft size={15} />
-                  </button>
-                  <div className="min-w-0">
-                    <h3 className="text-[11px] font-bold text-slate-900 uppercase tracking-wider truncate">
-                      {sidebarNavMode === 'modules' ? 'Learning Path' : sidebarNavMode === 'resources' ? 'Company Resources' : 'Interview Mission'}
-                    </h3>
-                    <p className="text-[9px] text-slate-400 truncate">
-                      {sidebarNavMode === 'modules' ? `${completedModules.length}/${totalModules} completed` : sidebarNavMode === 'resources' ? 'Company preparation' : isLearningCompleted ? 'Unlocked ✓' : 'Complete learning to unlock'}
-                    </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Resume Card */}
+              <div className={`bg-white border rounded-2xl p-5 shadow-sm transition ${hasResume ? 'border-indigo-200' : 'border-slate-200 hover:border-slate-300'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <FileText size={16} className="text-indigo-600" />
+                    <span className="text-sm font-bold text-slate-800">Your Resume</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${
+                      hasResume
+                        ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                        : 'text-rose-500 bg-rose-50 border-rose-100'
+                    }`}>
+                      {hasResume ? '✓ Ready' : 'Required'}
+                    </span>
+                    <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                      {(['file', 'paste'] as const).map(m => (
+                        <button
+                          key={m} onClick={() => setResumeMode(m)}
+                          className={`text-xs font-semibold px-2 py-0.5 rounded-md transition ${
+                            resumeMode === m
+                              ? 'bg-white text-indigo-600 font-bold shadow-xs'
+                              : 'text-slate-500 hover:text-slate-800'
+                          }`}
+                        >
+                          {m === 'file' ? 'Upload' : 'Paste'}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); setIsSidebarCollapsed(true); }} className="p-1 text-slate-400 hover:text-slate-700 rounded-lg shrink-0">
-                  <PanelLeftClose size={15} />
-                </button>
+
+                {resumeMode === 'file' ? (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragEnter={handleDrag} onDragOver={handleDrag}
+                    onDragLeave={handleDrag} onDrop={handleDrop}
+                    className={`flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-8 px-4 cursor-pointer transition-all h-[152px] ${
+                      isDragActive
+                        ? 'border-indigo-500 bg-indigo-50/60'
+                        : file
+                        ? 'border-emerald-300 bg-emerald-50/30'
+                        : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50/50'
+                    }`}
+                  >
+                    <input
+                      type="file" accept=".pdf,.doc,.docx,.txt"
+                      ref={fileInputRef} className="hidden"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) setFile(f); }}
+                    />
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${file ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                      <UploadCloud size={20} />
+                    </div>
+
+                    {file ? (
+                      <div className="text-center">
+                        <p className="text-xs font-bold text-emerald-800 line-clamp-1">{file.name}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{(file.size / 1024).toFixed(0)} KB · Click to replace</p>
+                      </div>
+                    ) : (
+                      <div className="text-center space-y-0.5">
+                        <p className="text-xs font-bold text-slate-700">Click or drag resume here</p>
+                        <p className="text-[11px] text-slate-400">PDF, DOC, DOCX, or TXT</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <textarea
+                    value={resumeText}
+                    onChange={e => setResumeText(e.target.value)}
+                    placeholder="Paste your resume text, work experience, projects, and technical skills here..."
+                    className="w-full h-[152px] text-xs text-slate-700 border border-slate-200 rounded-xl p-3 resize-none outline-none focus:border-indigo-400 placeholder-slate-400 font-medium bg-slate-50/50 focus:bg-white transition"
+                  />
+                )}
               </div>
 
-              {/* Mode Pills */}
-              <div className="p-1.5 bg-slate-50 border-b border-slate-100 flex gap-1 text-[10px] font-bold select-none">
-                <button
-                  onClick={() => { setSidebarNavMode('modules'); setSelectedResource(null); }}
-                  className={`flex-1 py-1.5 px-2 rounded-lg transition-all flex items-center justify-center gap-1 ${sidebarNavMode === 'modules' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
+              {/* Job Description Card */}
+              <div className={`bg-white border rounded-2xl p-5 shadow-sm transition ${hasJd ? 'border-indigo-200' : 'border-slate-200 hover:border-slate-300'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Target size={16} className="text-indigo-600" />
+                    <span className="text-sm font-bold text-slate-800">Job Description (JD)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${
+                      hasJd
+                        ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                        : 'text-rose-500 bg-rose-50 border-rose-100'
+                    }`}>
+                      {hasJd ? '✓ Ready' : 'Required'}
+                    </span>
+                    <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                      {(['paste', 'file'] as const).map(m => (
+                        <button
+                          key={m} onClick={() => setJdMode(m)}
+                          className={`text-xs font-semibold px-2 py-0.5 rounded-md transition ${
+                            jdMode === m
+                              ? 'bg-white text-indigo-600 font-bold shadow-xs'
+                              : 'text-slate-500 hover:text-slate-800'
+                          }`}
+                        >
+                          {m === 'paste' ? 'Paste' : 'Upload'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {jdMode === 'paste' ? (
+                  <textarea
+                    value={jobDescription}
+                    onChange={e => setJobDescription(e.target.value)}
+                    placeholder="Paste the target job description, required tech stack, and responsibilities here..."
+                    className="w-full h-[152px] text-xs text-slate-700 border border-slate-200 rounded-xl p-3 resize-none outline-none focus:border-indigo-400 placeholder-slate-400 font-medium bg-slate-50/50 focus:bg-white transition"
+                  />
+                ) : (
+                  <div
+                    onClick={() => jdFileInputRef.current?.click()}
+                    className={`flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed cursor-pointer transition h-[152px] ${
+                      jdFile
+                        ? 'border-emerald-300 bg-emerald-50/30'
+                        : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50/50'
+                    }`}
+                  >
+                    <input
+                      type="file" accept=".pdf,.doc,.docx,.txt"
+                      ref={jdFileInputRef} className="hidden"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) setJdFile(f); }}
+                    />
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${jdFile ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                      <UploadCloud size={20} />
+                    </div>
+                    {jdFile ? (
+                      <div className="text-center">
+                        <p className="text-xs font-bold text-emerald-800 line-clamp-1">{jdFile.name}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{(jdFile.size / 1024).toFixed(0)} KB · Click to replace</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400 font-medium">Click to upload JD file (PDF, DOCX, TXT)</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Experience Level and Days to Interview */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Target Experience Level</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['beginner', 'intermediate', 'advanced'] as const).map(lvl => (
+                      <button
+                        key={lvl} onClick={() => setExperienceLevel(lvl)}
+                        className={`py-2.5 rounded-xl border text-xs font-bold capitalize transition ${
+                          experienceLevel === lvl
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        {lvl}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Days to Interview</label>
+                    <span className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-2.5 py-0.5">
+                      {daysToInterview} Days Left
+                    </span>
+                  </div>
+                  <input
+                    type="range" min={1} max={90} value={daysToInterview}
+                    onChange={e => setDaysToInterview(Number(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                  />
+                  <div className="flex justify-between text-[11px] text-slate-400 font-medium mt-1">
+                    <span>1 day</span><span>90 days</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Error Notification */}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                  className="flex items-start gap-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl p-4 text-sm font-medium"
                 >
-                  <FileText size={11} /><span>Modules</span>
-                </button>
-                <button
-                  onClick={() => { setSidebarNavMode('resources'); setSelectedModule(null); if (!selectedResource) setSelectedResource('company_questions'); }}
-                  className={`flex-1 py-1.5 px-2 rounded-lg transition-all flex items-center justify-center gap-1 ${sidebarNavMode === 'resources' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
-                >
-                  <BookMarked size={11} /><span>Resources</span>
-                </button>
-                <button
-                  onClick={() => {
-                    if (!isLearningCompleted) { setShowLockedAlertModal(true); }
-                    else { setSidebarNavMode('interview_mission'); setSelectedModule(null); setSelectedResource(null); }
-                  }}
-                  className={`flex-1 py-1.5 px-2 rounded-lg transition-all flex items-center justify-center gap-1 ${sidebarNavMode === 'interview_mission' ? 'bg-white text-amber-600 shadow-sm border border-slate-200' : isLearningCompleted ? 'text-amber-500 hover:bg-amber-50' : 'text-slate-400'}`}
-                >
-                  {isLearningCompleted ? <Sparkles size={11} /> : <Lock size={11} />}
-                  <span>Interview</span>
-                </button>
+                  <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Submit Button */}
+            <button
+              onClick={analyse}
+              disabled={isLoading}
+              className={`w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-sm font-bold transition shadow-lg cursor-pointer ${
+                hasResume && hasJd && !isLoading
+                  ? 'bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 text-white shadow-indigo-500/25 hover:opacity-95'
+                  : 'bg-indigo-600/80 hover:bg-indigo-600 text-white shadow-indigo-500/20'
+              }`}
+            >
+              {isLoading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Analyzing Resume vs JD with AI (Identifying Gaps)...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={16} />
+                  <span>Analyze Resume &amp; Show Identified Gaps</span>
+                </>
+              )}
+            </button>
+          </div>
+        ) : (
+
+          /* ── SCREEN 2: RICH GAP INTELLIGENCE & MISSION DASHBOARD ──────────────────── */
+          <div className="space-y-6">
+
+            {/* Top KPI Banner */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-extrabold text-lg">
+                  {gapData?.overallMatchScore ?? result.resumeMatchScore}%
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Match Score</p>
+                  <p className="text-sm font-extrabold text-slate-800">Job Fit Score</p>
+                </div>
               </div>
 
-              {/* Sidebar Content */}
-              <div className="max-h-[calc(100vh-220px)] overflow-y-auto">
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+                  <Clock size={20} />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Time to Bridge</p>
+                  <p className="text-sm font-extrabold text-slate-800">{result.estimatedLearningTime || 24} hours</p>
+                </div>
+              </div>
 
-                {/* MODULES MODE */}
-                {sidebarNavMode === 'modules' && (
-                  <div className="space-y-0.5 py-1">
-                    {mission.learningPath?.chapters?.map((chapter, cIdx) => {
-                      const isOpen = expandedChapters.has(cIdx);
-                      const chapterDone = chapter.modules?.every(m => completedModules.includes(m.title));
-                      return (
-                        <div key={chapter.id || cIdx}>
-                          <button
-                            onClick={() => setExpandedChapters(prev => { const n = new Set(prev); if (n.has(cIdx)) n.delete(cIdx); else n.add(cIdx); return n; })}
-                            className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition-colors border-b border-slate-100"
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className={`shrink-0 w-5 h-5 rounded-full text-[9px] font-bold flex items-center justify-center ${chapterDone ? 'bg-emerald-500 text-white' : 'bg-indigo-100 text-indigo-700'}`}>
-                                {chapterDone ? '✓' : cIdx + 1}
-                              </span>
-                              <span className="text-[11px] font-bold text-slate-700 truncate text-left">{chapter.title}</span>
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 font-extrabold text-sm">
+                  {missingCount}
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Critical Gaps</p>
+                  <p className="text-sm font-extrabold text-slate-800">{missingCount} Missing Skills</p>
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                  <Award size={20} />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Experience Level</p>
+                  <p className="text-sm font-extrabold text-slate-800 capitalize">{result.experienceLevel || experienceLevel}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setActiveMainTab('gaps')}
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    activeMainTab === 'gaps'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  <Target size={14} className={activeMainTab === 'gaps' ? 'text-white' : 'text-indigo-600'} />
+                  <span>AI Identified Gaps</span>
+                  {missingCount > 0 && (
+                    <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
+                      activeMainTab === 'gaps' ? 'bg-rose-500 text-white' : 'bg-rose-100 text-rose-700'
+                    }`}>
+                      {missingCount}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setActiveMainTab('learningPath')}
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    activeMainTab === 'learningPath'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  <Compass size={14} className={activeMainTab === 'learningPath' ? 'text-white' : 'text-indigo-600'} />
+                  <span>Learning Path</span>
+                  {completedModulesCount > 0 && (
+                    <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800">
+                      {completedModulesCount}/{totalModulesCount}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setActiveMainTab('questions')}
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    activeMainTab === 'questions'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  <MessageSquare size={14} className={activeMainTab === 'questions' ? 'text-white' : 'text-indigo-600'} />
+                  <span>Interview Questions ({result.interviewQuestions?.length || 0})</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveMainTab('resources')}
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    activeMainTab === 'resources'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  <ExternalLink size={14} className={activeMainTab === 'resources' ? 'text-white' : 'text-indigo-600'} />
+                  <span>Study Resources</span>
+                </button>
+              </div>
+            </div>
+
+            {/* TAB CONTENT 0: AI IDENTIFIED GAPS */}
+            {activeMainTab === 'gaps' && (
+              <div className="space-y-6">
+
+                {/* Match Breakdown & Executive Summary */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                  {/* Left: Executive AI Summary */}
+                  <div className="lg:col-span-7 bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                          <Sparkles size={16} />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-slate-900">AI Gap Evaluation</h3>
+                          <p className="text-[11px] text-slate-400 font-medium">Resume vs Job Description Alignment</p>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        Target: {experienceLevel}
+                      </span>
+                    </div>
+
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium bg-slate-50 border border-slate-100 rounded-xl p-4">
+                      {gapData?.summary || result.focusAreas?.join('. ') || 'AI has analyzed your resume against the target role requirements and extracted the core technical, experience, and domain gaps.'}
+                    </p>
+
+                    {/* Quick Wins */}
+                    {gapData?.quickWins && gapData.quickWins.length > 0 && (
+                      <div className="space-y-2 pt-1">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-700">
+                          <Zap size={13} className="text-amber-500" />
+                          <span>Immediate Quick Wins (Next 24-48 Hours)</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {gapData.quickWins.map((win, wi) => (
+                            <div key={wi} className="flex items-start gap-2 text-xs text-slate-600 bg-amber-50/60 border border-amber-100/80 rounded-lg p-2 font-medium">
+                              <CheckCircle2 size={13} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                              <span>{win}</span>
                             </div>
-                            <ChevronRight size={12} className={`text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
-                          </button>
-                          {isOpen && (
-                            <div className="bg-slate-50/60">
-                              {chapter.modules?.map((mod, mIdx) => (
-                                <button
-                                  key={mod.id || mIdx}
-                                  onClick={() => { setSelectedModule(mod); setSelectedResource(null); if (sidebarNavMode !== 'modules') setSidebarNavMode('modules'); }}
-                                  className={`w-full text-left px-4 py-2 flex items-center gap-2 transition-all border-l-2 ${selectedModule?.title === mod.title && sidebarNavMode === 'modules' && !selectedResource ? 'border-indigo-500 bg-indigo-50 text-indigo-900 font-medium' : 'border-transparent text-slate-600 hover:bg-slate-100 hover:border-slate-300'}`}
-                                >
-                                  <span className={`shrink-0 w-3.5 h-3.5 rounded-full border flex items-center justify-center ${completedModules.includes(mod.title) ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 bg-white'}`}>
-                                    {completedModules.includes(mod.title) && <CheckCircle size={8} className="text-white" />}
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right: Detailed Score Radar */}
+                  <div className="lg:col-span-5 bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm space-y-4">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Match Breakdown</h4>
+                    <div className="space-y-3.5">
+                      {[
+                        { label: 'Technical Skills Fit', score: gapData?.skillsMatchScore ?? result.resumeMatchScore, color: 'bg-indigo-600' },
+                        { label: 'Experience Depth Fit', score: gapData?.experienceMatchScore ?? (result.resumeMatchScore - 5), color: 'bg-violet-600' },
+                        { label: 'Domain & Architecture', score: gapData?.domainFitScore ?? result.resumeMatchScore, color: 'bg-blue-600' },
+                        { label: 'Interview Readiness', score: Math.min(100, (gapData?.overallMatchScore ?? result.resumeMatchScore) + 5), color: 'bg-emerald-600' }
+                      ].map((bar, bi) => (
+                        <div key={bi} className="space-y-1">
+                          <div className="flex justify-between text-xs font-bold text-slate-700">
+                            <span>{bar.label}</span>
+                            <span>{bar.score}%</span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div className={`h-full ${bar.color} rounded-full transition-all duration-500`} style={{ width: `${bar.score}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-700">Identified Focus Gaps</span>
+                      <span className="text-xs font-extrabold text-indigo-600">{result.focusAreas?.length || missingCount} Critical Areas</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sub Filter Pills for Gaps */}
+                <div className="flex flex-wrap gap-2 pt-2 border-b border-slate-200 pb-3">
+                  {[
+                    { id: 'all', label: 'All Gap Intelligence', count: missingCount + strengthenCount + experienceCount, color: 'text-indigo-600' },
+                    { id: 'missing', label: 'Missing Skills (Critical)', count: missingCount, color: 'text-rose-600' },
+                    { id: 'strengthen', label: 'Needs Strengthening', count: strengthenCount, color: 'text-amber-600' },
+                    { id: 'experience', label: 'Experience & Scale Gaps', count: experienceCount, color: 'text-purple-600' },
+                    { id: 'strengths', label: 'Matching Strengths', count: strengthsCount, color: 'text-emerald-600' },
+                    { id: 'actionPlan', label: 'Action Plan', count: gapData?.actionPlan?.length || 0, color: 'text-indigo-600' },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setGapFilter(tab.id as any)}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer ${
+                        gapFilter === tab.id
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span>{tab.label}</span>
+                      {tab.count > 0 && (
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                          gapFilter === tab.id ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-700'
+                        }`}>
+                          {tab.count}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 1. Missing Skills Section */}
+                {(gapFilter === 'all' || gapFilter === 'missing') && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                        <h4 className="text-sm font-bold text-slate-900">Critical Missing Skills &amp; Requirements ({missingCount})</h4>
+                      </div>
+                      <span className="text-xs font-semibold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-lg border border-rose-100">
+                        Demanded by JD, Not evidenced in Resume
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {(gapData?.missingSkills || []).map((item, idx) => (
+                        <div key={idx} className="bg-white border border-rose-100/90 rounded-2xl p-5 shadow-sm space-y-3.5 hover:border-rose-300 transition">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                                  item.priority === 'High'
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                    : item.priority === 'Medium'
+                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                    : 'bg-slate-100 text-slate-600 border-slate-200'
+                                }`}>
+                                  {item.priority} Priority Gap
+                                </span>
+                                {item.category && (
+                                  <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                    {item.category}
                                   </span>
-                                  <div className="min-w-0">
-                                    <p className="text-[10px] font-semibold truncate">{mod.title}</p>
-                                    <p className="text-[9px] text-slate-400">{mod.duration}</p>
+                                )}
+                              </div>
+                              <h5 className="text-base font-bold text-slate-900 leading-snug">{item.skill}</h5>
+                            </div>
+                            <span className="text-xs font-bold text-rose-500 bg-rose-50 p-1.5 rounded-lg">✕ Missing</span>
+                          </div>
+
+                          <div className="space-y-2 text-xs">
+                            {item.importanceInJd && (
+                              <div className="bg-rose-50/40 border border-rose-100/60 rounded-xl p-2.5">
+                                <p className="font-bold text-rose-800 text-[11px] uppercase tracking-wider mb-0.5">Why Job Requires This:</p>
+                                <p className="text-slate-600 font-medium">{item.importanceInJd}</p>
+                              </div>
+                            )}
+
+                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5">
+                              <p className="font-bold text-slate-700 text-[11px] uppercase tracking-wider mb-0.5">Resume Deficit:</p>
+                              <p className="text-slate-600 font-medium">{item.reason}</p>
+                            </div>
+
+                            <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-2.5">
+                              <p className="font-bold text-indigo-800 text-[11px] uppercase tracking-wider mb-0.5">AI Bridging Advice:</p>
+                              <p className="text-indigo-900 font-medium">{item.recommendation}</p>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-100 flex justify-end">
+                            <button
+                              onClick={() => { setActiveMainTab('learningPath'); }}
+                              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition cursor-pointer"
+                            >
+                              <span>Bridge in Learning Path</span>
+                              <ChevronRight size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Skills Needing Strengthening Section */}
+                {(gapFilter === 'all' || gapFilter === 'strengthen') && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                        <h4 className="text-sm font-bold text-slate-900">Skills Needing Greater Depth ({strengthenCount})</h4>
+                      </div>
+                      <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-100">
+                        Present in Resume, but JD Requires Higher Mastery
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {(gapData?.strengthenSkills || []).map((item, idx) => (
+                        <div key={idx} className="bg-white border border-amber-100 rounded-2xl p-5 shadow-sm space-y-3.5 hover:border-amber-300 transition">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+                                  {item.priority} Priority
+                                </span>
+                                {item.category && (
+                                  <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                    {item.category}
+                                  </span>
+                                )}
+                              </div>
+                              <h5 className="text-base font-bold text-slate-900 leading-snug">{item.skill}</h5>
+                            </div>
+                            <span className="text-xs font-bold text-amber-600 bg-amber-50 p-1.5 rounded-lg">▲ Deepen</span>
+                          </div>
+
+                          <div className="space-y-2 text-xs">
+                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5">
+                              <p className="font-bold text-slate-700 text-[11px] uppercase tracking-wider mb-0.5">Current Resume Proof:</p>
+                              <p className="text-slate-600 font-medium">{item.currentEvidence}</p>
+                            </div>
+
+                            <div className="bg-amber-50/40 border border-amber-100 rounded-xl p-2.5">
+                              <p className="font-bold text-amber-800 text-[11px] uppercase tracking-wider mb-0.5">JD Target Depth:</p>
+                              <p className="text-slate-700 font-medium">{item.targetDepth}</p>
+                            </div>
+
+                            <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-2.5">
+                              <p className="font-bold text-indigo-800 text-[11px] uppercase tracking-wider mb-0.5">Interview Strategy:</p>
+                              <p className="text-indigo-900 font-medium">{item.recommendation}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Experience & Scale Deficits */}
+                {(gapFilter === 'all' || gapFilter === 'experience') && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                        <h4 className="text-sm font-bold text-slate-900">Experience, Scale &amp; Architectural Gaps ({experienceCount})</h4>
+                      </div>
+                      <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-lg border border-purple-100">
+                        Seniority &amp; Scale Expectations
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {(gapData?.experienceGaps || []).map((item, idx) => (
+                        <div key={idx} className="bg-white border border-purple-100 rounded-2xl p-5 shadow-sm space-y-3 hover:border-purple-300 transition">
+                          <div className="flex items-start justify-between gap-2">
+                            <h5 className="text-sm font-bold text-slate-900">{item.area}</h5>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                              item.impact === 'Critical'
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : 'bg-purple-50 text-purple-700 border-purple-200'
+                            }`}>
+                              {item.impact} Impact
+                            </span>
+                          </div>
+
+                          <div className="space-y-2 text-xs">
+                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5">
+                              <p className="font-bold text-slate-700 text-[11px] uppercase tracking-wider mb-0.5">Identified Gap:</p>
+                              <p className="text-slate-600 font-medium">{item.gap}</p>
+                            </div>
+
+                            <div className="bg-purple-50/50 border border-purple-100 rounded-xl p-2.5">
+                              <p className="font-bold text-purple-800 text-[11px] uppercase tracking-wider mb-0.5">Interview Defense Strategy:</p>
+                              <p className="text-purple-900 font-medium">{item.howToBridge}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Candidate Strengths / JD Matches */}
+                {(gapFilter === 'all' || gapFilter === 'strengths') && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                        <h4 className="text-sm font-bold text-slate-900">Your Matched Strengths &amp; JD Advantages ({strengthsCount})</h4>
+                      </div>
+                      <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-100">
+                        Strong Evidence in Resume
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {(gapData?.matchedStrengths || []).map((s, idx) => (
+                        <div key={idx} className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-sm space-y-2 hover:border-emerald-300 transition">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 size={16} className="text-emerald-600 flex-shrink-0" />
+                            <h5 className="text-xs font-bold text-slate-900 line-clamp-1">{s.skill}</h5>
+                          </div>
+                          <p className="text-[11px] text-slate-500 font-medium">{s.evidence}</p>
+                          {s.relevanceToJd && (
+                            <p className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-1 rounded-md">
+                              ✓ {s.relevanceToJd}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. Action Plan Section */}
+                {(gapFilter === 'all' || gapFilter === 'actionPlan') && gapData?.actionPlan && gapData.actionPlan.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                        <h4 className="text-sm font-bold text-slate-900">Customized {daysToInterview}-Day Gap-Bridging Action Plan</h4>
+                      </div>
+                      <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-lg border border-indigo-100">
+                        Chronological Preparation Roadmap
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {gapData.actionPlan.map((phase, pi) => (
+                        <div key={pi} className="bg-white border border-indigo-100 rounded-2xl p-5 shadow-sm space-y-3 hover:border-indigo-300 transition">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-md">
+                              {phase.timeframe}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400">Step {pi + 1}</span>
+                          </div>
+
+                          <div>
+                            <h5 className="text-sm font-bold text-slate-900">{phase.phase}</h5>
+                            <p className="text-[11px] text-slate-500 font-medium mt-0.5">{phase.focus}</p>
+                          </div>
+
+                          <div className="space-y-2 pt-2 border-t border-slate-100">
+                            {phase.tasks.map((task, ti) => (
+                              <div key={ti} className="flex items-start gap-2 text-xs text-slate-600 font-medium">
+                                <div className="w-4 h-4 rounded-full bg-indigo-50 text-indigo-700 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">
+                                  {ti + 1}
+                                </div>
+                                <span>{task}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )}
+
+            {/* TAB CONTENT 1: 9-STEP DEEP LEARNING PATH STUDIO */}
+            {activeMainTab === 'learningPath' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+                {/* Left Sidebar: Personalized Tracks & Modules List */}
+                <div className="lg:col-span-4 space-y-4">
+                  <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <Compass size={18} className="text-indigo-600" />
+                        <div>
+                          <h2 className="text-sm font-extrabold text-slate-900">Interview Learning Path</h2>
+                          <p className="text-[10px] text-slate-400 font-medium">Personalized for your target role</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-black text-indigo-600">{overallMasteryScore}%</span>
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Readiness</p>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mb-4">
+                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full transition-all duration-500"
+                          style={{ width: `${(completedModulesCount / (totalModulesCount || 1)) * 100}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[10px] text-slate-400 font-bold mt-1">
+                        <span>{completedModulesCount} of {totalModulesCount} Mastered</span>
+                        <span>{Math.round((completedModulesCount / (totalModulesCount || 1)) * 100)}% Complete</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 max-h-[650px] overflow-y-auto pr-1">
+                      {tracks.map((track, tIdx) => (
+                        <div key={tIdx} className="space-y-1.5">
+                          <div
+                            onClick={() => { setActiveTrackIndex(tIdx); setActiveModuleIndex(0); setRevealedHintIndex(-1); setStudentApproach(''); }}
+                            className={`p-2.5 rounded-xl cursor-pointer transition flex items-center justify-between ${
+                              activeTrackIndex === tIdx ? 'bg-indigo-50/90 border border-indigo-200 text-indigo-900' : 'hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <span className="text-xs font-bold line-clamp-1">{track.trackTitle}</span>
+                            <span className="text-[10px] text-slate-400 font-semibold">{track.modules.length} concepts</span>
+                          </div>
+
+                          {/* Track modules */}
+                          <div className="pl-2 space-y-1 border-l-2 border-slate-100 ml-2">
+                            {track.modules.map((mod, mIdx) => {
+                              const isSelected = activeTrackIndex === tIdx && activeModuleIndex === mIdx;
+                              const mKey = `${tIdx}-${mIdx}-${mod.id || mod.title}`;
+                              const mStatus = moduleMastery[mKey];
+                              const isCompleted = mStatus?.completed;
+                              const globalModIndex = tracks.slice(0, tIdx).reduce((acc, t) => acc + t.modules.length, 0) + mIdx;
+                              const isModuleLocked = globalModIndex >= unlockedBatchCount * 3;
+                              const batchNum = Math.floor(globalModIndex / 3) + 1;
+
+                              return (
+                                <div
+                                  key={mod.id || mIdx}
+                                  onClick={() => {
+                                    setActiveTrackIndex(tIdx);
+                                    setActiveModuleIndex(mIdx);
+                                    setRevealedHintIndex(-1);
+                                    setStudentApproach('');
+                                  }}
+                                  className={`p-2.5 rounded-xl cursor-pointer transition flex items-start justify-between gap-2 ${
+                                    isSelected
+                                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                                      : isModuleLocked
+                                      ? 'bg-slate-50/70 border border-slate-200/60 text-slate-500 hover:bg-slate-100/70'
+                                      : 'hover:bg-slate-100 text-slate-600'
+                                  }`}
+                                >
+                                  <div className="flex items-start gap-2 min-w-0">
+                                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] mt-0.5 font-bold flex-shrink-0 ${
+                                      isSelected
+                                        ? 'border-white text-white'
+                                        : isModuleLocked
+                                        ? 'border-amber-300 bg-amber-50 text-amber-700'
+                                        : 'border-slate-300 text-slate-400'
+                                    }`}>
+                                      {isModuleLocked ? <Lock size={9} /> : (isCompleted ? '✓' : mIdx + 1)}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className={`text-xs font-semibold leading-snug line-clamp-1 ${isSelected ? 'text-white' : 'text-slate-800'}`}>
+                                        {mod.title}
+                                      </p>
+                                      <span className={`text-[9px] font-bold ${isSelected ? 'text-indigo-100' : isModuleLocked ? 'text-amber-600' : 'text-slate-400'}`}>
+                                        {isModuleLocked ? `🔒 Batch ${batchNum}` : (mod.estimatedTime || '30 mins')}
+                                      </span>
+                                    </div>
                                   </div>
-                                </button>
+
+                                  <div className="flex-shrink-0">
+                                    {isModuleLocked ? (
+                                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
+                                        isSelected ? 'bg-amber-400 text-amber-950' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                      }`}>
+                                        $0.09
+                                      </span>
+                                    ) : isCompleted ? (
+                                      <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
+                                        isSelected ? 'bg-emerald-400 text-emerald-950' : 'bg-emerald-50 text-emerald-700'
+                                      }`}>
+                                        {Math.round((mStatus.concept + mStatus.engineering) / 2)}%
+                                      </span>
+                                    ) : (
+                                      <span className={`text-[10px] ${isSelected ? 'text-indigo-200' : 'text-slate-300'}`}>○</span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Batch Unlock CTA Button */}
+                    <div className="mt-4 pt-3 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={unlockLearningPathBatch}
+                        disabled={isPayingFor === 'learningPath'}
+                        className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-gradient-to-r from-amber-500 to-indigo-600 hover:opacity-95 text-white text-xs font-bold shadow-md shadow-amber-500/15 transition cursor-pointer"
+                      >
+                        {isPayingFor === 'learningPath' ? (
+                          <>
+                            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span>Signing x402 $0.09 USDC...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Zap size={14} className="text-amber-200" />
+                            <span>{unlockedBatchCount === 0 ? 'Unlock First 3 Concepts ($0.09 USDC)' : 'Unlock Next 3 Concepts ($0.09 USDC)'}</span>
+                          </>
+                        )}
+                      </button>
+                      <p className="text-[10px] text-center text-slate-400 mt-1.5 font-medium">
+                        Algorand MainNet · 90,000 micro-units · x402 Standard
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Panel: The 9-Step Concept Learning Studio */}
+                <div className="lg:col-span-8 space-y-6">
+                  {(() => {
+                    const activeGlobalIndex = tracks.slice(0, activeTrackIndex).reduce((acc, t) => acc + t.modules.length, 0) + activeModuleIndex;
+                    const isCurrentModuleLocked = activeGlobalIndex >= unlockedBatchCount * 3;
+                    const currentBatchNum = Math.floor(activeGlobalIndex / 3) + 1;
+
+                    if (currentModule && isCurrentModuleLocked) {
+                      return (
+                        <div className="bg-white border border-amber-200 rounded-3xl p-8 shadow-sm text-center space-y-6">
+                          <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
+                            <Lock size={32} />
+                          </div>
+                          <div className="max-w-md mx-auto space-y-2">
+                            <span className="text-[10px] font-mono bg-amber-100 text-amber-800 font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                              x402 Micro-Transaction Gate · $0.09 USDC
+                            </span>
+                            <h2 className="text-2xl font-black text-slate-900">
+                              Unlock Batch #{currentBatchNum} ({currentModule.title})
+                            </h2>
+                            <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                              This module is part of Batch #{currentBatchNum}. Unlock 3 full modules at once complete with Real-World System Fits, Live Scenario Engineering, and AI Multi-Dimensional Grading for only $0.09 USDC.
+                            </p>
+                          </div>
+
+                          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 max-w-md mx-auto grid grid-cols-2 gap-4 text-left">
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Fixed Micro-Price</p>
+                              <p className="text-base font-black text-slate-800">0.09 USDC</p>
+                              <p className="text-[10px] text-slate-400 font-mono">90,000 micro-units</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Settlement Chain</p>
+                              <p className="text-base font-black text-indigo-600">Algorand MainNet</p>
+                              <p className="text-[10px] text-slate-400 font-mono">ASA ID: 31566704</p>
+                            </div>
+                          </div>
+
+                          <div className="max-w-md mx-auto space-y-2">
+                            <button
+                              type="button"
+                              onClick={unlockLearningPathBatch}
+                              disabled={isPayingFor === 'learningPath'}
+                              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-indigo-600 to-indigo-700 hover:opacity-95 text-white text-xs font-bold shadow-lg shadow-indigo-500/20 transition cursor-pointer"
+                            >
+                              {isPayingFor === 'learningPath' ? (
+                                <>
+                                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  <span>Signing Algorand Transaction in Wallet...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <KeyRound size={16} />
+                                  <span>Unlock 3 Concept Modules ($0.09 USDC)</span>
+                                </>
+                              )}
+                            </button>
+                            <p className="text-[10px] text-slate-400 font-medium">
+                              Signed directly via your connected Pera / Defly / Lute wallet via x402 HTTP 402 protocol.
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (!currentModule) {
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center text-slate-400 font-medium">
+                          Select a concept from the left sidebar to start your learning path.
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <>
+                        {/* Concept Header Banner */}
+                        <div className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-violet-600 rounded-3xl p-7 text-white shadow-sm space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-xs font-bold uppercase tracking-wider text-indigo-200 bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
+                              {currentTrack?.trackTitle}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {currentModule.difficulty && (
+                                <span className="text-[10px] font-bold uppercase bg-white/20 px-2.5 py-0.5 rounded-full backdrop-blur-sm">
+                                  {currentModule.difficulty}
+                                </span>
+                              )}
+                              <span className="text-xs font-medium text-indigo-100">
+                                ⏱ {currentModule.estimatedTime || '30 mins'}
+                              </span>
+                            </div>
+                          </div>
+                          <h2 className="text-2xl sm:text-3xl font-black tracking-tight">{currentModule.title}</h2>
+                          <p className="text-xs sm:text-sm text-indigo-100 font-medium max-w-2xl leading-relaxed">
+                            {currentModule.overview || 'Understand concepts deeply, understand how they are used in real systems, and learn to reason about engineering problems.'}
+                          </p>
+                        </div>
+
+                        {/* 01 — WHY DOES THIS EXIST? (Problem First) */}
+                        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
+                              01
+                            </span>
+                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Why Does This Exist? (The Problem)</h3>
+                          </div>
+                          <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 space-y-2">
+                            <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
+                              <HelpCircle size={15} className="text-amber-600 flex-shrink-0" />
+                              <span>The Core Engineering Bottleneck:</span>
+                            </div>
+                            <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">
+                              {currentModule.why || `Imagine a system with millions of records. Searching every record linearly O(n) becomes catastrophic at scale. ${currentModule.title} was created to achieve predictable, fast lookups with sub-millisecond execution.`}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* 02 — WHAT IS IT? (Concept Breakdown) */}
+                        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
+                              02
+                            </span>
+                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">What Is It? (Concept &amp; Visual Structure)</h3>
+                          </div>
+                          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
+                            {currentModule.what || `${currentModule.title} maps inputs and keys directly to memory address buckets for constant-time or sub-linear operational performance.`}
+                          </p>
+
+                          {/* Interactive Visual Breakdown */}
+                          {currentModule.keyConcepts && currentModule.keyConcepts.length > 0 && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                              {currentModule.keyConcepts.map((kc, kci) => (
+                                <div key={kci} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-1">
+                                  <p className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                                    {kc.title}
+                                  </p>
+                                  <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                                    {kc.description}
+                                  </p>
+                                </div>
                               ))}
                             </div>
                           )}
                         </div>
-                      );
-                    })}
-                    {/* Overall progress */}
-                    <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/60">
-                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-600 mb-1.5">
-                        <span>Learning Progress</span>
-                        <span>{currentProgress}%</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-600 transition-all duration-500 rounded-full" style={{ width: `${currentProgress}%` }} />
-                      </div>
-                      {isLearningCompleted && (
-                        <button
-                          onClick={() => setSidebarNavMode('interview_mission')}
-                          className="mt-2 w-full py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-[10px] rounded-lg flex items-center justify-center gap-1 hover:from-amber-600 hover:to-orange-600 transition-all"
-                        >
-                          <Sparkles size={11} /> Start Interview Mission →
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
 
-                {/* RESOURCES MODE */}
-                {sidebarNavMode === 'resources' && (
-                  <div className="p-2 space-y-1">
-                    {resourceItems.map((res) => (
-                      <button
-                        key={res.key}
-                        onClick={() => { setSelectedResource(res.key); setSelectedModule(null); }}
-                        className={`w-full text-left px-3 py-2.5 rounded-xl flex items-start gap-2.5 transition-all border ${selectedResource === res.key ? 'border-indigo-200 bg-indigo-50/80 text-indigo-900 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:border-slate-200'}`}
-                      >
-                        <span className={`shrink-0 w-2 h-2 rounded-full mt-2 ${res.bgClass} border`} />
-                        <div className="min-w-0">
-                          <p className="text-[11px] font-bold text-slate-800">{res.label}</p>
-                          <p className="text-[9px] text-slate-400 mt-0.5 truncate">{res.desc}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* INTERVIEW MISSION MODE — show sub-navigation */}
-                {sidebarNavMode === 'interview_mission' && isLearningCompleted && (
-                  <div className="p-2 space-y-1">
-                    {[
-                      { key: 'dashboard', label: 'Interview Dashboard', icon: <BarChart2 size={14} /> },
-                      { key: 'company_prep', label: 'Company Prep', icon: <Building2 size={14} /> },
-                      { key: 'ai_mock', label: 'AI Mock Interview', icon: <Code2 size={14} /> },
-                      { key: 'evaluation', label: 'Interview Evaluation', icon: <Award size={14} /> },
-                    ].map((item) => (
-                      <button
-                        key={item.key}
-                        onClick={() => setInterviewSubTab(item.key as any)}
-                        className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2.5 transition-all border text-xs font-bold ${interviewSubTab === item.key ? 'border-amber-200 bg-amber-50/80 text-amber-900 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:border-slate-200'}`}
-                      >
-                        <span className={interviewSubTab === item.key ? 'text-amber-600' : 'text-slate-400'}>{item.icon}</span>
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-              </div>
-            </div>
-          )}
-        </aside>
-
-        {/* ── RIGHT CONTENT AREA ── */}
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden min-h-[500px]">
-
-          {/* ── LEARNING MODULE DETAIL ── */}
-          {sidebarNavMode === 'modules' && selectedModule && !selectedResource && (
-            <>
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-100">{selectedModule.duration} · {selectedModule.difficulty}</span>
-                <h2 className="text-lg font-bold mt-1">{selectedModule.title}</h2>
-              </div>
-              <div className="p-6 space-y-6">
-                <div>
-                  <h4 className="text-xs font-bold uppercase text-slate-500 mb-2 flex items-center gap-2"><BookOpen size={15} className="text-blue-600" /> Module Overview</h4>
-                  <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">{selectedModule.summary}</p>
-                </div>
-                {selectedModule.keyConcepts?.length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-bold uppercase text-slate-500 mb-2 flex items-center gap-2"><Lightbulb size={15} className="text-amber-500" /> Key Concepts</h4>
-                    <ul className="space-y-2">
-                      {selectedModule.keyConcepts.map((c, i) => (
-                        <li key={i} className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-start gap-2">
-                          <span className="text-indigo-600 font-bold shrink-0">•</span><span>{c}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {selectedModule.personalizedTips?.length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-bold uppercase text-slate-500 mb-2 flex items-center gap-2"><Zap size={15} className="text-indigo-500" /> Personalized Tips</h4>
-                    <ul className="space-y-2">
-                      {selectedModule.personalizedTips.map((tip, i) => (
-                        <li key={i} className="text-xs text-slate-700 bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 flex items-start gap-2">
-                          <span className="text-indigo-600 font-bold shrink-0">→</span><span>{tip}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                <div className="border-t border-slate-100 pt-4 space-y-3">
-                  <button
-                    onClick={() => handleMarkModuleComplete(selectedModule.title)}
-                    disabled={completedModules.includes(selectedModule.title)}
-                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all"
-                  >
-                    {completedModules.includes(selectedModule.title)
-                      ? <><CheckCircle size={17} /> Module Completed</>
-                      : <><CheckCircle size={17} /> Mark as Complete</>}
-                  </button>
-                  <button
-                    onClick={() => triggerAction('practice', '0.005', `Practice: ${selectedModule.title}`)}
-                    className="w-full py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all"
-                  >
-                    <Play size={14} /> Practice Questions · 0.005 USDC
-                  </button>
-                </div>
-                {/* Practice result */}
-                {practiceResult && (
-                  <div className="border-t border-slate-100 pt-4 space-y-4">
-                    <h4 className="text-xs font-bold text-slate-700 flex items-center gap-2"><Brain size={15} className="text-indigo-600" /> Practice Questions</h4>
-                    {practiceResult.questions?.map((q, qi) => (
-                      <div key={q.id || qi} className={`rounded-xl border p-4 space-y-3 ${selectedPracticeIndex === qi ? 'border-indigo-200 bg-indigo-50/40' : 'border-slate-100'}`}>
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-xs font-semibold text-slate-800">{qi + 1}. {q.question}</p>
-                          <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full shrink-0">{q.difficulty}</span>
-                        </div>
-                        {selectedPracticeIndex === qi && (
-                          <div className="space-y-2">
-                            <textarea
-                              value={userPracticeAnswer}
-                              onChange={(e) => setUserPracticeAnswer(e.target.value)}
-                              placeholder="Type your answer here..."
-                              className="w-full min-h-24 rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none placeholder:text-slate-400"
-                            />
-                            <div className="flex gap-2">
-                              <button
-                                disabled={!userPracticeAnswer.trim()}
-                                onClick={() => triggerAction('evaluate', '0.005', 'Evaluate Answer')}
-                                className="py-2 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white font-bold text-xs rounded-xl"
-                              >
-                                Evaluate · 0.005 USDC
-                              </button>
+                        {/* 03 — HOW DOES IT WORK? (Internals Mechanism) */}
+                        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
+                              03
+                            </span>
+                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">How Does It Work Internally? (Step-by-Step)</h3>
+                          </div>
+                          <div className="bg-slate-900 text-slate-100 rounded-2xl p-5 font-mono text-xs leading-relaxed space-y-3">
+                            <div className="flex items-center gap-2 text-indigo-300 font-bold">
+                              <BrainCircuit size={16} />
+                              <span>Internal Execution Flow:</span>
                             </div>
-                            {practiceEvaluation && (
-                              <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold text-emerald-800">Score</span>
-                                  <span className="text-lg font-bold text-emerald-700">{practiceEvaluation.score}/100</span>
+                            <p className="text-slate-300 font-sans text-xs">
+                              {currentModule.how || 'Input Key → Algorithmic Hash/Transformation Function → Modulo Bucket Index Array → Fast Direct Lookup / Collision Chaining'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* 04 — REAL-WORLD PRODUCTION APPLICATIONS */}
+                        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
+                                04
+                              </span>
+                              <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Where Is This Used In Real Systems?</h3>
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+                              Concept vs Production Stack
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                            {(currentModule.realWorld || [
+                              { domain: '🛒 E-Commerce Platforms', pattern: 'Product ID → Cached Pricing & Inventory', productionNote: 'Distributed cache layer (Redis Cluster) with cache-aside pattern.' },
+                              { domain: '🏦 Banking & Payments', pattern: 'Account Ledger & Transaction Deduplication', productionNote: 'ACID PostgreSQL / CockroachDB with unique constraint indexes.' },
+                              { domain: '🌐 Web Applications', pattern: 'JWT Session Lookup & Rate Limiting', productionNote: 'In-memory token stores with sliding-window rate limit counters.' },
+                              { domain: '⚡ Cloud & APIs', pattern: 'Idempotency Keys & Deduplication Guard', productionNote: 'Distributed locks and Redis TTL keys at API gateway level.' }
+                            ]).map((rw, rwi) => (
+                              <div key={rwi} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2">
+                                <p className="text-xs font-bold text-slate-800">{rw.domain}</p>
+                                <div className="bg-white border border-slate-200/80 rounded-xl p-2 text-xs font-medium text-indigo-900">
+                                  📌 {rw.pattern}
                                 </div>
-                                <p className="text-[11px] text-emerald-900 leading-relaxed">{practiceEvaluation.constructiveFeedback}</p>
+                                <p className="text-[11px] text-slate-500 font-medium">
+                                  <span className="font-bold text-slate-700">Production Tech: </span>
+                                  {rw.productionNote}
+                                </p>
                               </div>
-                            )}
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* 05 — ENGINEERING SCENARIO & LIVE CHALLENGE */}
+                        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
+                                05
+                              </span>
+                              <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Engineering Scenario Challenge</h3>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                              AI Evaluated
+                            </span>
+                          </div>
+
+                          <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-5 space-y-2">
+                            <p className="text-xs font-bold uppercase tracking-wider text-indigo-700">Scenario Challenge:</p>
+                            <p className="text-xs sm:text-sm text-slate-800 font-semibold leading-relaxed">
+                              {currentModule.scenario || `You are building a high-throughput system with millions of daily users. Repeated database queries for hot resources are causing response latency to spike to >2.5s. How would you solve this using ${currentModule.title}?`}
+                            </p>
+                          </div>
+
+                        {/* Progressive Hints Accordion */}
+                        {currentModule.progressiveHints && currentModule.progressiveHints.length > 0 && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                                <Lightbulb size={14} className="text-amber-500" />
+                                Progressive Hints ({Math.max(0, revealedHintIndex + 1)}/{currentModule.progressiveHints.length} Revealed)
+                              </span>
+                              {revealedHintIndex < currentModule.progressiveHints.length - 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setRevealedHintIndex(prev => prev + 1)}
+                                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
+                                >
+                                  + Reveal Hint {revealedHintIndex + 2}
+                                </button>
+                              )}
+                            </div>
+
+                            {currentModule.progressiveHints.map((hint, hi) => (
+                              hi <= revealedHintIndex && (
+                                <motion.div
+                                  key={hi}
+                                  initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                                  className="bg-amber-50/70 border border-amber-200 text-amber-900 rounded-xl p-3 text-xs font-medium flex items-start gap-2"
+                                >
+                                  <span className="font-bold text-amber-700">Hint {hi + 1}:</span>
+                                  <span>{hint}</span>
+                                </motion.div>
+                              )
+                            ))}
                           </div>
                         )}
-                        {selectedPracticeIndex !== qi && (
-                          <button onClick={() => { setSelectedPracticeIndex(qi); setUserPracticeAnswer(''); setPracticeEvaluation(null); }} className="text-[10px] font-bold text-indigo-600 hover:underline">
-                            Answer this question →
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
 
-          {/* ── COMPANY RESOURCE DETAIL ── */}
-          {sidebarNavMode === 'resources' && selectedResource && activeResource && (
-            <>
-              <div className="p-6 border-b border-slate-100">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Company Resource</span>
-                <h2 className={`text-xl font-bold mt-1 ${activeResource.colorClass}`}>{activeResource.label}</h2>
-                <p className="text-xs text-slate-500 mt-1">{activeResource.desc}</p>
-              </div>
-              <div className="p-6 space-y-4">
-                <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">{activeResource.detail}</p>
-                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
-                  <p className="text-xs font-bold text-indigo-700 mb-1">🤖 AI-Generated Content</p>
-                  <p className="text-xs text-indigo-600 leading-relaxed">
-                    Detailed {activeResource.label.toLowerCase()} content for <strong>{mission.targetCompany || 'your target company'}</strong> will be AI-generated based on your profile.
-                  </p>
-                </div>
-                <button
-                  onClick={() => triggerAction('generate_resources', '0.01', `Generate ${activeResource.label}`)}
-                  className="w-full py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold text-sm rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all"
-                >
-                  <Sparkles size={15} /> Generate {activeResource.label} · 0.01 USDC
-                </button>
-              </div>
-            </>
-          )}
+                        {/* Student Explanation Input */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700">Your Engineering Approach &amp; Reasoning:</label>
+                            {speechRecognitionSupported && (
+                              <button
+                                type="button"
+                                onClick={toggleVoiceRecording}
+                                className={`text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition cursor-pointer ${
+                                  isRecordingVoice
+                                    ? 'bg-rose-500 text-white animate-pulse'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                }`}
+                              >
+                                {isRecordingVoice ? <MicOff size={13} /> : <Mic size={13} />}
+                                <span>{isRecordingVoice ? 'Listening (Speak your approach)...' : 'Voice Input'}</span>
+                              </button>
+                            )}
+                          </div>
 
-          {/* ── INTERVIEW MISSION LOCKED STATE ── */}
-          {sidebarNavMode === 'interview_mission' && !isLearningCompleted && (
-            <div className="flex flex-col items-center justify-center min-h-[500px] p-12 text-center space-y-6">
-              <div className="w-20 h-20 rounded-3xl bg-slate-100 border border-slate-200 flex items-center justify-center text-4xl shadow-inner">🔒</div>
-              <div className="space-y-2 max-w-md">
-                <h3 className="text-xl font-bold text-slate-900">Interview Mission Locked</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Interview Mission unlocks automatically after you complete your entire Learning Path. Keep learning — you're almost there!
-                </p>
-              </div>
-              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 max-w-sm w-full text-left space-y-2">
-                <div className="flex justify-between items-center text-xs font-bold text-slate-700">
-                  <span>Learning Progress</span>
-                  <span className="text-indigo-600">{completedModules.length} / {totalModules} Modules</span>
-                </div>
-                <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
-                  <div className="h-full bg-indigo-600 transition-all duration-500 rounded-full" style={{ width: `${currentProgress}%` }} />
-                </div>
-                <p className="text-[11px] text-slate-500">{totalModules - completedModules.length} module(s) remaining before auto-unlock.</p>
-              </div>
-              <button
-                onClick={() => setSidebarNavMode('modules')}
-                className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold text-xs px-8 py-3 rounded-xl shadow-md transition-all"
-              >
-                Continue Learning Path →
-              </button>
-            </div>
-          )}
-
-          {/* ── INTERVIEW MISSION CONTENT (UNLOCKED) ── */}
-          {sidebarNavMode === 'interview_mission' && isLearningCompleted && (
-            <div>
-              {/* Sub-tab bar */}
-              <div className="p-2 border-b border-slate-100 bg-slate-50 flex flex-wrap gap-1 text-xs font-bold">
-                {[
-                  { key: 'dashboard', label: 'Interview Dashboard', icon: <BarChart2 size={13} /> },
-                  { key: 'company_prep', label: 'Company Prep', icon: <Building2 size={13} /> },
-                  { key: 'ai_mock', label: 'AI Mock Interview', icon: <Code2 size={13} /> },
-                  { key: 'evaluation', label: 'Interview Evaluation', icon: <Award size={13} /> },
-                ].map(item => (
-                  <button
-                    key={item.key}
-                    onClick={() => setInterviewSubTab(item.key as any)}
-                    className={`flex items-center gap-1.5 py-2 px-3 rounded-xl transition-all ${interviewSubTab === item.key ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-white hover:border hover:border-slate-200'}`}
-                  >
-                    {item.icon}{item.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* 1. INTERVIEW DASHBOARD */}
-              {interviewSubTab === 'dashboard' && (
-                <div className="p-6 space-y-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 block">Interview Mission Unlocked 🎉</span>
-                      <h2 className="text-xl font-bold text-slate-900 mt-0.5">
-                        {mission.targetCompany || 'Top Tech Companies'} <span className="text-slate-400">·</span> {mission.targetRole}
-                      </h2>
-                    </div>
-                    <button onClick={() => setInterviewSubTab('company_prep')} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-2 shrink-0">
-                      <Sparkles size={13} /> Start Interview Prep
-                    </button>
-                  </div>
-
-                  {/* Readiness score */}
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {[
-                      { label: 'Overall Readiness', value: `${interviewMission?.readinessScore?.overall || 65}%`, color: 'text-indigo-600', bg: 'bg-indigo-50 border-indigo-100' },
-                      { label: 'Technical', value: `${interviewMission?.readinessScore?.technical || 70}%`, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100' },
-                      { label: 'Communication', value: `${interviewMission?.readinessScore?.communication || 75}%`, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
-                      { label: 'Behavioral', value: `${interviewMission?.readinessScore?.behavioral || 80}%`, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' },
-                    ].map((stat, i) => (
-                      <div key={i} className={`rounded-xl border ${stat.bg} p-4 text-center`}>
-                        <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-                        <p className="text-[10px] font-semibold text-slate-600 mt-1">{stat.label}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Skills overview */}
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 space-y-2">
-                      <h4 className="text-xs font-bold text-emerald-800 flex items-center gap-1.5"><CheckCircle size={14} /> Verified Skills ({mission.matchedSkills?.length || 0})</h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {(mission.matchedSkills || []).slice(0, 8).map(s => (
-                          <span key={s} className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">{s}</span>
-                        ))}
-                        {(mission.matchedSkills?.length || 0) > 8 && <span className="text-[10px] text-emerald-600">+{mission.matchedSkills!.length - 8} more</span>}
-                      </div>
-                    </div>
-                    <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-4 space-y-2">
-                      <h4 className="text-xs font-bold text-rose-800 flex items-center gap-1.5"><AlertTriangle size={14} /> Skill Gaps ({mission.missingSkills?.length || 0})</h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {(mission.missingSkills || []).slice(0, 8).map(s => (
-                          <span key={s} className="text-[10px] font-semibold bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full border border-rose-200">{s}</span>
-                        ))}
-                        {(mission.missingSkills?.length || 0) > 8 && <span className="text-[10px] text-rose-600">+{mission.missingSkills!.length - 8} more</span>}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Next steps */}
-                  <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-5 space-y-3">
-                    <h4 className="text-xs font-bold text-indigo-800">Recommended Next Steps</h4>
-                    <div className="space-y-2">
-                      {[
-                        { step: 1, text: 'Review Company Prep to understand the interview process', action: () => setInterviewSubTab('company_prep') },
-                        { step: 2, text: 'Start with a Technical Mock Interview to assess readiness', action: () => { setInterviewSubTab('ai_mock'); setSelectedInterviewType('Technical'); } },
-                        { step: 3, text: 'Review your Evaluation Report and improve weak areas', action: () => setInterviewSubTab('evaluation') },
-                      ].map(item => (
-                        <button key={item.step} onClick={item.action} className="w-full flex items-center gap-3 text-left p-3 rounded-xl bg-white border border-indigo-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all">
-                          <span className="shrink-0 w-6 h-6 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">{item.step}</span>
-                          <span className="text-xs font-semibold text-slate-700">{item.text}</span>
-                          <ChevronRight size={13} className="text-slate-400 ml-auto shrink-0" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 2. COMPANY PREP */}
-              {interviewSubTab === 'company_prep' && (
-                <div className="p-6 space-y-6">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Company Interview Prep</span>
-                    <h2 className="text-xl font-bold text-slate-900 mt-0.5">{mission.targetCompany || 'Top Tech Companies'}</h2>
-                    <p className="text-xs text-slate-500 mt-1">Personalized preparation plan for <strong>{mission.targetRole}</strong></p>
-                  </div>
-
-                  {/* Interview process */}
-                  <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-5 space-y-3">
-                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Interview Process</h4>
-                    {['Round 1: Screening & Introduction (30 mins)', 'Round 2: Technical Deep Dive & Architecture (45 mins)', 'Round 3: Coding & Problem Solving (60 mins)', 'Round 4: Behavioral & Culture Fit (45 mins)'].map((r, i) => (
-                      <div key={i} className="flex items-center gap-3 text-xs text-slate-700 font-medium">
-                        <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[9px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
-                        {r}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Topics */}
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 space-y-2">
-                      <h4 className="text-xs font-bold text-blue-800">Technical Topics to Prepare</h4>
-                      <ul className="space-y-1">
-                        {(mission.missingSkills?.length > 0 ? mission.missingSkills : ['Data Structures', 'Algorithms', 'System Design', 'OOP']).slice(0, 6).map(s => (
-                          <li key={s} className="text-[11px] text-blue-900 flex items-center gap-2">
-                            <span className="text-blue-400">•</span>{s}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 space-y-2">
-                      <h4 className="text-xs font-bold text-emerald-800">Your Strengths</h4>
-                      <ul className="space-y-1">
-                        {(mission.matchedSkills || ['Problem Solving', 'Core Programming']).slice(0, 6).map(s => (
-                          <li key={s} className="text-[11px] text-emerald-900 flex items-center gap-2">
-                            <span className="text-emerald-500">✓</span>{s}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setInterviewSubTab('ai_mock')}
-                    className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold text-sm rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all"
-                  >
-                    <Play size={16} /> Start Mock Interview
-                  </button>
-                </div>
-              )}
-
-              {/* 3. AI MOCK INTERVIEW */}
-              {interviewSubTab === 'ai_mock' && (
-                <div className="p-6 space-y-6">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">AI Mock Interview</span>
-                    <h2 className="text-lg font-bold text-slate-900 mt-0.5">{mission.targetRole} {mission.targetCompany ? `@ ${mission.targetCompany}` : ''}</h2>
-                  </div>
-
-                  {/* Interview type selector */}
-                  <div className="grid grid-cols-3 gap-3">
-                    {(['Technical', 'Coding', 'HR'] as const).map(type => (
-                      <button
-                        key={type}
-                        onClick={() => setSelectedInterviewType(type)}
-                        className={`py-4 rounded-xl border font-bold text-sm flex flex-col items-center gap-2 transition-all ${selectedInterviewType === type ? 'border-indigo-400 bg-indigo-50 text-indigo-800 shadow-sm' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                      >
-                        {type === 'Technical' && <Terminal size={22} className={selectedInterviewType === type ? 'text-indigo-600' : 'text-slate-400'} />}
-                        {type === 'Coding' && <Code2 size={22} className={selectedInterviewType === type ? 'text-indigo-600' : 'text-slate-400'} />}
-                        {type === 'HR' && <MessageSquare size={22} className={selectedInterviewType === type ? 'text-indigo-600' : 'text-slate-400'} />}
-                        {type}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Coding interview */}
-                  {selectedInterviewType === 'Coding' && (
-                    <div className="space-y-4">
-                      <div className="rounded-xl border border-slate-200 bg-slate-900 p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Code Editor</span>
-                          <select
-                            value={codingLanguage}
-                            onChange={(e) => setCodingLanguage(e.target.value)}
-                            className="text-xs font-bold bg-slate-700 text-slate-200 border border-slate-600 rounded-lg px-2 py-1"
-                          >
-                            {['cpp', 'python', 'java', 'javascript', 'typescript'].map(l => (
-                              <option key={l} value={l}>{l}</option>
-                            ))}
-                          </select>
+                          <textarea
+                            value={studentApproach}
+                            onChange={e => setStudentApproach(e.target.value)}
+                            placeholder="Explain what technologies you would use, why you would use them, how the workflow operates, trade-offs (e.g. cache invalidation, consistency), and failure modes..."
+                            className="w-full h-32 text-xs sm:text-sm text-slate-800 border border-slate-200 rounded-2xl p-4 outline-none focus:border-indigo-500 focus:bg-white bg-slate-50/50 transition font-medium"
+                          />
                         </div>
-                        <textarea
-                          value={codingCodeInput}
-                          onChange={(e) => setCodingCodeInput(e.target.value)}
-                          className="w-full min-h-56 bg-transparent text-slate-100 font-mono text-xs focus:outline-none resize-none"
-                          spellCheck={false}
-                        />
+
+                        <button
+                          type="button"
+                          onClick={handleEvaluateScenario}
+                          disabled={!studentApproach.trim() || isEvaluatingScenario}
+                          className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-xs sm:text-sm font-bold transition shadow-md cursor-pointer ${
+                            studentApproach.trim() && !isEvaluatingScenario
+                              ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/25'
+                              : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                          }`}
+                        >
+                          {isEvaluatingScenario ? (
+                            <>
+                              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              <span>Senior Principal Engineer AI Evaluating Your Approach...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send size={15} />
+                              <span>Submit My Engineering Approach &amp; Get AI Evaluation</span>
+                            </>
+                          )}
+                        </button>
                       </div>
-                      <button
-                        onClick={handleRunCodeReview}
-                        disabled={codeReviewLoading || !codingCodeInput.trim()}
-                        className="w-full py-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all"
-                      >
-                        {codeReviewLoading ? <><Loader2 size={16} className="animate-spin" /> Reviewing Code…</> : <><Terminal size={16} /> Submit Code for AI Review</>}
-                      </button>
-                      {codeReviewResult && (
-                        <div className="space-y-3">
-                          <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-5">
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Code Review Result</h4>
-                              <span className="text-2xl font-bold text-emerald-700">{codeReviewResult.score}/100</span>
+
+                      {/* 06 — AI EVALUATION & SCORECARD */}
+                      {currentEvaluation && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                          className="bg-white border-2 border-emerald-200 rounded-3xl p-6 shadow-sm space-y-5"
+                        >
+                          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-white bg-emerald-600 px-2.5 py-1 rounded-lg">
+                                06
+                              </span>
+                              <h3 className="text-base font-black text-slate-900">AI Engineering Reasoning Evaluation</h3>
                             </div>
-                            <p className="text-xs text-slate-700 leading-relaxed mb-3">{codeReviewResult.review}</p>
-                            {codeReviewResult.strengths?.length > 0 && (
-                              <div className="space-y-1">
-                                <p className="text-[10px] font-bold text-emerald-700 uppercase">Strengths</p>
-                                {codeReviewResult.strengths.map((s, i) => <p key={i} className="text-xs text-slate-600">✓ {s}</p>)}
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl font-black text-emerald-600">
+                                {currentEvaluation.overallScore} / 100
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Identified Strengths */}
+                            <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-4 space-y-2">
+                              <p className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                                <CheckCircle2 size={15} className="text-emerald-600" />
+                                What You Correctly Identified:
+                              </p>
+                              <div className="space-y-1.5">
+                                {currentEvaluation.whatYouIdentified?.map((str, si) => (
+                                  <div key={si} className="flex items-start gap-2 text-xs text-emerald-950 font-medium">
+                                    <span className="text-emerald-600 font-bold">✓</span>
+                                    <span>{str}</span>
+                                  </div>
+                                ))}
                               </div>
-                            )}
-                            {codeReviewResult.suggestions?.length > 0 && (
-                              <div className="space-y-1 mt-2">
-                                <p className="text-[10px] font-bold text-amber-700 uppercase">Suggestions</p>
-                                {codeReviewResult.suggestions.map((s, i) => <p key={i} className="text-xs text-slate-600">→ {s}</p>)}
+                            </div>
+
+                            {/* What to Consider */}
+                            <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 space-y-2">
+                              <p className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                                <AlertCircle size={15} className="text-amber-600" />
+                                What You Should Consider (Edge Cases &amp; Trade-offs):
+                              </p>
+                              <div className="space-y-1.5">
+                                {currentEvaluation.whatToConsider?.map((con, ci) => (
+                                  <div key={ci} className="flex items-start gap-2 text-xs text-amber-950 font-medium">
+                                    <span className="text-amber-600 font-bold">⚠</span>
+                                    <span>{con}</span>
+                                  </div>
+                                ))}
                               </div>
-                            )}
+                            </div>
+                          </div>
+
+                          {/* Senior Principal Engineer Solution */}
+                          <div className="bg-slate-900 text-slate-100 rounded-2xl p-5 space-y-3">
+                            <div className="flex items-center gap-2 text-indigo-300 font-bold text-xs">
+                              <Cpu size={16} />
+                              <span>How an Experienced Staff / Principal Engineer Would Reason:</span>
+                            </div>
+                            <p className="text-xs leading-relaxed text-slate-200 font-medium whitespace-pre-line">
+                              {currentEvaluation.seniorEngineerSolution}
+                            </p>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* 07 — INTERVIEWER FOLLOW-UP QUESTIONS */}
+                      {currentEvaluation && currentEvaluation.followUpQuestions && (
+                        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
+                              07
+                            </span>
+                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Interviewer Follow-Up Probing Questions</h3>
+                          </div>
+                          <p className="text-xs text-slate-500 font-medium">
+                            An interviewer will often drill deeper into trade-offs. Test yourself on these follow-ups:
+                          </p>
+
+                          <div className="space-y-3">
+                            {currentEvaluation.followUpQuestions.map((fq, fqi) => (
+                              <div key={fqi} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2">
+                                <p className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                                  <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-black">
+                                    {fqi + 1}
+                                  </span>
+                                  {fq}
+                                </p>
+                                <input
+                                  type="text"
+                                  placeholder="Type your brief verbal defense..."
+                                  value={followUpResponses[currentModuleKey]?.[fqi] || ''}
+                                  onChange={e => {
+                                    const val = e.target.value;
+                                    setFollowUpResponses(prev => ({
+                                      ...prev,
+                                      [currentModuleKey]: {
+                                        ...(prev[currentModuleKey] || {}),
+                                        [fqi]: val
+                                      }
+                                    }));
+                                  }}
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none focus:border-indigo-400 font-medium"
+                                />
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}
-                    </div>
-                  )}
 
-                  {/* Technical / HR interview */}
-                  {selectedInterviewType !== 'Coding' && (
-                    <div className="space-y-4">
-                      <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-5 space-y-3">
-                        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">{selectedInterviewType} Interview</h4>
-                        <p className="text-xs text-slate-600 leading-relaxed">
-                          {selectedInterviewType === 'Technical'
-                            ? `The AI will ask you technical questions based on your skill gaps (${(mission.missingSkills || []).slice(0, 3).join(', ')}) and evaluate your responses in real time.`
-                            : `The AI will ask behavioral and culture-fit questions, evaluating communication, leadership, and your problem-solving approach.`}
-                        </p>
-                      </div>
-                      {(interviewMission?.rounds?.[(interviewMission?.currentRoundIndex ?? 0)]?.questions?.length ?? 0) > 0 ? (
-                        <div className="space-y-4">
-                          {interviewMission!.rounds[interviewMission!.currentRoundIndex].questions.slice(0, 1).map(q => (
-                            <div key={q.id} className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-5 space-y-3">
-                              <p className="text-sm font-semibold text-slate-800">{q.question}</p>
-                              <textarea
-                                value={currentAnswerInput}
-                                onChange={(e) => setCurrentAnswerInput(e.target.value)}
-                                placeholder="Type your answer..."
-                                className="w-full min-h-28 rounded-xl border border-slate-200 bg-white p-3 text-xs focus:border-indigo-400 focus:outline-none"
-                              />
-                              <div className="flex gap-2">
-                                <button
-                                  disabled={!currentAnswerInput.trim()}
-                                  onClick={() => triggerAction('interview_submit_answer', '0.005', 'Submit Answer')}
-                                  className="py-2.5 px-6 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white font-bold text-xs rounded-xl"
-                                >
-                                  Submit Answer
-                                </button>
+                      {/* 08 — COMPANY INTERVIEW QUESTIONS CONNECTION */}
+                      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
+                              08
+                            </span>
+                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Connected Company Interview Questions</h3>
+                          </div>
+                          <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
+                            High-Yield Q&amp;A
+                          </span>
+                        </div>
+
+                        <div className="space-y-3">
+                          {(result.interviewQuestions?.slice(0, 3) || []).map((q, qi) => (
+                            <div key={qi} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-xs font-bold text-slate-800 leading-snug">{q.question}</p>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 flex-shrink-0">
+                                  {q.difficulty}
+                                </span>
                               </div>
+                              {q.sampleAnswer && (
+                                <details className="text-xs text-slate-600 font-medium pt-1">
+                                  <summary className="text-indigo-600 font-bold cursor-pointer hover:text-indigo-800">
+                                    Reveal STAR Sample Answer &amp; Architectural Defense
+                                  </summary>
+                                  <p className="mt-2 bg-white border border-slate-100 rounded-xl p-3 text-slate-700 leading-relaxed font-sans">
+                                    {q.sampleAnswer}
+                                  </p>
+                                </details>
+                              )}
                             </div>
                           ))}
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => triggerAction('interview_start_round', '0.02', `Start ${selectedInterviewType} Interview`)}
-                          className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold text-sm rounded-xl shadow-md flex items-center justify-center gap-2 transition-all"
-                        >
-                          <Play size={16} /> Start {selectedInterviewType} Interview · 0.02 USDC
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+                      </div>
 
-              {/* 4. INTERVIEW EVALUATION */}
-              {interviewSubTab === 'evaluation' && (
-                <div className="p-6 space-y-6">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                      {/* 09 — MASTERY SCORECARD & REVISION */}
+                      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
+                              09
+                            </span>
+                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Concept Mastery &amp; Readiness Scorecard</h3>
+                          </div>
+                          <span className="text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+                            {currentEvaluation ? 'Concept Mastered ✓' : 'In Progress ○'}
+                          </span>
+                        </div>
+
+                        {/* Multi-Dimensional Metrics */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {[
+                            { label: 'Concept Understanding', score: currentEvaluation?.conceptUnderstanding || 82, color: 'text-indigo-600 bg-indigo-50 border-indigo-100' },
+                            { label: 'Real-World System Fit', score: currentEvaluation?.realWorldUnderstanding || 78, color: 'text-blue-600 bg-blue-50 border-blue-100' },
+                            { label: 'Engineering Reasoning', score: currentEvaluation?.engineeringReasoning || 74, color: 'text-violet-600 bg-violet-50 border-violet-100' },
+                            { label: 'Interview Readiness', score: currentEvaluation?.interviewReadiness || 79, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' }
+                          ].map((met, mi) => (
+                            <div key={mi} className={`rounded-2xl p-3.5 border ${met.color} space-y-1`}>
+                              <p className="text-[10px] font-bold uppercase tracking-wider opacity-80">{met.label}</p>
+                              <p className="text-xl font-black">{met.score}%</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Weak Area Diagnosis & Next Action */}
+                        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                          <div>
+                            <p className="text-xs font-bold text-slate-800">Next Action in Learning Path:</p>
+                            <p className="text-xs text-slate-500 font-medium">
+                              Continue to master the next architectural gap in your personalized preparation track.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleNextConcept}
+                            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition cursor-pointer flex-shrink-0"
+                          >
+                            <span>Continue to Next Concept</span>
+                            <ArrowRight size={14} />
+                          </button>
+                        </div>
+                      </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+              </div>
+            )}
+
+            {/* TAB CONTENT 2: INTERVIEW QUESTIONS EXPLORER */}
+            {activeMainTab === 'questions' && (
+              !isQuestionsUnlocked ? (
+                <div className="bg-white border border-indigo-200 rounded-3xl p-8 shadow-sm space-y-6 text-center">
+                  <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center mx-auto shadow-inner">
+                    <Lock size={32} />
+                  </div>
+                  <div className="max-w-md mx-auto space-y-2">
+                    <span className="text-[10px] font-mono bg-indigo-100 text-indigo-800 font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                      x402 Pay-Per-Use Pass · $0.03 USDC
+                    </span>
+                    <h2 className="text-2xl font-black text-slate-900">
+                      Unlock Tailored Technical &amp; Architectural Interview Questions
+                    </h2>
+                    <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                      Access 8+ high-yield system design, database indexing, and backend architecture interview questions with complete Senior Engineer STAR answers and trade-off defense.
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 max-w-md mx-auto grid grid-cols-2 gap-4 text-left">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Interview Evaluation Report</span>
-                      <h2 className="text-lg font-bold text-slate-900 mt-0.5">{mission.targetRole} {mission.targetCompany ? `@ ${mission.targetCompany}` : ''}</h2>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Micro-Price</p>
+                      <p className="text-base font-black text-slate-800">0.03 USDC</p>
+                      <p className="text-[10px] text-slate-400 font-mono">30,000 micro-units</p>
                     </div>
-                    <div className="w-16 h-16 rounded-full bg-emerald-100 border-4 border-emerald-200 flex items-center justify-center text-lg font-bold text-emerald-700 shrink-0">
-                      {interviewMission?.readinessScore?.overall || 78}%
-                    </div>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="bg-emerald-50/70 p-5 rounded-xl border border-emerald-100 space-y-2">
-                      <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5"><CheckCircle2 size={14} /> Key Strengths</h4>
-                      <ul className="space-y-1.5 text-xs text-emerald-950 font-medium">
-                        <li>• Solid grasp of core language fundamentals for {mission.targetRole}</li>
-                        <li>• Clear problem-solving approach and structured communication</li>
-                        <li>• Good understanding of core data structure trade-offs</li>
-                      </ul>
-                    </div>
-                    <div className="bg-rose-50/70 p-5 rounded-xl border border-rose-100 space-y-2">
-                      <h4 className="text-xs font-bold text-rose-800 uppercase tracking-wider flex items-center gap-1.5"><AlertTriangle size={14} /> Weak Areas</h4>
-                      <ul className="space-y-1.5 text-xs text-rose-950 font-medium">
-                        {(mission.missingSkills || ['Dynamic Programming', 'System Design']).slice(0, 3).map(s => (
-                          <li key={s}>• {s} — needs more practice</li>
-                        ))}
-                      </ul>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Network &amp; Method</p>
+                      <p className="text-base font-black text-indigo-600">Algorand MainNet</p>
+                      <p className="text-[10px] text-slate-400 font-mono">GET &amp; POST Supported</p>
                     </div>
                   </div>
-                  <div className="bg-blue-50/70 p-5 rounded-xl border border-blue-100 space-y-2">
-                    <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5"><Sparkles size={14} /> Actionable Next Steps</h4>
-                    <ul className="space-y-1.5 text-xs text-blue-950 font-medium">
-                      <li>1. Practice 3 algorithm problems focusing on time complexity optimization</li>
-                      <li>2. Review system design patterns for {mission.targetRole}</li>
-                      <li>3. Re-run Technical Mock Interview to improve score to 85%+</li>
-                    </ul>
+
+                    <div className="max-w-md mx-auto space-y-2">
+                    <button
+                      type="button"
+                      onClick={unlockQuestions}
+                      disabled={isPayingFor === 'questions'}
+                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:opacity-95 text-white text-xs font-bold shadow-lg shadow-indigo-500/20 transition cursor-pointer"
+                    >
+                      {isPayingFor === 'questions' ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Signing Algorand Transaction in Wallet...</span>
+                        </>
+                      ) : (
+                        <>
+                          <KeyRound size={16} />
+                          <span>Unlock All Questions ($0.03 USDC)</span>
+                        </>
+                      )}
+                    </button>
+                    <p className="text-[10px] text-slate-400 font-medium">
+                      Signed securely via connected Pera / Algorand wallet
+                    </p>
                   </div>
-                  <button
-                    onClick={() => setInterviewSubTab('ai_mock')}
-                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all"
-                  >
-                    <Play size={15} /> Re-run Mock Interview
-                  </button>
+
+                  {/* Blurred Question Previews */}
+                  <div className="pt-4 max-w-2xl mx-auto opacity-40 blur-[2px] pointer-events-none space-y-3">
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-50 text-rose-700">Hard</span>
+                        <span className="text-[10px] font-semibold text-slate-500">System Design</span>
+                      </div>
+                      <p className="text-xs font-bold text-slate-800">How would you design an idempotent payment processing pipeline to prevent duplicate charges upon network timeouts?</p>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700">Medium</span>
+                        <span className="text-[10px] font-semibold text-slate-500">Database Indexing</span>
+                      </div>
+                      <p className="text-xs font-bold text-slate-800">Explain the difference between Cache-Aside, Write-Through, and Write-Behind caching strategies with trade-offs.</p>
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
+              ) : (
+                <div className="space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">Category:</span>
+                      {categories.map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => setCategoryFilter(cat)}
+                          className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition cursor-pointer ${
+                            categoryFilter === cat
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
 
-          {/* ── EMPTY STATE ── */}
-          {((sidebarNavMode === 'modules' && !selectedModule) || (sidebarNavMode === 'resources' && !selectedResource)) && (
-            <div className="flex flex-col items-center justify-center min-h-[500px] text-center p-8">
-              <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mb-4">
-                <BookOpen size={26} className="text-indigo-400" />
-              </div>
-              <h3 className="text-sm font-bold text-slate-700 mb-2">
-                {sidebarNavMode === 'modules' ? 'Select a Module' : 'Select a Resource'}
-              </h3>
-              <p className="text-xs text-slate-400 max-w-xs">
-                {sidebarNavMode === 'modules'
-                  ? 'Choose a learning module from the left sidebar to view its content.'
-                  : 'Choose a company resource from the left sidebar to view preparation content.'}
-              </p>
-            </div>
-          )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">Difficulty:</span>
+                      {['All', 'easy', 'medium', 'hard'].map(diff => (
+                        <button
+                          key={diff}
+                          onClick={() => setDifficultyFilter(diff)}
+                          className={`text-xs font-bold px-3 py-1.5 rounded-xl border capitalize transition cursor-pointer ${
+                            difficultyFilter === diff
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {diff}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-        </section>
-      </div>
+                  <div className="space-y-3">
+                    {filteredQs.map((q, idx) => {
+                      const isExpanded = expandedQuestion === idx;
+                      const diffStyle = DIFFICULTY_CONFIG[q.difficulty] || DIFFICULTY_CONFIG.medium;
 
-      {/* ── UNLOCK CELEBRATION MODAL ── */}
-      <AnimatePresence>
-        {showUnlockModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <motion.div initial={{ scale: 0.95, y: 15 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 15 }} className="bg-white border border-slate-200 rounded-3xl p-8 shadow-2xl max-w-md w-full text-center space-y-5">
-              <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-3xl mx-auto shadow-sm">🎉</div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-900">Learning Path Completed!</h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">You have finished your learning journey. Your Interview Mission is now automatically unlocked.</p>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-left space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Target Career Setup</span>
-                <p className="text-sm font-bold text-slate-900">{mission?.targetCompany || 'Top Tech Companies'} · {mission?.targetRole}</p>
-              </div>
-              <button
-                onClick={() => { setShowUnlockModal(false); setSidebarNavMode('interview_mission'); setInterviewSubTab('dashboard'); }}
-                className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg transition-all"
-              >
-                Start Interview Mission →
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                      return (
+                        <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3 hover:border-slate-300 transition">
+                          <div
+                            onClick={() => setExpandedQuestion(isExpanded ? null : idx)}
+                            className="flex items-start justify-between gap-4 cursor-pointer"
+                          >
+                            <div className="space-y-1.5 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${diffStyle.color}`}>
+                                  {diffStyle.label}
+                                </span>
+                                {q.category && (
+                                  <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                    {q.category}
+                                  </span>
+                                )}
+                              </div>
+                              <h4 className="text-sm font-bold text-slate-900 leading-snug">{q.question}</h4>
+                            </div>
 
-      {/* ── LOCKED ALERT MODAL ── */}
-      <AnimatePresence>
-        {showLockedAlertModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <motion.div initial={{ scale: 0.95, y: 15 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 15 }} className="bg-white border border-slate-200 rounded-3xl p-8 shadow-2xl max-w-md w-full text-center space-y-5">
-              <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-3xl mx-auto">🔒</div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">Interview Mission Locked</h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">Complete your personalized learning path to unlock company-specific interview preparation.</p>
-              </div>
-              <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-left space-y-2">
-                <div className="flex justify-between items-center text-xs font-bold text-amber-900">
-                  <span>Learning Progress</span><span>{completedModules.length}/{totalModules} Modules</span>
+                            <button className="text-slate-400 hover:text-slate-600 p-1">
+                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </button>
+                          </div>
+
+                          {isExpanded && q.sampleAnswer && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                              className="pt-3 border-t border-slate-100 space-y-2 text-xs"
+                            >
+                              <p className="font-bold text-indigo-700 uppercase tracking-wider text-[11px]">Senior Engineer STAR Answer &amp; Architecture:</p>
+                              <p className="text-slate-700 leading-relaxed font-medium bg-slate-50 border border-slate-100 rounded-xl p-3.5 whitespace-pre-line">
+                                {q.sampleAnswer}
+                              </p>
+                            </motion.div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="w-full h-2 rounded-full bg-amber-200/60 overflow-hidden">
-                  <div className="h-full bg-amber-500 transition-all duration-300 rounded-full" style={{ width: `${currentProgress}%` }} />
+              )
+            )}
+
+            {/* TAB CONTENT 3: CONTEXTUAL STUDY RESOURCES */}
+            {activeMainTab === 'resources' && (
+              !isResourcesUnlocked ? (
+                <div className="bg-white border border-emerald-200 rounded-3xl p-8 shadow-sm space-y-6 text-center">
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
+                    <BookOpen size={32} />
+                  </div>
+                  <div className="max-w-md mx-auto space-y-2">
+                    <span className="text-[10px] font-mono bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                      x402 Pay-Per-Use Pass · $0.03 USDC
+                    </span>
+                    <h2 className="text-2xl font-black text-slate-900">
+                      Unlock Verified Architectural &amp; System Design Study Primers
+                    </h2>
+                    <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                      Access authoritative documentation, PostgreSQL query optimization blueprints, Redis distributed caching patterns, and API security specifications curated for your gaps.
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 max-w-md mx-auto grid grid-cols-2 gap-4 text-left">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Micro-Price</p>
+                      <p className="text-base font-black text-slate-800">0.03 USDC</p>
+                      <p className="text-[10px] text-slate-400 font-mono">30,000 micro-units</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Network &amp; Method</p>
+                      <p className="text-base font-black text-emerald-600">Algorand MainNet</p>
+                      <p className="text-[10px] text-slate-400 font-mono">GET &amp; POST Supported</p>
+                    </div>
+                  </div>
+
+                  <div className="max-w-md mx-auto space-y-2">
+                    <button
+                      type="button"
+                      onClick={unlockStudyResources}
+                      disabled={isPayingFor === 'resources'}
+                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-700 to-indigo-700 hover:opacity-95 text-white text-xs font-bold shadow-lg shadow-emerald-500/20 transition cursor-pointer"
+                    >
+                      {isPayingFor === 'resources' ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Signing Algorand Transaction in Wallet...</span>
+                        </>
+                      ) : (
+                        <>
+                          <KeyRound size={16} />
+                          <span>Unlock Study Resources ($0.03 USDC)</span>
+                        </>
+                      )}
+                    </button>
+                    <p className="text-[10px] text-slate-400 font-medium">
+                      Signed securely via connected Pera / Algorand wallet
+                    </p>
+                  </div>
+
+                  {/* Blurred Previews */}
+                  <div className="pt-4 max-w-2xl mx-auto opacity-40 blur-[2px] pointer-events-none grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">Documentation</span>
+                      <h4 className="text-xs font-bold text-slate-900 mt-1">The System Design Primer - Interactive Blueprint</h4>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">Tutorial</span>
+                      <h4 className="text-xs font-bold text-slate-900 mt-1">PostgreSQL Query Optimization &amp; EXPLAIN ANALYZE</h4>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-[10px] text-amber-700 font-medium">{totalModules - completedModules.length} required module(s) remaining.</p>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => setShowLockedAlertModal(false)} className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold text-xs rounded-xl hover:bg-slate-50 transition-all">
-                  Close
-                </button>
-                <button
-                  onClick={() => { setShowLockedAlertModal(false); setSidebarNavMode('modules'); }}
-                  className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all"
-                >
-                  Continue Learning →
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              ) : (
+                <div className="space-y-5">
+                  <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <BookOpen size={18} className="text-indigo-600" />
+                      <h3 className="text-sm font-extrabold text-slate-900">Contextual High-Yield Study Resources</h3>
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Verified documentation, system design primers, and practice repositories directly bridging your identified gaps.
+                    </p>
+                  </div>
 
-      {/* ── x402 PAYMENT MODAL ── */}
-      <AnimatePresence>
-        {paymentStep !== null && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <motion.div initial={{ scale: 0.95, y: 15 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 15 }} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xl max-w-sm w-full space-y-5 text-slate-900">
-              {paymentStep === 'paywall' && (
-                <>
-                  <div className="flex justify-between items-start">
-                    <div><h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">{actionTitle}</h3><p className="text-[10px] text-indigo-600 font-semibold mt-0.5">x402 Micropayment Protocol</p></div>
-                    <button onClick={() => setPaymentStep(null)} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {(result.resources || [
+                      { title: 'System Design Primer', url: 'https://github.com/donnemartin/system-design-primer', type: 'Documentation', category: 'System Design' },
+                      { title: 'LeetCode Top Interview 150', url: 'https://leetcode.com/studyplan/top-interview-150/', type: 'Practice Platform', category: 'Algorithms' },
+                      { title: 'MDN Web HTTP Architecture', url: 'https://developer.mozilla.org/en-US/docs/Web/HTTP', type: 'Documentation', category: 'Web Fundamentals' }
+                    ]).map((resItem, ri) => (
+                      <a
+                        key={ri}
+                        href={resItem.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:border-indigo-400 hover:shadow-md transition flex items-start justify-between gap-3 group"
+                      >
+                        <div className="space-y-1.5 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100">
+                              {resItem.type || 'Resource'}
+                            </span>
+                            {resItem.category && (
+                              <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                {resItem.category}
+                              </span>
+                            )}
+                          </div>
+                          <h4 className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition">
+                            {resItem.title}
+                          </h4>
+                          <p className="text-[11px] text-slate-400 truncate max-w-xs font-medium font-mono">
+                            {resItem.url}
+                          </p>
+                        </div>
+                        <ArrowUpRight size={16} className="text-slate-400 group-hover:text-indigo-600 transition mt-1" />
+                      </a>
+                    ))}
                   </div>
-                  <div className="border border-slate-100 rounded-xl p-4 bg-slate-50 text-center">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Service Price</span>
-                    <span className="text-2xl font-bold text-emerald-600 block mt-1">${actionPrice} USDC</span>
-                  </div>
-                  <div className="space-y-2 text-xs font-bold text-slate-600">
-                    <div className="flex items-center gap-2"><CheckCircle2 size={15} className="text-emerald-600" /> Signed on Algorand MainNet</div>
-                    <div className="flex items-center gap-2"><CheckCircle2 size={15} className="text-emerald-600" /> Groq AI Model Response</div>
-                  </div>
-                  <button onClick={executePaidAction} className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all">Pay ${actionPrice} USDC & Execute</button>
-                </>
-              )}
-              {paymentStep === '402' && <div className="text-center py-6 space-y-3"><div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-xl animate-pulse">💸</div><h4 className="text-sm font-bold text-slate-900">HTTP 402 Payment Required</h4><p className="text-[10px] text-slate-500 leading-relaxed">Received x402 challenge from Sikho AI Gateway. Preparing Algorand transaction...</p></div>}
-              {paymentStep === 'wallet' && <div className="text-center py-6 space-y-3"><div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center mx-auto text-xl animate-bounce">🔑</div><h4 className="text-sm font-bold text-slate-900">Sign in Wallet</h4><p className="text-[10px] text-slate-500 leading-relaxed">Please approve and sign the ${actionPrice} USDC transaction in your wallet.</p></div>}
-              {paymentStep === 'verifying' && <div className="text-center py-6 space-y-3"><div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto"><Loader2 className="animate-spin text-indigo-600" size={22} /></div><h4 className="text-sm font-bold text-slate-900">Verifying Settlement</h4><p className="text-[10px] text-slate-500 leading-relaxed">Verifying on Algorand. Executing AI response...</p></div>}
-              {paymentStep === 'complete' && <div className="text-center py-6 space-y-3"><div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mx-auto text-emerald-600 text-xl">✓</div><h4 className="text-sm font-bold text-emerald-600">Action Complete!</h4><p className="text-[10px] text-slate-500 leading-relaxed">Micropayment settled. Unlocked AI response!</p></div>}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                </div>
+              )
+            )}
 
-    </main>
+          </div>
+        )}
+
+      </main>
+    </div>
   );
-}
+};
+
+export default InterviewPrep;

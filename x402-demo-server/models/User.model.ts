@@ -65,6 +65,10 @@ export interface IUser extends Document {
 
 const UserSchema: Schema = new Schema(
   {
+    welcomeEmailSent: {
+      type: Boolean,
+      default: false,
+    },
     fullName: {
       type: String,
       required: [true, "Full name is required"],
@@ -228,7 +232,6 @@ const UserSchema: Schema = new Schema(
     careerDiscoveryAnswers: { type: Schema.Types.Mixed },
     openSource: { type: Schema.Types.Mixed },
     skillProficiencies: { type: Schema.Types.Mixed },
-    welcomeEmailSent: { type: Boolean, default: false },
   },
   {
     timestamps: true,
