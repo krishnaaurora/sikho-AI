@@ -156,7 +156,8 @@ interface PrepResult {
   resources?: Resource[];
 }
 
-const PYTHON_API_BASE = import.meta.env.VITE_INTERVIEW_API_URL ?? 'http://localhost:8000';
+const PYTHON_API_BASE = (import.meta.env.VITE_INTERVIEW_API_URL ?? 'https://sikho-ai.onrender.com/api/v1/interview-pro').replace(/\/$/, '');
+
 
 const DIFFICULTY_CONFIG: Record<string, { label: string; color: string }> = {
   easy:   { label: 'Easy',   color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },

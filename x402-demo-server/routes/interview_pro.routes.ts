@@ -1,12 +1,15 @@
 import express from "express";
+import multer from "multer";
 import { enforceWorkspacePayment } from "../middlewares/x402.middleware";
 import {
   getOrPostInterviewQuestions,
   getOrPostLearningPathBatch,
-  getOrPostStudyResources
+  getOrPostStudyResources,
+  postUploadAndAnalyze
 } from "../controllers/interview/interviewPro.controller";
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 // ─── 1. INTERVIEW QUESTIONS ($0.03 USDC) ────────────────────────────────────
 // Supports both GET and POST
@@ -117,6 +120,13 @@ router.post(
     }
   }),
   getOrPostStudyResources
+);
+
+// ─── 4. Resume Upload & Gap Analysis (FREE - no x402 payment required) ───────
+router.post(
+  "/upload",
+  upload.fields([{ name: "file", maxCount: 1 }, { name: "jd_file", maxCount: 1 }]),
+  postUploadAndAnalyze
 );
 
 export default router;

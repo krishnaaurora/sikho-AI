@@ -266,3 +266,61 @@ export const getOrPostStudyResources = asyncHandler(async (req: Request, res: Re
     resources
   }, "Study resources unlocked and retrieved successfully");
 });
+
+// ─── 4. Resume Upload & Gap Analysis (/upload) ────────────────────────────────
+export const postUploadAndAnalyze = asyncHandler(async (req: Request, res: Response) => {
+  // Accepts multipart/form-data OR JSON body
+  const resumeText: string = (req.body?.resume_text_form || req.body?.resume_text || "").trim();
+  const jobDescription: string = (req.body?.job_description || "").trim();
+  const experienceLevel: string = req.body?.experience_level || "Intermediate";
+  const daysToInterview: number = parseInt(req.body?.days_to_interview || "30", 10);
+
+  if (!jobDescription) {
+    return res.status(400).json({ detail: "job_description is required." });
+  }
+
+  const hasResume = resumeText.length > 0;
+
+  const systemPrompt = `You are a senior technical recruiter and career coach specializing in software engineering roles.
+Analyze the candidate's resume against the job description and produce a detailed gap analysis with a structured 9-step learning path.
+Return ONLY pure valid JSON matching this exact schema (no markdown, no explanation):
+{
+  "skillGaps": [
+    { "skill": "skill name", "priority": "high|medium|low", "category": "Technical|Soft Skill|Domain", "currentLevel": "none|beginner|intermediate", "targetLevel": "intermediate|advanced", "description": "brief gap explanation" }
+  ],
+  "learningTracks": [
+    {
+      "trackName": "Track name",
+      "totalModules": 3,
+      "modules": [
+        {
+          "moduleNumber": 1,
+          "title": "Module title",
+          "duration": "X days",
+          "topics": ["topic1", "topic2"],
+          "resources": [{ "title": "Resource title", "url": "https://...", "type": "Article|Video|Course|Documentation" }],
+          "practiceProblems": ["problem1", "problem2"],
+          "milestoneCheck": "What should the learner be able to do after this module"
+        }
+      ]
+    }
+  ],
+  "interviewQuestions": [
+    { "question": "question text", "difficulty": "easy|medium|hard", "category": "System Design|Database|Backend|Algorithms", "sampleAnswer": "detailed answer" }
+  ],
+  "overallReadinessScore": 72,
+  "summary": "2-3 sentence personalized summary"
+}`;
+
+  const userPrompt = hasResume
+    ? `RESUME:\n${resumeText.slice(0, 4000)}\n\nJOB DESCRIPTION:\n${jobDescription.slice(0, 2000)}\n\nExperience Level: ${experienceLevel}\nDays to Interview: ${daysToInterview}\n\nAnalyze gaps and produce the full learning path.`
+    : `No resume provided. Job Description:\n${jobDescription.slice(0, 2000)}\n\nExperience Level: ${experienceLevel}\nDays to Interview: ${daysToInterview}\n\nGenerate a comprehensive learning path and interview prep plan for this role.`;
+
+  try {
+    const aiResponse = await queryRotator(systemPrompt, userPrompt);
+    return res.json(aiResponse);
+  } catch (err: any) {
+    return res.status(500).json({ detail: err?.message || "AI analysis failed. Please try again." });
+  }
+});
+
