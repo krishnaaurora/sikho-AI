@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { sendSuccessResponse } from "../../utils/response";
 import { AppError } from "../../utils/errors";
-import { queryAIWithJsonRotation } from "../../services/ai/aiRotator";
+import { queryAIWithJsonRotation, queryInterviewPrepWithJsonRotation } from "../../services/ai/aiRotator";
 
 // 1. Explain
 export const explainConceptMvp = asyncHandler(async (req: Request, res: Response) => {
@@ -143,7 +143,7 @@ Format your output as a JSON object:
 }
 Strictly output JSON only.`;
     const userPrompt = `Role: ${role}, Answers: ${JSON.stringify(answers)}`;
-    const responseJson = await queryAIWithJsonRotation(evaluateSystem, userPrompt);
+    const responseJson = await queryInterviewPrepWithJsonRotation(evaluateSystem, userPrompt);
     return sendSuccessResponse(res, responseJson, "Interview evaluation complete");
   }
 
@@ -163,7 +163,7 @@ Format your output as a JSON object:
 Generate exactly ${numberOfQuestions} questions. Strictly output JSON only.`;
 
   const user = `Role: ${role}, Experience: ${experience}, Questions Count: ${numberOfQuestions}`;
-  const responseJson = await queryAIWithJsonRotation(system, user);
+  const responseJson = await queryInterviewPrepWithJsonRotation(system, user);
   return sendSuccessResponse(res, responseJson, "Mock interview generated successfully");
 });
 

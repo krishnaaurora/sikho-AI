@@ -135,15 +135,15 @@ const allowedOrigins = appConfig.corsOrigin === "*"
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || appConfig.corsOrigin === "*" || allowedOrigins.indexOf(origin) !== -1) {
+    if (!origin || appConfig.corsOrigin === "*" || allowedOrigins.indexOf(origin) !== -1 || origin.includes("localhost") || origin.includes("127.0.0.1")) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-PAYMENT', 'PAYMENT-SIGNATURE', 'Access-Control-Expose-Headers'],
-  exposedHeaders: ['X-PAYMENT-RESPONSE', 'Access-Control-Expose-Headers', 'PAYMENT-REQUIRED', 'PAYMENT-RESPONSE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  exposedHeaders: ['X-PAYMENT-RESPONSE', 'x-payment-response', 'PAYMENT-REQUIRED', 'payment-required', 'PAYMENT-RESPONSE', 'payment-response', 'Access-Control-Expose-Headers'],
 }));
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));

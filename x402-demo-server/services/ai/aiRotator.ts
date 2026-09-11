@@ -1,4 +1,4 @@
-﻿import Groq from "groq-sdk";
+import Groq from "groq-sdk";
 import { config } from "../../config";
 
 // Setup single rotated client request helper
@@ -30,6 +30,39 @@ export async function queryAIWithJsonRotation(systemPrompt: string, userPrompt: 
       console.error(`[Groq Rotation] Key slot ${activeIndex} failed:`, err);
       if (i === attempts - 1) {
         throw new Error("All Groq key client rotation attempts failed.");
+      }
+    }
+  }
+}
+
+// Setup Interview Prep rotator
+const interviewPrepKeys = config.groqInterviewPrepKeys;
+const interviewPrepClientPool = interviewPrepKeys && interviewPrepKeys.length > 0
+  ? interviewPrepKeys.map(k => new Groq({ apiKey: k }))
+  : clientPool; // fallback to generic pool if not configured
+let interviewPrepKeyRotatorIndex = 0;
+
+export async function queryInterviewPrepWithJsonRotation(systemPrompt: string, userPrompt: string): Promise<any> {
+  const attempts = interviewPrepClientPool.length;
+  for (let i = 0; i < attempts; i++) {
+    const activeIndex = (interviewPrepKeyRotatorIndex + i) % interviewPrepClientPool.length;
+    const client = interviewPrepClientPool[activeIndex];
+    try {
+      const completion = await client.chat.completions.create({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        model: "openai/gpt-oss-120b",
+        temperature: 0.3,
+        response_format: { type: "json_object" }
+      });
+      interviewPrepKeyRotatorIndex = (activeIndex + 1) % interviewPrepClientPool.length;
+      return JSON.parse(completion.choices[0]?.message?.content || "{}");
+    } catch (err) {
+      console.error(`[Groq Interview Prep Rotation] Key slot ${activeIndex} failed:`, err);
+      if (i === attempts - 1) {
+        throw new Error("All Groq interview prep key client rotation attempts failed.");
       }
     }
   }

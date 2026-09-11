@@ -13,6 +13,7 @@ import { useWallet } from '@txnlab/use-wallet-react';
 import { createX402Fetch } from '../utils/x402';
 import { API_ENDPOINTS } from '../config/api';
 import ConnectWallet from '../components/ConnectWallet';
+import boyIllustration from '../assets/boy_illustration_transparent.png';
 
 interface Lesson {
   _id: string;
@@ -89,16 +90,21 @@ const LearnerDashboard: React.FC = () => {
   const fetchCourses = async () => {
     try {
       setIsLoading(true);
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+      if (!token) {
+        setCourses([]);
+        return;
+      }
       const res = await learnerApi.getCourses();
-      if (res.success) {
+      if (res && res.success && res.data) {
         setCourses(res.data);
         if (selectedCourse) {
           const updated = res.data.find((c: Course) => c._id === selectedCourse._id);
           if (updated) setSelectedCourse(updated);
         }
       }
-    } catch (e) {
-      console.error('Failed to fetch courses:', e);
+    } catch (e: any) {
+      console.warn('Could not load learner courses (user not authenticated or session expired):', e?.message || e);
     } finally {
       setIsLoading(false);
     }
@@ -144,7 +150,7 @@ const LearnerDashboard: React.FC = () => {
 
   const handleUnlockChapter = async (_courseId: string, chapterId: string) => {
     setUnlockError(null);
-    if (!activeAddress || !signTransactions) {
+    if (!activeAddress) {
       setUnlockError('Please connect your Algorand wallet first.');
       return;
     }
@@ -219,11 +225,11 @@ const LearnerDashboard: React.FC = () => {
                   </div>
                   <button
                     type="submit"
-                    disabled={isCreating || !courseTopic.trim()}
-                    className="flex items-center gap-1.5 px-6 py-3.5 bg-indigo-650 hover:bg-indigo-700 disabled:opacity-40 text-white text-xs font-bold rounded-2xl transition-all shadow-md shadow-indigo-200"
+                    disabled={isCreating}
+                    className="flex items-center gap-1.5 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold rounded-2xl transition-all shadow-md shadow-indigo-600/25 cursor-pointer flex-shrink-0"
                   >
-                    {isCreating ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                    <span>Generate</span>
+                    {isCreating ? <Loader2 size={13} className="animate-spin text-white" /> : <Send size={13} className="text-white" />}
+                    <span className="text-white font-bold">Generate</span>
                   </button>
                 </form>
 
@@ -246,19 +252,22 @@ const LearnerDashboard: React.FC = () => {
               <div className="relative w-56 h-56 flex-shrink-0 flex items-center justify-center animate-float-hero">
                 <div className="absolute inset-0 bg-indigo-50 rounded-full scale-95 opacity-80 blur-xl" />
                 <img
-                  src="/boy_illustration_transparent.png"
+                  src={boyIllustration}
                   alt="Student Levitation Illustration"
                   className="relative z-10 w-full h-full object-contain select-none"
+                  onError={(e) => {
+                    e.currentTarget.src = '/boy_illustration_transparent.png';
+                  }}
                 />
               </div>
             </div>
             {/* Resume Intelligence Callout Banner for incomplete profile users */}
             {(!user?.resumeText || !user?.onboardingCompleted || !user?.currentSkills || user.currentSkills.length === 0) && (
-              <div className="bg-gradient-to-r from-indigo-50/60 to-purple-50/60 border border-indigo-150 rounded-3xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+              <div className="bg-gradient-to-r from-indigo-50/60 to-purple-50/60 border border-indigo-100 rounded-3xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="bg-indigo-100 text-indigo-750 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">FEATURED</span>
-                    <span className="text-xs text-indigo-650 font-bold flex items-center gap-1">
+                    <span className="bg-indigo-100 text-indigo-700 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">FEATURED</span>
+                    <span className="text-xs text-indigo-600 font-bold flex items-center gap-1">
                       <Sparkles size={13} /> Highly Recommended
                     </span>
                   </div>
@@ -269,7 +278,7 @@ const LearnerDashboard: React.FC = () => {
                 </div>
                 <Button 
                   onClick={() => navigate('/resume-intelligence')}
-                  className="bg-indigo-600 hover:bg-indigo-755 text-white text-xs font-black py-3 px-6 rounded-2xl shadow-md flex items-center gap-1.5 flex-shrink-0"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black py-3 px-6 rounded-2xl shadow-md flex items-center gap-1.5 flex-shrink-0"
                 >
                   <span>Launch Resume Intelligence</span>
                   <ArrowRight size={13} />
@@ -304,7 +313,10 @@ const LearnerDashboard: React.FC = () => {
               </div>
 
               {/* Tile 2: Build */}
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-violet-300 transition-all group relative flex flex-col justify-between">
+              <div 
+                onClick={() => navigate('/build')}
+                className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-violet-300 transition-all group relative flex flex-col justify-between"
+              >
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-11 h-11 bg-violet-50 text-violet-600 rounded-xl flex items-center justify-center border border-violet-100/80">
@@ -323,7 +335,7 @@ const LearnerDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Tile 3: Interview Prep */}
+              {/* Tile 3: Job Readiness Spark / Interview Prep */}
               <div 
                 onClick={() => navigate('/interview-prep')}
                 className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-amber-300 transition-all group relative flex flex-col justify-between"
@@ -331,19 +343,19 @@ const LearnerDashboard: React.FC = () => {
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-11 h-11 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center border border-amber-100/80">
-                      <Compass size={20} />
+                      <Sparkles size={20} />
                     </div>
                     <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-amber-50 group-hover:text-amber-600 transition-colors">
                       <ArrowRight size={12} />
                     </div>
                   </div>
-                  <h3 className="font-bold text-slate-800 text-sm mb-1">Interview Prep</h3>
-                  <p className="text-xs text-slate-400 font-medium leading-relaxed">AI mock interviews & evaluation</p>
+                  <h3 className="font-bold text-slate-800 text-sm mb-1">Interview Prep Studio</h3>
+                  <p className="text-xs text-slate-400 font-medium leading-relaxed">AI questions, learning path & resources from your resume</p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-100 flex gap-1.5">
-                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Plan</span>
-                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Mock</span>
-                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Evaluate</span>
+                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Questions</span>
+                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Learning Path</span>
+                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Resources</span>
                 </div>
               </div>
 

@@ -106,3 +106,10 @@ x402-demo-server/uploads/documents/*
 .env
 .env.*
 !.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+interview_pro/backend/uploads/*
+!interview_pro/backend/uploads/.gitkeep

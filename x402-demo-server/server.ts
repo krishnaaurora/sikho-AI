@@ -1,3 +1,4 @@
+// Sikho AI x402 Server
 import dotenv from "dotenv";
 dotenv.config();
 

@@ -29,8 +29,9 @@ async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
   };
 
   // Add access token to headers if available
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
+  const activeToken = accessToken || localStorage.getItem('accessToken') || localStorage.getItem('token');
+  if (activeToken) {
+    headers['Authorization'] = `Bearer ${activeToken}`;
   }
 
   const response = await fetch(url, {
@@ -50,7 +51,11 @@ async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
       // ignore JSON parsing errors
     }
     if (response.status === 401) {
-      errorMessage = "Wrong password, email, or user not registered.";
+      if (url.includes('/auth/login') || url.includes('/auth/register')) {
+        errorMessage = "Wrong password, email, or user not registered.";
+      } else {
+        errorMessage = "Authentication required or session expired.";
+      }
     }
     throw new Error(errorMessage);
   }

@@ -40,7 +40,9 @@ export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
     }
 
     const transporter = createTransporter();
-    const from = process.env.EMAIL_FROM || `"Sikho AI" <${user}>`;
+    const fromName = process.env.SMTP_FROM_NAME || process.env.EMAIL_FROM_NAME || "Sikho AI";
+    const fromAddress = process.env.SMTP_FROM || process.env.EMAIL_FROM || user;
+    const from = `"${fromName}" <${fromAddress}>`;
 
     const info = await transporter.sendMail({
       from,

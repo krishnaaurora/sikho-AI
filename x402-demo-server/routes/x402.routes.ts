@@ -100,11 +100,74 @@ const seedServices = async () => {
         priceUsd: 0.10,
         endpoint: "/api/x402/career-action-plan",
         status: "Active"
+      },
+      {
+        serviceId: "interview_questions",
+        name: "Technical Interview Questions AI Pass",
+        description: "Unlock tailored architectural & technical interview questions with STAR answers",
+        priceUsd: 0.03,
+        endpoint: "/api/v1/interview-pro/interview-questions",
+        status: "Active"
+      },
+      {
+        serviceId: "learning_path",
+        name: "Learning Path 3-Module Batch Unlock",
+        description: "Unlock next batch of 3 in-depth concept & scenario modules",
+        priceUsd: 0.09,
+        endpoint: "/api/v1/interview-pro/learning-path",
+        status: "Active"
+      },
+      {
+        serviceId: "study_resources",
+        name: "Curated Study Resources Pass",
+        description: "Unlock curated technical primers, system design docs, and indexing guides",
+        priceUsd: 0.03,
+        endpoint: "/api/v1/interview-pro/study-resources",
+        status: "Active"
       }
     ]);
   }
-  // Ensure existing seeded service also updates to 0.50
+  // Ensure existing seeded services also update or insert
   await X402Service.updateOne({ serviceId: "resume_pass" }, { $set: { priceUsd: 0.50 } });
+  await X402Service.updateOne(
+    { serviceId: "interview_questions" },
+    {
+      $set: {
+        name: "Technical Interview Questions AI Pass",
+        description: "Unlock tailored architectural & technical interview questions with STAR answers",
+        priceUsd: 0.03,
+        endpoint: "/api/v1/interview-pro/interview-questions",
+        status: "Active"
+      }
+    },
+    { upsert: true }
+  );
+  await X402Service.updateOne(
+    { serviceId: "learning_path" },
+    {
+      $set: {
+        name: "Learning Path 3-Module Batch Unlock",
+        description: "Unlock next batch of 3 in-depth concept & scenario modules",
+        priceUsd: 0.09,
+        endpoint: "/api/v1/interview-pro/learning-path",
+        status: "Active"
+      }
+    },
+    { upsert: true }
+  );
+  await X402Service.updateOne(
+    { serviceId: "study_resources" },
+    {
+      $set: {
+        name: "Curated Study Resources Pass",
+        description: "Unlock curated technical primers, system design docs, and indexing guides",
+        priceUsd: 0.03,
+        endpoint: "/api/v1/interview-pro/study-resources",
+        status: "Active"
+      }
+    },
+    { upsert: true }
+  );
 };
 
 // GET /api/x402/services -> list pricing
