@@ -156,7 +156,20 @@ interface PrepResult {
   resources?: Resource[];
 }
 
-const PYTHON_API_BASE = (import.meta.env.VITE_INTERVIEW_API_URL ?? 'https://sikho-ai.onrender.com/api/v1/interview-pro').replace(/\/$/, '');
+// Interview Prep backend — always resolves to /api/v1/interview-pro
+// Handles 3 cases:
+//   1. VITE_INTERVIEW_API_URL not set  → use hardcoded production URL
+//   2. VITE_INTERVIEW_API_URL = "https://sikho-ai.onrender.com" (bare)  → append path
+//   3. VITE_INTERVIEW_API_URL = "https://sikho-ai.onrender.com/api/v1/interview-pro" (full) → use as-is
+const _RAW_INTERVIEW_URL = import.meta.env.VITE_INTERVIEW_API_URL as string | undefined;
+const PYTHON_API_BASE = (() => {
+  const base = (_RAW_INTERVIEW_URL ?? 'https://sikho-ai.onrender.com').replace(/\/$/, '');
+  // If the env var already contains the full path, use it; otherwise append it
+  if (base.includes('/interview-pro')) return base;
+  if (base.includes('/api/')) return base + '/interview-pro';
+  // bare base URL like https://sikho-ai.onrender.com
+  return base + '/api/v1/interview-pro';
+})();
 
 
 const DIFFICULTY_CONFIG: Record<string, { label: string; color: string }> = {
