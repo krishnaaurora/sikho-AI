@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: interview-pro-backend
+    runtime: python
+    rootDir: interview_pro/backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GROQ_API_KEY_20
+        sync: false
+      - key: GROQ_API_KEY_21
+        sync: false
+      - key: GROQ_API_KEY_22
+        sync: false
+      - key: GROQ_API_KEY_23
+        sync: false
+      - key: GROQ_API_KEY_24
+        sync: false
+      - key: GROQ_API_KEY_25
+        sync: false
+      - key: GROQ_API_KEY_26
+        sync: false
+      - key: GROQ_API_KEY_27
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+    plan: free
