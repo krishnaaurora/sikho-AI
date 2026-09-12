@@ -1858,17 +1858,10 @@ export class DataEngine {
                             </p>
                           </div>
 
-                          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 max-w-md mx-auto grid grid-cols-2 gap-4 text-left">
-                            <div>
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Fixed Micro-Price</p>
-                              <p className="text-base font-black text-slate-800">0.09 USDC</p>
-                              <p className="text-[10px] text-slate-400 font-mono">90,000 micro-units</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Settlement Chain</p>
-                              <p className="text-base font-black text-indigo-600">Algorand MainNet</p>
-                              <p className="text-[10px] text-slate-400 font-mono">ASA ID: 31566704</p>
-                            </div>
+                          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 max-w-md mx-auto text-center space-y-1">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Micro-Price for Complete Module</p>
+                            <p className="text-2xl font-black text-slate-900">$0.09 <span className="text-sm font-semibold text-slate-500">USDC</span></p>
+                            <p className="text-[11px] text-slate-500 font-medium">Unlocks all 3 chapters in this module</p>
                           </div>
 
                           <div className="max-w-md mx-auto space-y-2">
