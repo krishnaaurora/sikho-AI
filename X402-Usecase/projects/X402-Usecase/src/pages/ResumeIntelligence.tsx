@@ -1,3 +1,4 @@
+// ResumeIntelligence.tsx — Algorand x402 Micropayment Gated Resume Intelligence
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
