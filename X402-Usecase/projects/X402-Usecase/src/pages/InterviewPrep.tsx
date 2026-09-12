@@ -378,6 +378,7 @@ const InterviewPrep: React.FC = () => {
 
   // Filter states for questions tab
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
+  const [expandedBatchIndices, setExpandedBatchIndices] = useState<Set<number>>(new Set([0]));
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [difficultyFilter, setDifficultyFilter] = useState('All');
 
@@ -1623,12 +1624,14 @@ export class DataEngine {
             {activeMainTab === 'learningPath' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-                {/* Left Sidebar: Personalized Tracks & Modules List */}
-                <div className="lg:col-span-4 space-y-4">
-                  <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                    <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
+                {/* Left Sidebar: Module Accordion Nav */}
+                <div className="lg:col-span-4 space-y-3">
+
+                  {/* Header Card */}
+                  <div className="bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Compass size={18} className="text-indigo-600" />
+                        <Compass size={17} className="text-indigo-600" />
                         <div>
                           <h2 className="text-sm font-extrabold text-slate-900">Interview Learning Path</h2>
                           <p className="text-[10px] text-slate-400 font-medium">Personalized for your target role</p>
@@ -1639,138 +1642,195 @@ export class DataEngine {
                         <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Readiness</p>
                       </div>
                     </div>
-
                     {/* Progress Bar */}
-                    <div className="mb-4">
-                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="mt-3">
+                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full transition-all duration-500"
                           style={{ width: `${(completedModulesCount / (totalModulesCount || 1)) * 100}%` }}
                         />
                       </div>
-                      <div className="flex justify-between text-[10px] text-slate-400 font-bold mt-1">
+                      <div className="flex justify-between text-[9px] text-slate-400 font-bold mt-1">
                         <span>{completedModulesCount} of {totalModulesCount} Mastered</span>
                         <span>{Math.round((completedModulesCount / (totalModulesCount || 1)) * 100)}% Complete</span>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="space-y-4 max-h-[650px] overflow-y-auto pr-1">
-                      {tracks.map((track, tIdx) => (
-                        <div key={tIdx} className="space-y-1.5">
+                  {/* Module Accordion — group every 3 modules into one batch card */}
+                  <div className="space-y-2.5 max-h-[680px] overflow-y-auto pr-0.5">
+                    {(() => {
+                      // Flatten all modules across all tracks into one list
+                      const allModules: { mod: typeof tracks[0]['modules'][0]; tIdx: number; mIdx: number }[] = [];
+                      tracks.forEach((track, tIdx) => {
+                        track.modules.forEach((mod, mIdx) => {
+                          allModules.push({ mod, tIdx, mIdx });
+                        });
+                      });
+
+                      // Group into batches of 3
+                      const batches: (typeof allModules)[] = [];
+                      for (let i = 0; i < allModules.length; i += 3) {
+                        batches.push(allModules.slice(i, i + 3));
+                      }
+
+                      return batches.map((batch, batchIdx) => {
+                        const isBatchLocked = batchIdx >= unlockedBatchCount;
+                        const isExpanded = expandedBatchIndices.has(batchIdx);
+                        const batchFirstItem = batch[0];
+                        // Use the track title for the module name
+                        const batchTrack = tracks[batchFirstItem.tIdx];
+                        const batchTitle = batchTrack?.trackTitle || `Module ${batchIdx + 1}`;
+                        const batchDesc = `${batch.map(b => b.mod.title).slice(0, 2).join(', ')}${batch.length > 2 ? ' & more' : ''}`;
+
+                        const toggleBatch = () => {
+                          setExpandedBatchIndices(prev => {
+                            const next = new Set(prev);
+                            if (next.has(batchIdx)) next.delete(batchIdx);
+                            else next.add(batchIdx);
+                            return next;
+                          });
+                        };
+
+                        return (
                           <div
-                            onClick={() => { setActiveTrackIndex(tIdx); setActiveModuleIndex(0); setActiveChapterTab(0); setRevealedHintIndex(-1); setStudentApproach(''); }}
-                            className={`p-2.5 rounded-xl cursor-pointer transition flex items-center justify-between ${
-                              activeTrackIndex === tIdx ? 'bg-indigo-50/90 border border-indigo-200 text-indigo-900' : 'hover:bg-slate-50 text-slate-700'
+                            key={batchIdx}
+                            className={`rounded-2xl border overflow-hidden transition-all ${
+                              isBatchLocked
+                                ? 'border-slate-200 bg-white'
+                                : 'border-indigo-100 bg-white'
                             }`}
                           >
-                            <span className="text-xs font-bold line-clamp-1">{track.trackTitle}</span>
-                            <span className="text-[10px] text-slate-400 font-semibold">{track.modules.length} concepts</span>
-                          </div>
+                            {/* Batch Header */}
+                            <div
+                              className="flex items-start gap-3 p-4 cursor-pointer select-none"
+                              onClick={toggleBatch}
+                            >
+                              {/* Module Number Circle */}
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm flex-shrink-0 ${
+                                isBatchLocked
+                                  ? 'bg-slate-100 text-slate-400'
+                                  : 'bg-indigo-600 text-white shadow-md shadow-indigo-300'
+                              }`}>
+                                {String(batchIdx + 1).padStart(2, '0')}
+                              </div>
 
-                          {/* Track modules */}
-                          <div className="pl-2 space-y-1 border-l-2 border-slate-100 ml-2">
-                            {track.modules.map((mod, mIdx) => {
-                              const isSelected = activeTrackIndex === tIdx && activeModuleIndex === mIdx;
-                              const mKey = `${tIdx}-${mIdx}-${mod.id || mod.title}`;
-                              const mStatus = moduleMastery[mKey];
-                              const isCompleted = mStatus?.completed;
-                              const globalModIndex = tracks.slice(0, tIdx).reduce((acc, t) => acc + t.modules.length, 0) + mIdx;
-                              const isModuleLocked = globalModIndex >= unlockedBatchCount * 3;
-                              const batchNum = Math.floor(globalModIndex / 3) + 1;
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Module {batchIdx + 1}</p>
+                                <h3 className="text-sm font-bold text-slate-900 leading-snug line-clamp-1">{batchTitle}</h3>
+                                <p className="text-[10px] text-slate-500 font-medium mt-0.5 line-clamp-1">{batchDesc}</p>
+                              </div>
 
-                              return (
-                                <div
-                                  key={mod.id || mIdx}
-                                  onClick={() => {
-                                    setActiveTrackIndex(tIdx);
-                                    setActiveModuleIndex(mIdx);
-                                    setActiveChapterTab(0);
-                                    setRevealedHintIndex(-1);
-                                    setStudentApproach('');
-                                  }}
-                                  className={`p-2.5 rounded-xl cursor-pointer transition flex items-start justify-between gap-2 ${
-                                    isSelected
-                                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                                      : isModuleLocked
-                                      ? 'bg-slate-50/70 border border-slate-200/60 text-slate-500 hover:bg-slate-100/70'
-                                      : 'hover:bg-slate-100 text-slate-600'
-                                  }`}
-                                >
-                                  <div className="flex items-start gap-2 min-w-0">
-                                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] mt-0.5 font-bold flex-shrink-0 ${
-                                      isSelected
-                                        ? 'border-white text-white'
-                                        : isModuleLocked
-                                        ? 'border-amber-300 bg-amber-50 text-amber-700'
-                                        : 'border-slate-300 text-slate-400'
-                                    }`}>
-                                      {isModuleLocked ? <Lock size={9} /> : (isCompleted ? '✓' : mIdx + 1)}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <p className={`text-xs font-semibold leading-snug line-clamp-1 ${isSelected ? 'text-white' : 'text-slate-800'}`}>
-                                        {mod.title}
-                                      </p>
-                                      <span className={`text-[9px] font-bold ${isSelected ? 'text-indigo-100' : isModuleLocked ? 'text-amber-600' : 'text-slate-400'}`}>
-                                        {isModuleLocked ? `🔒 Batch ${batchNum}` : (mod.estimatedTime || '30 mins')}
-                                      </span>
-                                    </div>
-                                  </div>
+                              {/* Chevron */}
+                              <ChevronDown
+                                size={16}
+                                className={`text-slate-400 flex-shrink-0 mt-1 transition-transform duration-200 ${
+                                  isExpanded ? 'rotate-180' : ''
+                                }`}
+                              />
+                            </div>
 
-                                  <div className="flex-shrink-0">
-                                    {isModuleLocked ? (
-                                      // Show $0.09 only on the FIRST chapter of each batch (every 3rd module)
-                                      globalModIndex % 3 === 0 ? (
-                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
-                                          isSelected ? 'bg-amber-400 text-amber-950' : 'bg-amber-50 text-amber-700 border border-amber-200'
-                                        }`}>
-                                          $0.09
-                                        </span>
-                                      ) : (
-                                        <span className={`text-[9px] ${isSelected ? 'text-indigo-200' : 'text-slate-300'}`}>🔒</span>
-                                      )
-                                    ) : isCompleted ? (
-                                      <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
-                                        isSelected ? 'bg-emerald-400 text-emerald-950' : 'bg-emerald-50 text-emerald-700'
-                                      }`}>
-                                        {Math.round((mStatus.concept + mStatus.engineering) / 2)}%
-                                      </span>
+                            {/* Unlock Button Row (always visible on locked batches) */}
+                            {isBatchLocked && (
+                              <div className="px-4 pb-3">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); unlockLearningPathBatch(); }}
+                                    disabled={isPayingFor === 'learningPath'}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold shadow-sm shadow-indigo-300 transition disabled:opacity-60 cursor-pointer"
+                                  >
+                                    {isPayingFor === 'learningPath' ? (
+                                      <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                     ) : (
-                                      <span className={`text-[10px] ${isSelected ? 'text-indigo-200' : 'text-slate-300'}`}>○</span>
+                                      <Lock size={10} />
                                     )}
-                                  </div>
+                                    Unlock <span className="bg-amber-400 text-amber-950 font-black px-1.5 py-0.5 rounded ml-0.5">$0.09</span>
+                                  </button>
+                                  <span className="text-[9px] text-slate-400 font-medium">Get access to all 3 chapters</span>
                                 </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                              </div>
+                            )}
 
-                    {/* Batch Unlock CTA Button */}
-                    <div className="mt-4 pt-3 border-t border-slate-100">
-                      <button
-                        type="button"
-                        onClick={unlockLearningPathBatch}
-                        disabled={isPayingFor === 'learningPath'}
-                        className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-gradient-to-r from-amber-500 to-indigo-600 hover:opacity-95 text-white text-xs font-bold shadow-md shadow-amber-500/15 transition cursor-pointer"
-                      >
-                        {isPayingFor === 'learningPath' ? (
-                          <>
-                            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            <span>Signing x402 $0.09 USDC...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Zap size={14} className="text-amber-200" />
-                            <span>{unlockedBatchCount === 0 ? 'Unlock First 3 Concepts ($0.09 USDC)' : 'Unlock Next 3 Concepts ($0.09 USDC)'}</span>
-                          </>
-                        )}
-                      </button>
-                      <p className="text-[10px] text-center text-slate-400 mt-1.5 font-medium">
-                        Algorand MainNet · 90,000 micro-units · x402 Standard
-                      </p>
-                    </div>
+                            {/* Chapter List (expanded) */}
+                            {isExpanded && (
+                              <div className="border-t border-slate-100">
+                                {batch.map((item, chIdx) => {
+                                  const { mod, tIdx, mIdx } = item;
+                                  const isSelected = activeTrackIndex === tIdx && activeModuleIndex === mIdx;
+                                  const mKey = `${tIdx}-${mIdx}-${mod.id || mod.title}`;
+                                  const mStatus = moduleMastery[mKey];
+                                  const isCompleted = mStatus?.completed;
+
+                                  return (
+                                    <div
+                                      key={chIdx}
+                                      onClick={() => {
+                                        if (isBatchLocked) return;
+                                        setActiveTrackIndex(tIdx);
+                                        setActiveModuleIndex(mIdx);
+                                        setActiveChapterTab(0);
+                                        setRevealedHintIndex(-1);
+                                        setStudentApproach('');
+                                      }}
+                                      className={`flex items-start gap-3 px-4 py-3 transition border-b border-slate-50 last:border-b-0 ${
+                                        isBatchLocked
+                                          ? 'opacity-60 cursor-not-allowed'
+                                          : isSelected
+                                          ? 'bg-indigo-50 cursor-pointer'
+                                          : 'hover:bg-slate-50 cursor-pointer'
+                                      }`}
+                                    >
+                                      {/* Chapter number */}
+                                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0 mt-0.5 ${
+                                        isBatchLocked
+                                          ? 'bg-slate-100 text-slate-400'
+                                          : isCompleted
+                                          ? 'bg-emerald-100 text-emerald-700'
+                                          : isSelected
+                                          ? 'bg-indigo-600 text-white'
+                                          : 'bg-slate-100 text-slate-500'
+                                      }`}>
+                                        {isBatchLocked ? <Lock size={9} /> : (isCompleted ? '✓' : chIdx + 1)}
+                                      </div>
+
+                                      <div className="flex-1 min-w-0">
+                                        <p className={`text-xs font-semibold leading-snug ${
+                                          isSelected && !isBatchLocked ? 'text-indigo-800' : 'text-slate-800'
+                                        }`}>
+                                          {mod.title}
+                                        </p>
+                                        <p className="text-[9px] text-slate-400 font-medium mt-0.5 line-clamp-1">
+                                          {chIdx === 0
+                                            ? 'Learn the core principles and fundamentals.'
+                                            : chIdx === 1
+                                            ? 'Understand real-world patterns and use cases.'
+                                            : 'Apply concepts to production scenarios.'}
+                                        </p>
+                                      </div>
+
+                                      {isBatchLocked ? (
+                                        <Lock size={11} className="text-slate-300 flex-shrink-0 mt-1" />
+                                      ) : isCompleted ? (
+                                        <span className="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded flex-shrink-0">
+                                          {Math.round((mStatus.concept + mStatus.engineering) / 2)}%
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
+
+                  {/* Footer note */}
+                  <p className="text-[9px] text-center text-slate-400 font-medium pt-1">
+                    Algorand · 90,000 micro-units · x402 Standard
+                  </p>
                 </div>
 
                 {/* Right Panel: The 9-Step Concept Learning Studio */}
