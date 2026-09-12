@@ -1736,23 +1736,18 @@ export class DataEngine {
                 {/* Left Sidebar: Module Accordion Nav */}
                 <div className="lg:col-span-4 space-y-3">
 
-                  {/* Header Card */}
-                  <div className="bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <h2 className="text-base font-extrabold text-slate-900">Learning Path</h2>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
+                  {/* Progress Header */}
+                  <div className="space-y-1.5 px-1 pb-1">
+                    <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
                       <span>{Math.min(9, unlockedBatchCount * 3)} of 9 Chapters Unlocked</span>
-                      <span className="font-bold text-slate-700">{Math.round((Math.min(9, unlockedBatchCount * 3) / 9) * 100)}%</span>
+                      <span className="font-bold text-slate-800">{Math.round((Math.min(9, unlockedBatchCount * 3) / 9) * 100)}%</span>
                     </div>
-                    {/* Progress Bar */}
-                    <div className="mt-2">
-                      <div className="h-1.5 w-full bg-blue-50 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-blue-600 rounded-full transition-all duration-500"
-                          style={{ width: `${(Math.min(9, unlockedBatchCount * 3) / 9) * 100}%` }}
-                        />
-                      </div>
+                    {/* Slim Progress Bar */}
+                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                        style={{ width: `${(Math.min(9, unlockedBatchCount * 3) / 9) * 100}%` }}
+                      />
                     </div>
                   </div>
 
@@ -1766,23 +1761,27 @@ export class DataEngine {
 
                       // Badge Colors: Module 1 = blue, Module 2 = emerald, Module 3 = purple
                       const badgeStyles = trackIdx === 0
-                        ? 'bg-blue-500 text-white'
+                        ? 'bg-blue-400 text-white'
                         : trackIdx === 1
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-purple-100 text-purple-700';
+                        ? 'bg-emerald-100 text-emerald-600'
+                        : 'bg-purple-100 text-purple-600';
+
+                      const moduleLabelColor = isExpanded || isSelected
+                        ? 'text-blue-600'
+                        : 'text-slate-800';
 
                       return (
                         <div
                           key={trackIdx}
                           className={`rounded-2xl border transition-all ${
-                            isSelected
-                              ? 'border-blue-200 bg-white shadow-sm'
-                              : 'border-slate-200 bg-white hover:border-slate-300'
+                            isExpanded
+                              ? 'border-blue-100 bg-white shadow-sm p-4'
+                              : 'border-slate-200/90 bg-white hover:border-slate-300 p-4'
                           }`}
                         >
                           {/* Module Accordion Header */}
                           <div
-                            className="p-4 cursor-pointer select-none"
+                            className="cursor-pointer select-none"
                             onClick={() => {
                               setActiveTrackIndex(trackIdx);
                               setActiveModuleIndex(0);
@@ -1797,12 +1796,10 @@ export class DataEngine {
                                 </div>
 
                                 <div className="min-w-0">
-                                  <p className={`text-xs font-bold leading-tight ${
-                                    isSelected ? 'text-blue-600' : 'text-slate-900'
-                                  }`}>
+                                  <p className={`text-xs font-bold leading-tight ${moduleLabelColor}`}>
                                     Module {trackIdx + 1}
                                   </p>
-                                  <h3 className="text-xs font-bold text-slate-800 leading-snug mt-0.5 line-clamp-1">
+                                  <h3 className="text-xs sm:text-sm font-bold text-slate-800 leading-snug mt-0.5">
                                     {cleanTitle}
                                   </h3>
                                   <p className="text-[11px] text-slate-400 font-medium mt-0.5">
@@ -1811,38 +1808,43 @@ export class DataEngine {
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2 flex-shrink-0">
+                              {/* Chevron at Top Right */}
+                              <div className="flex-shrink-0 text-slate-600 pt-0.5">
                                 {isExpanded ? (
-                                  <ChevronUp size={16} className="text-blue-600" />
+                                  <ChevronUp size={18} className="text-slate-700" />
                                 ) : (
-                                  <ChevronDown size={16} className="text-slate-400" />
-                                )}
-                                {isModuleLocked ? (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveTrackIndex(trackIdx);
-                                      unlockLearningPathBatch();
-                                    }}
-                                    disabled={isPayingFor === 'learningPath'}
-                                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition disabled:opacity-60 cursor-pointer"
-                                  >
-                                    <Lock size={11} />
-                                    <span>Unlock $0.09</span>
-                                  </button>
-                                ) : (
-                                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                                    ✓ Unlocked
-                                  </span>
+                                  <ChevronDown size={18} className="text-slate-700" />
                                 )}
                               </div>
                             </div>
+
+                            {/* Unlock Button Row aligned to the right */}
+                            <div className="flex justify-end mt-2">
+                              {isModuleLocked ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveTrackIndex(trackIdx);
+                                    unlockLearningPathBatch();
+                                  }}
+                                  disabled={isPayingFor === 'learningPath'}
+                                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition disabled:opacity-60 cursor-pointer"
+                                >
+                                  <Lock size={12} />
+                                  <span>Unlock $0.09</span>
+                                </button>
+                              ) : (
+                                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                                  ✓ Unlocked
+                                </span>
+                              )}
+                            </div>
                           </div>
 
-                          {/* Expanded Chapter List */}
+                          {/* Expanded Chapter List inside Inset Card */}
                           {isExpanded && (
-                            <div className="border-t border-slate-100 p-2 space-y-1 bg-slate-50/50 rounded-b-2xl">
+                            <div className="mt-3 bg-white rounded-2xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.03)] p-2 space-y-1">
                               {(track.modules || []).slice(0, 3).map((mod, chIdx) => {
                                 const isChSelected = activeTrackIndex === trackIdx && activeModuleIndex === chIdx;
                                 const mKey = `${trackIdx}-${chIdx}-${mod.id || mod.title}`;
@@ -1861,18 +1863,18 @@ export class DataEngine {
                                     }}
                                     className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition cursor-pointer ${
                                       isChSelected && !isModuleLocked
-                                        ? 'bg-blue-50 text-blue-900 border border-blue-200'
-                                        : 'hover:bg-white text-slate-700'
+                                        ? 'bg-blue-50/80 text-blue-900 border border-blue-100 font-semibold'
+                                        : 'hover:bg-slate-50 text-slate-700'
                                     }`}
                                   >
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                      {/* Chapter Square Badge */}
-                                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      {/* Chapter Circular Badge */}
+                                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                                         isCompleted
                                           ? 'bg-emerald-100 text-emerald-700'
                                           : isChSelected && !isModuleLocked
-                                          ? 'bg-blue-600 text-white'
-                                          : 'bg-white border border-slate-200 text-slate-700 shadow-xs'
+                                          ? 'bg-blue-600 text-white shadow-xs'
+                                          : 'bg-slate-50 border border-slate-200/70 text-slate-800'
                                       }`}>
                                         {isCompleted ? '✓' : chIdx + 1}
                                       </div>
@@ -1883,7 +1885,7 @@ export class DataEngine {
 
                                     <div className="flex-shrink-0">
                                       {isModuleLocked ? (
-                                        <Lock size={12} className="text-slate-400" />
+                                        <Lock size={14} className="text-slate-400" />
                                       ) : isCompleted ? (
                                         <span className="text-[10px] font-bold text-emerald-600">Done</span>
                                       ) : (
@@ -1898,16 +1900,6 @@ export class DataEngine {
                         </div>
                       );
                     })}
-                  </div>
-
-                  {/* Bottom Tip Card */}
-                  <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-4 flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <BookOpen size={16} />
-                    </div>
-                    <p className="text-xs text-indigo-900 font-medium leading-relaxed">
-                      Unlock each module to access all 3 chapters and master the skills step by step.
-                    </p>
                   </div>
 
                 </div>
