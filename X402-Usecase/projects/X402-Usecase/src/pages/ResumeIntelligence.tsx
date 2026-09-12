@@ -992,6 +992,7 @@ EDUCATION & CERTIFICATIONS
     setError(null);
     setUploadStatus('uploading');
     setUploadProgress(0);
+    setIsAnalyzing(true);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -1031,20 +1032,24 @@ EDUCATION & CERTIFICATIONS
           } else {
             setError(res.message || "Failed to process upload.");
             setUploadStatus('idle');
+            setIsAnalyzing(false);
           }
         } catch (e) {
           setError("Failed to read server response.");
           setUploadStatus('idle');
+          setIsAnalyzing(false);
         }
       } else {
         setError(`Upload failed with status code: ${xhr.status}`);
         setUploadStatus('idle');
+        setIsAnalyzing(false);
       }
     });
 
     xhr.addEventListener('error', () => {
       setError("A network error occurred. Please try again.");
       setUploadStatus('idle');
+      setIsAnalyzing(false);
     });
 
     // Attach auth token if available
@@ -1062,6 +1067,11 @@ EDUCATION & CERTIFICATIONS
     setUploadStatus('idle');
     setUploadProgress(0);
     setError(null);
+    setIsAnalyzing(false);
+    setHasResume(false);
+    setResumeId(null);
+    setExtractedData(null);
+    setFileUrl(null);
   };
 
   // Trigger real analysis pipeline
@@ -1285,10 +1295,59 @@ EDUCATION & CERTIFICATIONS
                   onClick={(e) => {
                     e.stopPropagation();
                     setResumeId("mock-resume-123");
-                    setHasResume(true);
-                    setCurrentView('quality');
+                    setIsAnalyzing(true);
+                    setExtractedData({
+                      status: 'READY',
+                      structuredData: {
+                        personal: {
+                          name: "Daniel D'Souza",
+                          email: "daniel.dsouza@email.com",
+                          phone: "+91 98765 43210",
+                          location: "Hyderabad, India",
+                          linkedin: "linkedin.com/in/danieldsouza",
+                          summary: "High-impact Machine Learning Engineer with 2+ years experience building predictive models and REST APIs."
+                        },
+                        experience: [
+                          {
+                            role: "Software & AI Engineering Lead",
+                            company: "SikhoAI Solutions",
+                            startDate: "2024",
+                            endDate: "Present",
+                            description: "Architected high-performance REST APIs using Python and FastAPI, processing 10,000+ requests daily."
+                          }
+                        ],
+                        education: [
+                          {
+                            degree: "B.Tech",
+                            field: "Computer Science & Engineering",
+                            institution: "JNTU Hyderabad",
+                            endYear: "2024",
+                            gpa: "8.8 / 10.0"
+                          }
+                        ],
+                        skills: ["Python", "FastAPI", "TensorFlow", "SQL", "Docker", "Git", "System Design", "MLOps", "Pandas", "Scikit-Learn"],
+                        projects: [
+                          {
+                            name: "Multi-Service ATS Platform",
+                            description: "Built an automated multi-stage resume parser with AI extraction and matching.",
+                            technologies: ["Python", "FastAPI", "Docker", "Algorand"]
+                          }
+                        ]
+                      }
+                    });
+                    setPipelineStatus({
+                      extraction: 'done',
+                      atsAnalysis: 'running',
+                      bestFitRoles: 'running',
+                      searchQueries: 'idle',
+                      apifyScraping: 'idle',
+                      normalization: 'idle',
+                      matching: 'idle',
+                      skillGaps: 'idle',
+                      improvements: 'idle',
+                    });
                   }}
-                  className="absolute top-2 right-2 text-[9px] bg-slate-100 hover:bg-slate-200 border text-slate-500 font-bold px-2 py-0.5 rounded z-10"
+                  className="absolute top-2 right-2 text-[9px] bg-slate-100 hover:bg-slate-200 border text-slate-500 font-bold px-2 py-0.5 rounded z-10 cursor-pointer"
                 >
                   Dev Mock Upload
                 </button>
@@ -1378,16 +1437,6 @@ EDUCATION & CERTIFICATIONS
                       <div className="mt-2 flex items-center gap-2 px-1">
                         <span className="truncate text-xs font-semibold text-slate-400">{fileName}</span>
                         <button onClick={clearFile} className="ml-auto rounded-full p-1 hover:bg-slate-100 transition-colors"><X className="h-3.5 w-3.5 text-slate-400" /></button>
-                      </div>
-                    )}
-                    {resumeId && (
-                      <div className="mt-4">
-                        <Button
-                          onClick={() => { setHasResume(true); setCurrentView('quality'); }}
-                          className="w-full rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md gap-2 hover:opacity-90 transition-all py-2.5 flex items-center justify-center"
-                        >
-                          Analyze Resume <Sparkles size={14} />
-                        </Button>
                       </div>
                     )}
                   </div>
