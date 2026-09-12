@@ -1718,11 +1718,16 @@ export class DataEngine {
 
                                   <div className="flex-shrink-0">
                                     {isModuleLocked ? (
-                                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
-                                        isSelected ? 'bg-amber-400 text-amber-950' : 'bg-amber-50 text-amber-700 border border-amber-200'
-                                      }`}>
-                                        $0.09
-                                      </span>
+                                      // Show $0.09 only on the FIRST chapter of each batch (every 3rd module)
+                                      globalModIndex % 3 === 0 ? (
+                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
+                                          isSelected ? 'bg-amber-400 text-amber-950' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                        }`}>
+                                          $0.09
+                                        </span>
+                                      ) : (
+                                        <span className={`text-[9px] ${isSelected ? 'text-indigo-200' : 'text-slate-300'}`}>🔒</span>
+                                      )
                                     ) : isCompleted ? (
                                       <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${
                                         isSelected ? 'bg-emerald-400 text-emerald-950' : 'bg-emerald-50 text-emerald-700'
