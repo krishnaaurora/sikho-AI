@@ -1362,18 +1362,20 @@ EDUCATION & CERTIFICATIONS
                 >
                   Upload New Version
                 </Button>
-                <Button 
-                  onClick={() => {
-                    setStage('ats_dashboard');
-                    setHasResume(true);
-                    setIsAnalyzing(false);
-                    setUploadStatus('done');
-                    setCurrentView('quality');
-                  }}
-                  className="rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md hover:opacity-95 cursor-pointer flex items-center gap-1.5 px-4"
-                >
-                  <span>Next: ATS &amp; Career Fit</span> <ArrowRight size={14} />
-                </Button>
+                {(pipelineStatus.extraction === 'done' || !!extractedData?.structuredData || !!extractedData?.contactInfo || !!extractedData?.skills) && (
+                  <Button 
+                    onClick={() => {
+                      setStage('ats_dashboard');
+                      setHasResume(true);
+                      setIsAnalyzing(false);
+                      setUploadStatus('done');
+                      setCurrentView('quality');
+                    }}
+                    className="rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md hover:opacity-95 cursor-pointer flex items-center gap-1.5 px-4 animate-in fade-in"
+                  >
+                    <span>Next: ATS &amp; Career Fit</span> <ArrowRight size={14} />
+                  </Button>
+                )}
               </>
             )}
             {stage === 'ats_dashboard' && (
@@ -1679,6 +1681,7 @@ EDUCATION & CERTIFICATIONS
            ======================================================== */}
         {stage === 'viewer' && (() => {
           const currentProgress = getAnalysisProgress();
+          const isExtractionDone = pipelineStatus.extraction === 'done' || !!extractedData?.structuredData || !!extractedData?.contactInfo || !!extractedData?.skills;
           const extractionTabs = ['Personal Info', 'Professional Summary', 'Experience', 'Education', 'Skills', 'Projects', 'Others'] as const;
           const extractedSections = [
             { key: 'extraction',     label: '1. Extract Resume',                icon: FileText,       status: pipelineStatus.extraction === 'done',      running: pipelineStatus.extraction === 'running' },
@@ -1743,19 +1746,21 @@ EDUCATION & CERTIFICATIONS
                         <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-lg">
                           {`${Math.max(currentProgress, 5)}%`}
                         </span>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setStage('ats_dashboard');
-                            setIsAnalyzing(false);
-                            setHasResume(true);
-                            setUploadStatus('done');
-                            setCurrentView('quality');
-                          }}
-                          className="rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm hover:opacity-95 transition-all h-8 px-3 flex items-center gap-1 cursor-pointer"
-                        >
-                          <span>Next</span> <ArrowRight size={13} />
-                        </Button>
+                        {isExtractionDone && (
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setStage('ats_dashboard');
+                              setIsAnalyzing(false);
+                              setHasResume(true);
+                              setUploadStatus('done');
+                              setCurrentView('quality');
+                            }}
+                            className="rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm hover:opacity-95 transition-all h-8 px-3 flex items-center gap-1 cursor-pointer animate-in fade-in"
+                          >
+                            <span>Next</span> <ArrowRight size={13} />
+                          </Button>
+                        )}
                       </div>
                     </div>
 
@@ -2042,18 +2047,25 @@ EDUCATION & CERTIFICATIONS
                     >
                       <UploadCloud size={14} /> Upload Another
                     </Button>
-                    <Button
-                      onClick={() => {
-                        setStage('ats_dashboard');
-                        setHasResume(true);
-                        setIsAnalyzing(false);
-                        setUploadStatus('done');
-                        setCurrentView('quality');
-                      }}
-                      className="flex-1 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white shadow-md gap-2 hover:opacity-95 transition-all py-3 flex items-center justify-center cursor-pointer"
-                    >
-                      <span>Next: ATS Score, Career Fit & Jobs</span> <ArrowRight size={14} />
-                    </Button>
+                    {isExtractionDone ? (
+                      <Button
+                        onClick={() => {
+                          setStage('ats_dashboard');
+                          setHasResume(true);
+                          setIsAnalyzing(false);
+                          setUploadStatus('done');
+                          setCurrentView('quality');
+                        }}
+                        className="flex-1 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white shadow-md gap-2 hover:opacity-95 transition-all py-3 flex items-center justify-center cursor-pointer animate-in fade-in"
+                      >
+                        <span>Next: ATS Score, Career Fit &amp; Jobs</span> <ArrowRight size={14} />
+                      </Button>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold text-indigo-600 bg-indigo-50/70 border border-indigo-100 rounded-xl py-2.5 px-4 animate-pulse">
+                        <span className="w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                        <span>Extracting resume content with AI...</span>
+                      </div>
+                    )}
                   </div>
 
                 </div>
