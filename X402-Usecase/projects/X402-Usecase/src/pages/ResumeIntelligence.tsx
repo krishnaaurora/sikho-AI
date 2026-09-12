@@ -92,6 +92,7 @@ const ResumeIntelligence: React.FC = () => {
   const [extractedData, setExtractedData] = useState<any | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [localPdfUrl, setLocalPdfUrl] = useState<string | null>(null);
+  const [stage, setStage] = useState<'upload' | 'viewer' | 'ats_dashboard'>('upload');
   const [currentView, setCurrentView] = useState<'overview' | 'quality' | 'skills' | 'career' | 'readiness' | 'discovery' | 'experience' | 'gaps' | 'market' | 'projects' | 'target' | 'targetmatch' | 'improve' | 'match' | 'action' | 'versions' | 'progress' | 'jobdisc' | 'jobintel' | 'payment' | 'rematch' | 'projectplan' | 'jobs' | 'applications'>('quality');
   const [activeTab, setActiveTab] = useState<string>('Personal Info');
   const [jobAnalysisPaid, setJobAnalysisPaid] = useState<Record<number, boolean>>({});
@@ -938,6 +939,11 @@ EDUCATION & CERTIFICATIONS
   const onFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    try {
+      const blobUrl = URL.createObjectURL(file);
+      setLocalPdfUrl(blobUrl);
+    } catch {}
+    setStage('viewer');
     handleFileChange(e);
     await uploadFile(file);
   };
@@ -974,6 +980,12 @@ EDUCATION & CERTIFICATIONS
       return;
     }
 
+    try {
+      const blobUrl = URL.createObjectURL(file);
+      setLocalPdfUrl(blobUrl);
+    } catch {}
+    setStage('viewer');
+
     // Update input ref and state hooks
     if (fileInputRef.current) {
       const dataTransfer = new DataTransfer();
@@ -994,9 +1006,12 @@ EDUCATION & CERTIFICATIONS
     setUploadStatus('uploading');
     setUploadProgress(0);
     setIsAnalyzing(true);
+    setStage('viewer');
     try {
-      const blobUrl = URL.createObjectURL(file);
-      setLocalPdfUrl(blobUrl);
+      if (!localPdfUrl) {
+        const blobUrl = URL.createObjectURL(file);
+        setLocalPdfUrl(blobUrl);
+      }
     } catch (e) {
       console.warn('Could not create object URL:', e);
     }
@@ -1039,24 +1054,20 @@ EDUCATION & CERTIFICATIONS
           } else {
             setError(res.message || "Failed to process upload.");
             setUploadStatus('idle');
-            setIsAnalyzing(false);
           }
         } catch (e) {
           setError("Failed to read server response.");
           setUploadStatus('idle');
-          setIsAnalyzing(false);
         }
       } else {
         setError(`Upload failed with status code: ${xhr.status}`);
         setUploadStatus('idle');
-        setIsAnalyzing(false);
       }
     });
 
     xhr.addEventListener('error', () => {
       setError("A network error occurred. Please try again.");
       setUploadStatus('idle');
-      setIsAnalyzing(false);
     });
 
     // Attach auth token if available
@@ -1083,6 +1094,7 @@ EDUCATION & CERTIFICATIONS
     setResumeId(null);
     setExtractedData(null);
     setFileUrl(null);
+    setStage('upload');
   };
 
   // Trigger real analysis pipeline
@@ -1251,21 +1263,25 @@ EDUCATION & CERTIFICATIONS
         {/* HEADER SECTION */}
         <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
           <div />
-          {hasResume && (
+          {stage === 'ats_dashboard' && (
             <div className="flex items-center gap-2">
               <Button 
-                onClick={() => {
-                  setHasResume(false);
-                  clearFile();
-                }} 
+                onClick={() => setStage('viewer')} 
                 variant="outline"
-                className="rounded-xl text-xs font-bold border-slate-200 hover:bg-slate-50"
+                className="rounded-xl text-xs font-bold border-slate-200 hover:bg-slate-50 cursor-pointer"
               >
-                Analyze New Version
+                View Extracted Details
+              </Button>
+              <Button 
+                onClick={clearFile} 
+                variant="outline"
+                className="rounded-xl text-xs font-bold border-slate-200 hover:bg-slate-50 cursor-pointer"
+              >
+                Upload New Version
               </Button>
               <Button 
                 onClick={() => navigate('/dashboard/learner')}
-                className="rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-755 shadow-sm"
+                className="rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm cursor-pointer"
               >
                 Learner Dashboard
               </Button>
@@ -1276,7 +1292,7 @@ EDUCATION & CERTIFICATIONS
         {/* ========================================================
             CASE 1: SINGLE STARTING POINT (NO RESUME / INITIAL ENTRY)
            ======================================================== */}
-        {!hasResume && !isAnalyzing && (
+        {stage === 'upload' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start my-auto py-4">
 
             {/* ── LEFT COLUMN ────────────────────────────────────────── */}
@@ -1307,6 +1323,7 @@ EDUCATION & CERTIFICATIONS
                     e.stopPropagation();
                     setResumeId("mock-resume-123");
                     setIsAnalyzing(true);
+                    setStage('viewer');
                     setExtractedData({
                       status: 'READY',
                       structuredData: {
@@ -1386,72 +1403,36 @@ EDUCATION & CERTIFICATIONS
                   </div>
                 )}
 
-                {/* ── Upload zone (empty state) */}
-                {!fileName ? (
-                  <div
-                    onClick={handleThumbnailClick}
-                    onDragOver={handleDrag}
-                    onDragEnter={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDrop={handleDrop}
-                    className={cn(
-                      "mx-5 my-4 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed cursor-pointer transition-all py-10",
-                      isDragActive
-                        ? "border-indigo-500 bg-indigo-50/50"
-                        : "border-slate-200 bg-slate-50/60 hover:border-indigo-400 hover:bg-indigo-50/30"
-                    )}
+                {/* ── Upload zone ── */}
+                <div
+                  onClick={handleThumbnailClick}
+                  onDragOver={handleDrag}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDrop={handleDrop}
+                  className={cn(
+                    "mx-5 my-4 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed cursor-pointer transition-all py-10",
+                    isDragActive
+                      ? "border-indigo-500 bg-indigo-50/50"
+                      : "border-slate-200 bg-slate-50/60 hover:border-indigo-400 hover:bg-indigo-50/30"
+                  )}
+                >
+                  {/* Big upload icon */}
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-[0_8px_24px_rgba(99,102,241,0.35)]">
+                    <UploadCloud className="h-7 w-7 text-white" />
+                  </div>
+                  <div className="text-center space-y-1">
+                    <p className="text-sm font-bold text-slate-800">Drag &amp; drop your resume here</p>
+                    <p className="text-xs text-slate-400">PDF, DOC, DOCX (Max 10MB)</p>
+                  </div>
+                  <p className="text-xs text-slate-400 font-medium">or</p>
+                  <Button
+                    className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold px-6 h-9 shadow-md hover:shadow-indigo-300/40 hover:opacity-90 transition-all cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); handleThumbnailClick(); }}
                   >
-                    {/* Big upload icon */}
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-[0_8px_24px_rgba(99,102,241,0.35)]">
-                      <UploadCloud className="h-7 w-7 text-white" />
-                    </div>
-                    <div className="text-center space-y-1">
-                      <p className="text-sm font-bold text-slate-800">Drag &amp; drop your resume here</p>
-                      <p className="text-xs text-slate-400">PDF, DOC, DOCX (Max 10MB)</p>
-                    </div>
-                    <p className="text-xs text-slate-400 font-medium">or</p>
-                    <Button
-                      className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold px-6 h-9 shadow-md hover:shadow-indigo-300/40 hover:opacity-90 transition-all"
-                      onClick={(e) => { e.stopPropagation(); handleThumbnailClick(); }}
-                    >
-                      <FileText size={14} className="mr-2" /> Choose File
-                    </Button>
-                  </div>
-                ) : (
-                  /* ── Upload zone (file selected / uploading) */
-                  <div className="mx-5 my-4 relative">
-                    <div className="group relative rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden">
-                      <div className="flex items-center gap-4 p-5">
-                        <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center">
-                          <FileText className="h-6 w-6 text-indigo-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-black text-slate-800 truncate">{fileName}</p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                            {uploadStatus === 'uploading' ? `Uploading... ${uploadProgress}%` : uploadStatus}
-                          </p>
-                          {uploadStatus === 'uploading' && (
-                            <div className="mt-2 h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                              <div style={{ width: `${uploadProgress}%` }} className="h-full bg-indigo-600 rounded-full transition-all duration-150" />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      {/* Hover overlay — Replace / Remove */}
-                      <div className="absolute inset-0 bg-slate-900/25 opacity-0 transition-opacity duration-200 group-hover:opacity-100 rounded-2xl" />
-                      <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                        <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleThumbnailClick(); }} className="h-9 w-9 p-0 rounded-xl shadow-md"><Upload className="h-4 w-4" /></Button>
-                        <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); clearFile(); }} className="h-9 w-9 p-0 rounded-xl shadow-md"><Trash2 className="h-4 w-4" /></Button>
-                      </div>
-                    </div>
-                    {fileName && (
-                      <div className="mt-2 flex items-center gap-2 px-1">
-                        <span className="truncate text-xs font-semibold text-slate-400">{fileName}</span>
-                        <button onClick={clearFile} className="ml-auto rounded-full p-1 hover:bg-slate-100 transition-colors"><X className="h-3.5 w-3.5 text-slate-400" /></button>
-                      </div>
-                    )}
-                  </div>
-                )}
+                    <FileText size={14} className="mr-2" /> Choose File
+                  </Button>
+                </div>
               </div>
 
               {/* We'll extract and analyze */}
@@ -1582,7 +1563,7 @@ EDUCATION & CERTIFICATIONS
         {/* ========================================================
             CASE 2: RESUME EXTRACTION ENGINE UI
            ======================================================== */}
-        {isAnalyzing && (() => {
+        {stage === 'viewer' && (() => {
           const currentProgress = getAnalysisProgress();
           const extractionTabs = ['Personal Info', 'Professional Summary', 'Experience', 'Education', 'Skills', 'Projects', 'Others'] as const;
           const extractedSections = [
@@ -1651,6 +1632,7 @@ EDUCATION & CERTIFICATIONS
                         <Button
                           size="sm"
                           onClick={() => {
+                            setStage('ats_dashboard');
                             setIsAnalyzing(false);
                             setHasResume(true);
                             setUploadStatus('done');
@@ -1948,8 +1930,9 @@ EDUCATION & CERTIFICATIONS
                     </Button>
                     <Button
                       onClick={() => {
-                        setIsAnalyzing(false);
+                        setStage('ats_dashboard');
                         setHasResume(true);
+                        setIsAnalyzing(false);
                         setUploadStatus('done');
                         setCurrentView('quality');
                       }}
@@ -1969,7 +1952,7 @@ EDUCATION & CERTIFICATIONS
         {/* ========================================================
             CASE 3: MAIN WORKSPACE LAYOUT (AFTER ANALYSIS)
            ======================================================== */}
-        {hasResume && !isAnalyzing && (
+        {stage === 'ats_dashboard' && (
           <div className="w-full my-4">
             
             {/* FULL WIDTH: Resume Intelligence Dashboard */}
