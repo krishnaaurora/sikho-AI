@@ -38,6 +38,56 @@ interface RealWorldApplication {
   productionNote: string;
 }
 
+export interface DiagramNode {
+  id: string;
+  label: string;
+  subtext: string;
+  step: number;
+  tag: string;
+  color: 'indigo' | 'emerald' | 'amber' | 'blue' | 'purple';
+}
+
+export interface DiagramConnection {
+  from: string;
+  to: string;
+  label?: string;
+}
+
+export interface Chapter1Content {
+  definition: string;
+  keyConcepts: KeyConcept[];
+  timeComplexity: {
+    best: string;
+    average: string;
+    worst: string;
+    explanation: string;
+  };
+  spaceComplexity: {
+    auxiliary: string;
+    explanation: string;
+  };
+  edgeCases: string[];
+  mathProof: string;
+}
+
+export interface Chapter2Content {
+  diagramTitle: string;
+  diagramDescription: string;
+  nodes: DiagramNode[];
+  connections: DiagramConnection[];
+  codeLanguage: string;
+  codeSnippet: string;
+  codeExplanation: string;
+}
+
+export interface Chapter3Content {
+  architectureOverview: string;
+  realWorld: RealWorldApplication[];
+  scenario: string;
+  progressiveHints: string[];
+  followUpQuestions: string[];
+}
+
 interface ModuleDetail {
   id: string;
   title: string;
@@ -54,6 +104,9 @@ interface ModuleDetail {
   keyConcepts?: KeyConcept[];
   codeExample?: CodeSnippet;
   completed?: boolean;
+  ch1?: Chapter1Content;
+  ch2?: Chapter2Content;
+  ch3?: Chapter3Content;
 }
 
 interface LearningTrack {
@@ -61,6 +114,107 @@ interface LearningTrack {
   description?: string;
   modules: ModuleDetail[];
 }
+
+// ─── SVG Line-and-Box Diagram Visualizer (ChatGPT Style) ───────────────────────
+const SVGDiagramVisualizer: React.FC<{
+  title: string;
+  description: string;
+  nodes: DiagramNode[];
+  connections: DiagramConnection[];
+}> = ({ title, description, nodes, connections }) => {
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+
+  const getColorClasses = (color: DiagramNode['color']) => {
+    switch (color) {
+      case 'indigo':
+        return { bg: 'bg-indigo-950/40 hover:bg-indigo-900/50', border: 'border-indigo-500/50', text: 'text-indigo-200', badge: 'bg-indigo-600 text-white' };
+      case 'emerald':
+        return { bg: 'bg-emerald-950/40 hover:bg-emerald-900/50', border: 'border-emerald-500/50', text: 'text-emerald-200', badge: 'bg-emerald-600 text-white' };
+      case 'amber':
+        return { bg: 'bg-amber-950/40 hover:bg-amber-900/50', border: 'border-amber-500/50', text: 'text-amber-200', badge: 'bg-amber-600 text-white' };
+      case 'blue':
+        return { bg: 'bg-blue-950/40 hover:bg-blue-900/50', border: 'border-blue-500/50', text: 'text-blue-200', badge: 'bg-blue-600 text-white' };
+      case 'purple':
+        return { bg: 'bg-purple-950/40 hover:bg-purple-900/50', border: 'border-purple-500/50', text: 'text-purple-200', badge: 'bg-purple-600 text-white' };
+      default:
+        return { bg: 'bg-indigo-950/40 hover:bg-indigo-900/50', border: 'border-indigo-500/50', text: 'text-indigo-200', badge: 'bg-indigo-600 text-white' };
+    }
+  };
+
+  return (
+    <div className="bg-slate-900 text-slate-100 rounded-3xl p-6 border border-slate-800 shadow-xl space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            <h4 className="text-xs font-mono uppercase tracking-wider text-emerald-400 font-bold">{title}</h4>
+          </div>
+          <p className="text-xs text-slate-400 font-sans mt-0.5">{description}</p>
+        </div>
+        <span className="text-[10px] font-mono bg-slate-800 text-indigo-300 px-2.5 py-1 rounded-lg border border-slate-700 font-bold">
+          ChatGPT Connected Line &amp; Node Flow
+        </span>
+      </div>
+
+      {/* Nodes Grid & Connecting Lines */}
+      <div className="relative py-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative z-10">
+          {nodes.map((node, index) => {
+            const styles = getColorClasses(node.color);
+            const isSelected = selectedNode === node.id;
+
+            return (
+              <div key={node.id} className="relative flex flex-col items-center">
+                {/* Node Box */}
+                <div
+                  onClick={() => setSelectedNode(isSelected ? null : node.id)}
+                  className={`w-full p-4 rounded-2xl border transition-all duration-300 cursor-pointer ${styles.bg} ${
+                    isSelected ? 'ring-2 ring-indigo-400 scale-105 shadow-xl bg-slate-800' : styles.border
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${styles.badge}`}>
+                      Step {node.step}
+                    </span>
+                    <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">
+                      {node.tag}
+                    </span>
+                  </div>
+                  <h5 className={`text-xs font-extrabold ${styles.text} leading-snug`}>{node.label}</h5>
+                  <p className="text-[11px] text-slate-400 font-medium mt-1 leading-relaxed">{node.subtext}</p>
+                </div>
+
+                {/* Connecting Arrow for Desktop */}
+                {index < nodes.length - 1 && (
+                  <div className="hidden md:flex items-center justify-center absolute -right-3.5 top-1/2 -translate-y-1/2 z-20">
+                    <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 shadow-md">
+                      <ChevronRight size={14} className="animate-pulse text-indigo-400" />
+                    </div>
+                  </div>
+                )}
+                {/* Connecting Arrow for Mobile */}
+                {index < nodes.length - 1 && (
+                  <div className="flex md:hidden items-center justify-center my-2">
+                    <ChevronDown size={18} className="text-indigo-400 animate-bounce" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Operational Flow Summary */}
+        <div className="mt-5 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-[11px] font-mono text-slate-400 gap-2">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-indigo-500" />
+            <span>Operational Connections: {connections.map(c => `${c.from} ➔ ${c.to}`).join(' | ')}</span>
+          </div>
+          <span className="text-emerald-400 font-bold">Sub-millisecond Pipeline</span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface Chapter {
   id?: string;
@@ -208,6 +362,7 @@ const InterviewPrep: React.FC = () => {
   // Learning Path Navigation State
   const [activeTrackIndex, setActiveTrackIndex] = useState(0);
   const [activeModuleIndex, setActiveModuleIndex] = useState(0);
+  const [activeChapterTab, setActiveChapterTab] = useState<number>(0);
   const [copiedCode, setCopiedCode] = useState(false);
 
   // ─── Scenario Engineering & 9-Step State ───
@@ -496,41 +651,126 @@ const InterviewPrep: React.FC = () => {
     if (result.learningTracks && result.learningTracks.length > 0) {
       return result.learningTracks;
     }
-    // Convert chapters to structured tracks
+    // Convert chapters to structured tracks with 3 chapters per module
     return (result.chapters || []).map((ch, chIdx) => ({
       trackTitle: ch.title,
       description: ch.description,
-      modules: (ch.modules || [{ title: ch.title, completed: ch.completed }]).map((m, mIdx) => ({
-        id: `mod-${chIdx}-${mIdx}`,
-        title: m.title,
-        difficulty: chIdx === 0 ? 'Beginner' : 'Intermediate',
-        estimatedTime: ch.estimatedTime || '30 mins',
-        overview: ch.description || 'Master core concepts and prepare for interview-grade technical challenges.',
-        why: `Why does ${m.title} exist? Searching, computing, or managing state sequentially fails at modern scale. This concept provides optimized time complexity and bounded resource usage.`,
-        what: `${m.title} provides a fundamental architecture to store, manipulate, and query data with predictable operational guarantees.`,
-        how: `Internally, it executes via a pipeline of inputs, algorithmic transformations, hash/index lookups, and memory-efficient data structures.`,
-        realWorld: [
-          { domain: '🛒 E-Commerce', pattern: 'High-speed Product & Cart Lookup', productionNote: 'Implemented using in-memory caches and indexed storage.' },
-          { domain: '🏦 Banking & FinTech', pattern: 'Transaction ID & Account Ledger', productionNote: 'Backed by ACID relational databases with foreign keys.' },
-          { domain: '🌐 Web Applications', pattern: 'Session Authentication & Tokens', productionNote: 'Stored in distributed Redis clusters with TTL expiration.' },
-          { domain: '⚡ Microservices', pattern: 'Idempotency Keys & Request Deduplication', productionNote: 'Evaluated at the API Gateway middleware layer.' }
-        ],
-        scenario: `You are building a high-traffic production application with millions of daily requests. Repeated queries are causing high latency. How would you solve this using ${m.title}? Explain your approach, trade-offs, and failure handling.`,
-        progressiveHints: [
-          'Think about what data is read frequently versus written rarely.',
-          'Consider placing an in-memory caching layer with TTL expiration.',
-          'Review cache invalidation strategies (Cache-Aside vs Write-Through).'
-        ],
-        followUpQuestions: [
-          'How do you prevent cache stampede when multiple requests miss simultaneously?',
-          'What happens if the primary cache node fails?',
-          'How do you maintain consistency between the cache and underlying database?'
-        ],
-        keyConcepts: (ch.skills || ['Core Concepts', 'Implementation']).map(s => ({
-          title: s,
-          description: `Key technical principles and common interview patterns for ${s}.`
-        }))
-      }))
+      modules: (ch.modules || [{ title: ch.title, completed: ch.completed }]).map((m, mIdx) => {
+        const title = m.title;
+        return {
+          id: `mod-${chIdx}-${mIdx}`,
+          title: title,
+          difficulty: chIdx === 0 ? 'Beginner' : 'Intermediate',
+          estimatedTime: ch.estimatedTime || '30 mins',
+          overview: ch.description || 'Master core concepts and prepare for interview-grade technical challenges.',
+          why: `Why does ${title} exist? Searching, computing, or managing state sequentially fails at modern scale. This concept provides optimized time complexity and bounded resource usage.`,
+          what: `${title} provides a fundamental architecture to store, manipulate, and query data with predictable operational guarantees.`,
+          how: `Internally, it executes via a pipeline of inputs, algorithmic transformations, hash/index lookups, and memory-efficient data structures.`,
+          // ── Chapter 1: Academic Theory & Mathematical Complexity (GeeksforGeeks Style) ──
+          ch1: {
+            definition: `${title} is a foundational engineering abstraction designed to optimize data manipulation, storage, and retrieval under rigorous operational constraints.`,
+            keyConcepts: (ch.skills || ['Core Foundations', 'Algorithmic Invariants', 'Memory Access', 'Optimization']).map(s => ({
+              title: s,
+              description: `Deep theoretical principles, mathematical bounds, and execution properties governing ${s}.`
+            })),
+            timeComplexity: {
+              best: 'O(1)',
+              average: 'O(1)',
+              worst: 'O(N)',
+              explanation: 'Best/Average case lookups execute in constant or logarithmic time due to memory indexing. Worst-case latency degrades under adverse input distribution or structural imbalance.'
+            },
+            spaceComplexity: {
+              auxiliary: 'O(N)',
+              explanation: 'Requires O(N) auxiliary memory for buffer allocation, pointer nodes, or contiguous array backing stores.'
+            },
+            edgeCases: [
+              'High Key Collision Rate: Adverse input distribution causing maximum bucket or tree depth degradation.',
+              'Concurrent Mutability: Unsynchronized thread access leading to race conditions or stale reader state.',
+              'Memory Fragmentation: Re-allocation during dynamic capacity expansion causing transient heap latency spikes.'
+            ],
+            mathProof: 'Given input size N, operational complexity satisfies T(N) = T(N/2) + O(1) in balanced states, achieving logarithmic depth bounds according to the Master Theorem.'
+          },
+          // ── Chapter 2: Internal Mechanics, SVG Line Diagram & Code ──
+          ch2: {
+            diagramTitle: `ChatGPT Line Diagram: ${title} System Execution Pipeline`,
+            diagramDescription: 'Connected line & box architecture showing step-by-step request flow from client payload to memory lookup and database persistence.',
+            nodes: [
+              { id: 'node-1', label: '1. Client Request Payload', subtext: `Inbound ${title} parameters`, step: 1, tag: 'INBOUND', color: 'indigo' },
+              { id: 'node-2', label: '2. Algorithmic Transformation', subtext: 'Hashing / Index Evaluation', step: 2, tag: 'PROCESSING', color: 'blue' },
+              { id: 'node-3', label: '3. Memory & Index Lookup', subtext: 'O(1) Cache / Memory Check', step: 3, tag: 'LOOKUP', color: 'emerald' },
+              { id: 'node-4', label: '4. DB Fallback & Sync', subtext: 'ACID Persist & Sync Guard', step: 4, tag: 'PERSISTENCE', color: 'amber' }
+            ],
+            connections: [
+              { from: 'Node 1', to: 'Node 2', label: 'Transform Key' },
+              { from: 'Node 2', to: 'Node 3', label: 'Evaluate Index' },
+              { from: 'Node 3', to: 'Node 4', label: 'On Cache Miss' }
+            ],
+            codeLanguage: 'typescript',
+            codeSnippet: `// Production-Grade Execution Snippet for ${title}
+export class DataEngine {
+  private cache: Map<string, any> = new Map();
+
+  constructor(private readonly maxCapacity: number = 1000) {}
+
+  public execute(key: string, data: any): { status: string; latencyMs: number } {
+    const startTime = performance.now();
+    
+    // Step 1: Check memory cache
+    if (this.cache.has(key)) {
+      return { status: 'CACHE_HIT', latencyMs: performance.now() - startTime };
+    }
+
+    // Step 2: Algorithmic processing & store
+    this.cache.set(key, data);
+    return { status: 'PROCESSED', latencyMs: performance.now() - startTime };
+  }
+}`,
+            codeExplanation: `This implementation encapsulates the core operational pipeline of ${title}, leveraging an in-memory map store with constant-time O(1) lookup guarantees.`
+          },
+          // ── Chapter 3: Enterprise Architecture & Production Scenario ──
+          ch3: {
+            architectureOverview: `At enterprise scale (e.g. AWS, Stripe, Netflix), ${title} is integrated into microservice API gateways, distributed Redis caches, and relational index engines.`,
+            realWorld: [
+              { domain: '🛒 E-Commerce & Retail', pattern: 'High-speed Product & Cart Lookup', productionNote: 'Implemented using in-memory caches and indexed storage.' },
+              { domain: '🏦 Banking & FinTech', pattern: 'Transaction ID & Account Ledger', productionNote: 'Backed by ACID relational databases with foreign keys.' },
+              { domain: '🌐 Web Applications', pattern: 'Session Authentication & Tokens', productionNote: 'Stored in distributed Redis clusters with TTL expiration.' },
+              { domain: '⚡ Microservices', pattern: 'Idempotency Keys & Request Deduplication', productionNote: 'Evaluated at the API Gateway middleware layer.' }
+            ],
+            scenario: `You are building a high-traffic production application with millions of daily requests. Repeated queries are causing high latency. How would you solve this using ${title}? Explain your approach, trade-offs, and failure handling.`,
+            progressiveHints: [
+              'Think about what data is read frequently versus written rarely.',
+              'Consider placing an in-memory caching layer with TTL expiration.',
+              'Review cache invalidation strategies (Cache-Aside vs Write-Through).'
+            ],
+            followUpQuestions: [
+              'How do you prevent cache stampede when multiple requests miss simultaneously?',
+              'What happens if the primary cache node fails?',
+              'How do you maintain consistency between the cache and underlying database?'
+            ]
+          },
+          realWorld: [
+            { domain: '🛒 E-Commerce', pattern: 'High-speed Product & Cart Lookup', productionNote: 'Implemented using in-memory caches and indexed storage.' },
+            { domain: '🏦 Banking & FinTech', pattern: 'Transaction ID & Account Ledger', productionNote: 'Backed by ACID relational databases with foreign keys.' },
+            { domain: '🌐 Web Applications', pattern: 'Session Authentication & Tokens', productionNote: 'Stored in distributed Redis clusters with TTL expiration.' },
+            { domain: '⚡ Microservices', pattern: 'Idempotency Keys & Request Deduplication', productionNote: 'Evaluated at the API Gateway middleware layer.' }
+          ],
+          scenario: `You are building a high-traffic production application with millions of daily requests. Repeated queries are causing high latency. How would you solve this using ${title}? Explain your approach, trade-offs, and failure handling.`,
+          progressiveHints: [
+            'Think about what data is read frequently versus written rarely.',
+            'Consider placing an in-memory caching layer with TTL expiration.',
+            'Review cache invalidation strategies (Cache-Aside vs Write-Through).'
+          ],
+          followUpQuestions: [
+            'How do you prevent cache stampede when multiple requests miss simultaneously?',
+            'What happens if the primary cache node fails?',
+            'How do you maintain consistency between the cache and underlying database?'
+          ],
+          keyConcepts: (ch.skills || ['Core Concepts', 'Implementation']).map(s => ({
+            title: s,
+            description: `Key technical principles and common interview patterns for ${s}.`
+          }))
+        };
+      })
     }));
   }, [result]);
 
@@ -592,6 +832,7 @@ const InterviewPrep: React.FC = () => {
       setActiveTrackIndex(prev => prev + 1);
       setActiveModuleIndex(0);
     }
+    setActiveChapterTab(0);
     setStudentApproach('');
     setRevealedHintIndex(-1);
     window.scrollTo({ top: 300, behavior: 'smooth' });
@@ -1417,7 +1658,7 @@ const InterviewPrep: React.FC = () => {
                       {tracks.map((track, tIdx) => (
                         <div key={tIdx} className="space-y-1.5">
                           <div
-                            onClick={() => { setActiveTrackIndex(tIdx); setActiveModuleIndex(0); setRevealedHintIndex(-1); setStudentApproach(''); }}
+                            onClick={() => { setActiveTrackIndex(tIdx); setActiveModuleIndex(0); setActiveChapterTab(0); setRevealedHintIndex(-1); setStudentApproach(''); }}
                             className={`p-2.5 rounded-xl cursor-pointer transition flex items-center justify-between ${
                               activeTrackIndex === tIdx ? 'bg-indigo-50/90 border border-indigo-200 text-indigo-900' : 'hover:bg-slate-50 text-slate-700'
                             }`}
@@ -1443,6 +1684,7 @@ const InterviewPrep: React.FC = () => {
                                   onClick={() => {
                                     setActiveTrackIndex(tIdx);
                                     setActiveModuleIndex(mIdx);
+                                    setActiveChapterTab(0);
                                     setRevealedHintIndex(-1);
                                     setStudentApproach('');
                                   }}
@@ -1601,435 +1843,446 @@ const InterviewPrep: React.FC = () => {
 
                     return (
                       <>
-                        {/* Concept Header Banner */}
-                        <div className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-violet-600 rounded-3xl p-7 text-white shadow-sm space-y-3">
+                        {/* Module Header Banner & Chapter Navigation Tabs */}
+                        <div className="bg-gradient-to-r from-indigo-800 via-indigo-700 to-violet-700 rounded-3xl p-6 text-white shadow-sm space-y-4">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <span className="text-xs font-bold uppercase tracking-wider text-indigo-200 bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
                               {currentTrack?.trackTitle}
                             </span>
                             <div className="flex items-center gap-2">
-                              {currentModule.difficulty && (
-                                <span className="text-[10px] font-bold uppercase bg-white/20 px-2.5 py-0.5 rounded-full backdrop-blur-sm">
-                                  {currentModule.difficulty}
-                                </span>
-                              )}
+                              <span className="text-xs font-bold bg-amber-400 text-amber-950 px-2.5 py-0.5 rounded-full shadow-xs">
+                                $0.09 USDC Batch Module Pass
+                              </span>
                               <span className="text-xs font-medium text-indigo-100">
                                 ⏱ {currentModule.estimatedTime || '30 mins'}
                               </span>
                             </div>
                           </div>
-                          <h2 className="text-2xl sm:text-3xl font-black tracking-tight">{currentModule.title}</h2>
-                          <p className="text-xs sm:text-sm text-indigo-100 font-medium max-w-2xl leading-relaxed">
-                            {currentModule.overview || 'Understand concepts deeply, understand how they are used in real systems, and learn to reason about engineering problems.'}
-                          </p>
-                        </div>
-
-                        {/* 01 — WHY DOES THIS EXIST? (Problem First) */}
-                        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
-                              01
-                            </span>
-                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Why Does This Exist? (The Problem)</h3>
-                          </div>
-                          <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 space-y-2">
-                            <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
-                              <HelpCircle size={15} className="text-amber-600 flex-shrink-0" />
-                              <span>The Core Engineering Bottleneck:</span>
-                            </div>
-                            <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">
-                              {currentModule.why || `Imagine a system with millions of records. Searching every record linearly O(n) becomes catastrophic at scale. ${currentModule.title} was created to achieve predictable, fast lookups with sub-millisecond execution.`}
+                          <div>
+                            <h2 className="text-2xl sm:text-3xl font-black tracking-tight">{currentModule.title}</h2>
+                            <p className="text-xs sm:text-sm text-indigo-100 font-medium max-w-2xl leading-relaxed mt-1">
+                              {currentModule.overview || 'Master core concepts and prepare for interview-grade technical challenges.'}
                             </p>
                           </div>
-                        </div>
 
-                        {/* 02 — WHAT IS IT? (Concept Breakdown) */}
-                        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
-                              02
-                            </span>
-                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">What Is It? (Concept &amp; Visual Structure)</h3>
-                          </div>
-                          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
-                            {currentModule.what || `${currentModule.title} maps inputs and keys directly to memory address buckets for constant-time or sub-linear operational performance.`}
-                          </p>
-
-                          {/* Interactive Visual Breakdown */}
-                          {currentModule.keyConcepts && currentModule.keyConcepts.length > 0 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                              {currentModule.keyConcepts.map((kc, kci) => (
-                                <div key={kci} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-1">
-                                  <p className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                                    {kc.title}
-                                  </p>
-                                  <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-                                    {kc.description}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* 03 — HOW DOES IT WORK? (Internals Mechanism) */}
-                        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
-                              03
-                            </span>
-                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">How Does It Work Internally? (Step-by-Step)</h3>
-                          </div>
-                          <div className="bg-slate-900 text-slate-100 rounded-2xl p-5 font-mono text-xs leading-relaxed space-y-3">
-                            <div className="flex items-center gap-2 text-indigo-300 font-bold">
-                              <BrainCircuit size={16} />
-                              <span>Internal Execution Flow:</span>
-                            </div>
-                            <p className="text-slate-300 font-sans text-xs">
-                              {currentModule.how || 'Input Key → Algorithmic Hash/Transformation Function → Modulo Bucket Index Array → Fast Direct Lookup / Collision Chaining'}
-                            </p>
+                          {/* 3 Chapters Selection Tabs */}
+                          <div className="pt-2 flex flex-wrap gap-2 border-t border-white/15">
+                            {[
+                              { id: 0, label: '📘 Chapter 1: Academic Theory & Math Foundations', desc: 'GeeksforGeeks Academic Analysis' },
+                              { id: 1, label: '⚡ Chapter 2: Internal Mechanics & Visual SVG Line Diagram', desc: 'ChatGPT Line Diagram & Code' },
+                              { id: 2, label: '🏛️ Chapter 3: Enterprise Architecture & Scenario Challenge', desc: '9-Step AI Challenge' }
+                            ].map((chTab) => (
+                              <button
+                                key={chTab.id}
+                                onClick={() => setActiveChapterTab(chTab.id)}
+                                className={`text-xs font-bold px-4 py-2.5 rounded-xl transition cursor-pointer flex flex-col items-start ${
+                                  activeChapterTab === chTab.id
+                                    ? 'bg-white text-indigo-950 shadow-md font-extrabold'
+                                    : 'bg-white/10 text-white hover:bg-white/20'
+                                }`}
+                              >
+                                <span>{chTab.label}</span>
+                                <span className={`text-[10px] font-medium ${activeChapterTab === chTab.id ? 'text-indigo-700' : 'text-indigo-200'}`}>
+                                  {chTab.desc}
+                                </span>
+                              </button>
+                            ))}
                           </div>
                         </div>
 
-                        {/* 04 — REAL-WORLD PRODUCTION APPLICATIONS */}
-                        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
-                                04
-                              </span>
-                              <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Where Is This Used In Real Systems?</h3>
-                            </div>
-                            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
-                              Concept vs Production Stack
-                            </span>
-                          </div>
+                        {/* ── CHAPTER 1: ACADEMIC THEORY & MATHEMATICAL FOUNDATIONS (GeeksforGeeks Style) ── */}
+                        {activeChapterTab === 0 && (
+                          <div className="space-y-6">
+                            {/* Academic Definition & Core Theory */}
+                            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-lg">
+                                  CHAPTER 1
+                                </span>
+                                <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Academic Theory &amp; Foundational Concepts</h3>
+                              </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-                            {(currentModule.realWorld || [
-                              { domain: '🛒 E-Commerce Platforms', pattern: 'Product ID → Cached Pricing & Inventory', productionNote: 'Distributed cache layer (Redis Cluster) with cache-aside pattern.' },
-                              { domain: '🏦 Banking & Payments', pattern: 'Account Ledger & Transaction Deduplication', productionNote: 'ACID PostgreSQL / CockroachDB with unique constraint indexes.' },
-                              { domain: '🌐 Web Applications', pattern: 'JWT Session Lookup & Rate Limiting', productionNote: 'In-memory token stores with sliding-window rate limit counters.' },
-                              { domain: '⚡ Cloud & APIs', pattern: 'Idempotency Keys & Deduplication Guard', productionNote: 'Distributed locks and Redis TTL keys at API gateway level.' }
-                            ]).map((rw, rwi) => (
-                              <div key={rwi} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2">
-                                <p className="text-xs font-bold text-slate-800">{rw.domain}</p>
-                                <div className="bg-white border border-slate-200/80 rounded-xl p-2 text-xs font-medium text-indigo-900">
-                                  📌 {rw.pattern}
-                                </div>
-                                <p className="text-[11px] text-slate-500 font-medium">
-                                  <span className="font-bold text-slate-700">Production Tech: </span>
-                                  {rw.productionNote}
+                              <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-5 space-y-2">
+                                <p className="text-xs font-bold text-slate-900 uppercase tracking-wider">Formal GeeksforGeeks Definition:</p>
+                                <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">
+                                  {currentModule.ch1?.definition || `${currentModule.title} is a core computer science data structure and algorithmic paradigm designed to optimize search, lookup, and data manipulation operations under tight operational constraints.`}
                                 </p>
                               </div>
-                            ))}
-                          </div>
-                        </div>
 
-                        {/* 05 — ENGINEERING SCENARIO & LIVE CHALLENGE */}
-                        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
-                                05
-                              </span>
-                              <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Engineering Scenario Challenge</h3>
+                              {/* Time & Space Complexity Grid */}
+                              <div className="space-y-3 pt-2">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Mathematical Complexity Analysis (Big-O Bounds)</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                  <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 space-y-1">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Best Case Time</p>
+                                    <p className="text-2xl font-black text-emerald-700">{currentModule.ch1?.timeComplexity?.best || 'O(1)'}</p>
+                                    <p className="text-[11px] text-emerald-900 font-medium">Direct memory lookup or optimal hash bucket match.</p>
+                                  </div>
+                                  <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-2xl p-4 space-y-1">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-800">Average Case Time</p>
+                                    <p className="text-2xl font-black text-indigo-700">{currentModule.ch1?.timeComplexity?.average || 'O(1)'}</p>
+                                    <p className="text-[11px] text-indigo-900 font-medium">Expected runtime under uniform distribution assumption.</p>
+                                  </div>
+                                  <div className="bg-rose-50/70 border border-rose-200/80 rounded-2xl p-4 space-y-1">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-rose-800">Worst Case Time</p>
+                                    <p className="text-2xl font-black text-rose-700">{currentModule.ch1?.timeComplexity?.worst || 'O(N)'}</p>
+                                    <p className="text-[11px] text-rose-900 font-medium">Adverse collision or tree degeneration under bad inputs.</p>
+                                  </div>
+                                </div>
+
+                                <div className="bg-slate-900 text-slate-100 rounded-2xl p-4 font-mono text-xs space-y-1">
+                                  <span className="text-amber-400 font-bold">Auxiliary Space Complexity: {currentModule.ch1?.spaceComplexity?.auxiliary || 'O(N)'}</span>
+                                  <p className="text-slate-300 font-sans text-xs">{currentModule.ch1?.spaceComplexity?.explanation || 'Allocates proportional memory for pointers and storage buffers.'}</p>
+                                </div>
+                              </div>
+
+                              {/* Key Academic Invariants */}
+                              <div className="space-y-3 pt-2">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Key Theoretical Invariants</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  {(currentModule.ch1?.keyConcepts || currentModule.keyConcepts || []).map((kc, kci) => (
+                                    <div key={kci} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-1">
+                                      <p className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-indigo-600" />
+                                        {kc.title}
+                                      </p>
+                                      <p className="text-[11px] text-slate-600 font-medium leading-relaxed">{kc.description}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Edge Cases & Algorithmic Pitfalls */}
+                              <div className="space-y-2 pt-2">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Academic Edge Cases &amp; Pitfalls</h4>
+                                <div className="space-y-2">
+                                  {(currentModule.ch1?.edgeCases || [
+                                    'High Collision Clustering: Poor hash distribution degrades lookup from O(1) to O(N).',
+                                    'Concurrent Mutation: Modifying data structure while iterating causes race conditions.',
+                                    'Capacity Resizing Overhead: Re-allocating arrays causes transient latency spikes.'
+                                  ]).map((ec, eci) => (
+                                    <div key={eci} className="bg-amber-50/60 border border-amber-200 rounded-xl p-3 text-xs text-amber-950 font-medium flex items-start gap-2">
+                                      <AlertCircle size={14} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                                      <span>{ec}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
                             </div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
-                              AI Evaluated
-                            </span>
-                          </div>
 
-                          <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-5 space-y-2">
-                            <p className="text-xs font-bold uppercase tracking-wider text-indigo-700">Scenario Challenge:</p>
-                            <p className="text-xs sm:text-sm text-slate-800 font-semibold leading-relaxed">
-                              {currentModule.scenario || `You are building a high-throughput system with millions of daily users. Repeated database queries for hot resources are causing response latency to spike to >2.5s. How would you solve this using ${currentModule.title}?`}
-                            </p>
-                          </div>
-
-                        {/* Progressive Hints Accordion */}
-                        {currentModule.progressiveHints && currentModule.progressiveHints.length > 0 && (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                                <Lightbulb size={14} className="text-amber-500" />
-                                Progressive Hints ({Math.max(0, revealedHintIndex + 1)}/{currentModule.progressiveHints.length} Revealed)
-                              </span>
-                              {revealedHintIndex < currentModule.progressiveHints.length - 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => setRevealedHintIndex(prev => prev + 1)}
-                                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
-                                >
-                                  + Reveal Hint {revealedHintIndex + 2}
-                                </button>
-                              )}
+                            {/* Navigation to Chapter 2 */}
+                            <div className="flex justify-end">
+                              <button
+                                onClick={() => setActiveChapterTab(1)}
+                                className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition cursor-pointer"
+                              >
+                                <span>Next: Chapter 2 (SVG Diagram &amp; Code)</span>
+                                <ArrowRight size={14} />
+                              </button>
                             </div>
-
-                            {currentModule.progressiveHints.map((hint, hi) => (
-                              hi <= revealedHintIndex && (
-                                <motion.div
-                                  key={hi}
-                                  initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-                                  className="bg-amber-50/70 border border-amber-200 text-amber-900 rounded-xl p-3 text-xs font-medium flex items-start gap-2"
-                                >
-                                  <span className="font-bold text-amber-700">Hint {hi + 1}:</span>
-                                  <span>{hint}</span>
-                                </motion.div>
-                              )
-                            ))}
                           </div>
                         )}
 
-                        {/* Student Explanation Input */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <label className="text-xs font-bold text-slate-700">Your Engineering Approach &amp; Reasoning:</label>
-                            {speechRecognitionSupported && (
-                              <button
-                                type="button"
-                                onClick={toggleVoiceRecording}
-                                className={`text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition cursor-pointer ${
-                                  isRecordingVoice
-                                    ? 'bg-rose-500 text-white animate-pulse'
-                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                }`}
-                              >
-                                {isRecordingVoice ? <MicOff size={13} /> : <Mic size={13} />}
-                                <span>{isRecordingVoice ? 'Listening (Speak your approach)...' : 'Voice Input'}</span>
-                              </button>
-                            )}
-                          </div>
+                        {/* ── CHAPTER 2: INTERNAL MECHANICS, SVG LINE DIAGRAM & CODE ── */}
+                        {activeChapterTab === 1 && (
+                          <div className="space-y-6">
+                            {/* ChatGPT Style Connected Line & Box SVG Diagram */}
+                            <SVGDiagramVisualizer
+                              title={currentModule.ch2?.diagramTitle || `ChatGPT Line Diagram: ${currentModule.title} Pipeline`}
+                              description={currentModule.ch2?.diagramDescription || 'Interactive connected line & box system visualizer showing request transformations.'}
+                              nodes={currentModule.ch2?.nodes || [
+                                { id: 'node-1', label: '1. Client Request Payload', subtext: `Inbound ${currentModule.title} parameters`, step: 1, tag: 'INBOUND', color: 'indigo' },
+                                { id: 'node-2', label: '2. Algorithmic Transformation', subtext: 'Hashing / Index Evaluation', step: 2, tag: 'PROCESSING', color: 'blue' },
+                                { id: 'node-3', label: '3. Memory & Index Lookup', subtext: 'O(1) Cache / Memory Check', step: 3, tag: 'LOOKUP', color: 'emerald' },
+                                { id: 'node-4', label: '4. DB Fallback & Sync', subtext: 'ACID Persist & Sync Guard', step: 4, tag: 'PERSISTENCE', color: 'amber' }
+                              ]}
+                              connections={currentModule.ch2?.connections || [
+                                { from: 'Node 1', to: 'Node 2' },
+                                { from: 'Node 2', to: 'Node 3' },
+                                { from: 'Node 3', to: 'Node 4' }
+                              ]}
+                            />
 
-                          <textarea
-                            value={studentApproach}
-                            onChange={e => setStudentApproach(e.target.value)}
-                            placeholder="Explain what technologies you would use, why you would use them, how the workflow operates, trade-offs (e.g. cache invalidation, consistency), and failure modes..."
-                            className="w-full h-32 text-xs sm:text-sm text-slate-800 border border-slate-200 rounded-2xl p-4 outline-none focus:border-indigo-500 focus:bg-white bg-slate-50/50 transition font-medium"
-                          />
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={handleEvaluateScenario}
-                          disabled={!studentApproach.trim() || isEvaluatingScenario}
-                          className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-xs sm:text-sm font-bold transition shadow-md cursor-pointer ${
-                            studentApproach.trim() && !isEvaluatingScenario
-                              ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/25'
-                              : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                          }`}
-                        >
-                          {isEvaluatingScenario ? (
-                            <>
-                              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              <span>Senior Principal Engineer AI Evaluating Your Approach...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Send size={15} />
-                              <span>Submit My Engineering Approach &amp; Get AI Evaluation</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-
-                      {/* 06 — AI EVALUATION & SCORECARD */}
-                      {currentEvaluation && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                          className="bg-white border-2 border-emerald-200 rounded-3xl p-6 shadow-sm space-y-5"
-                        >
-                          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-black text-white bg-emerald-600 px-2.5 py-1 rounded-lg">
-                                06
-                              </span>
-                              <h3 className="text-base font-black text-slate-900">AI Engineering Reasoning Evaluation</h3>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-2xl font-black text-emerald-600">
-                                {currentEvaluation.overallScore} / 100
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Identified Strengths */}
-                            <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-4 space-y-2">
-                              <p className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
-                                <CheckCircle2 size={15} className="text-emerald-600" />
-                                What You Correctly Identified:
-                              </p>
-                              <div className="space-y-1.5">
-                                {currentEvaluation.whatYouIdentified?.map((str, si) => (
-                                  <div key={si} className="flex items-start gap-2 text-xs text-emerald-950 font-medium">
-                                    <span className="text-emerald-600 font-bold">✓</span>
-                                    <span>{str}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* What to Consider */}
-                            <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 space-y-2">
-                              <p className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                                <AlertCircle size={15} className="text-amber-600" />
-                                What You Should Consider (Edge Cases &amp; Trade-offs):
-                              </p>
-                              <div className="space-y-1.5">
-                                {currentEvaluation.whatToConsider?.map((con, ci) => (
-                                  <div key={ci} className="flex items-start gap-2 text-xs text-amber-950 font-medium">
-                                    <span className="text-amber-600 font-bold">⚠</span>
-                                    <span>{con}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Senior Principal Engineer Solution */}
-                          <div className="bg-slate-900 text-slate-100 rounded-2xl p-5 space-y-3">
-                            <div className="flex items-center gap-2 text-indigo-300 font-bold text-xs">
-                              <Cpu size={16} />
-                              <span>How an Experienced Staff / Principal Engineer Would Reason:</span>
-                            </div>
-                            <p className="text-xs leading-relaxed text-slate-200 font-medium whitespace-pre-line">
-                              {currentEvaluation.seniorEngineerSolution}
-                            </p>
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* 07 — INTERVIEWER FOLLOW-UP QUESTIONS */}
-                      {currentEvaluation && currentEvaluation.followUpQuestions && (
-                        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
-                              07
-                            </span>
-                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Interviewer Follow-Up Probing Questions</h3>
-                          </div>
-                          <p className="text-xs text-slate-500 font-medium">
-                            An interviewer will often drill deeper into trade-offs. Test yourself on these follow-ups:
-                          </p>
-
-                          <div className="space-y-3">
-                            {currentEvaluation.followUpQuestions.map((fq, fqi) => (
-                              <div key={fqi} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2">
-                                <p className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                                  <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-black">
-                                    {fqi + 1}
+                            {/* Internal Execution Code Implementation */}
+                            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-lg">
+                                    CHAPTER 2 CODE
                                   </span>
-                                  {fq}
-                                </p>
-                                <input
-                                  type="text"
-                                  placeholder="Type your brief verbal defense..."
-                                  value={followUpResponses[currentModuleKey]?.[fqi] || ''}
-                                  onChange={e => {
-                                    const val = e.target.value;
-                                    setFollowUpResponses(prev => ({
-                                      ...prev,
-                                      [currentModuleKey]: {
-                                        ...(prev[currentModuleKey] || {}),
-                                        [fqi]: val
-                                      }
-                                    }));
-                                  }}
-                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none focus:border-indigo-400 font-medium"
-                                />
+                                  <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Production Code Implementation</h3>
+                                </div>
+                                <button
+                                  onClick={() => handleCopyCode(currentModule.ch2?.codeSnippet || currentModule.codeExample?.code || '')}
+                                  className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-xl transition cursor-pointer"
+                                >
+                                  {copiedCode ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                                  <span>{copiedCode ? 'Copied!' : 'Copy Code'}</span>
+                                </button>
                               </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
 
-                      {/* 08 — COMPANY INTERVIEW QUESTIONS CONNECTION */}
-                      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
-                              08
-                            </span>
-                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Connected Company Interview Questions</h3>
-                          </div>
-                          <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
-                            High-Yield Q&amp;A
-                          </span>
-                        </div>
+                              <div className="bg-slate-900 rounded-2xl p-5 font-mono text-xs text-slate-200 overflow-x-auto shadow-inner border border-slate-800">
+                                <pre>
+                                  <code>{currentModule.ch2?.codeSnippet || currentModule.codeExample?.code || `// Production Implementation for ${currentModule.title}
+export class DataEngine {
+  private memory = new Map();
+  execute(key: string, val: any) {
+    if (this.memory.has(key)) return this.memory.get(key);
+    this.memory.set(key, val);
+    return val;
+  }
+}`}</code>
+                                </pre>
+                              </div>
 
-                        <div className="space-y-3">
-                          {(result.interviewQuestions?.slice(0, 3) || []).map((q, qi) => (
-                            <div key={qi} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2">
-                              <div className="flex items-start justify-between gap-2">
-                                <p className="text-xs font-bold text-slate-800 leading-snug">{q.question}</p>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 flex-shrink-0">
-                                  {q.difficulty}
+                              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-1">
+                                <p className="text-xs font-bold text-slate-900">Line-by-Line Academic Breakdown:</p>
+                                <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                                  {currentModule.ch2?.codeExplanation || `This production snippet encapsulates the internal execution flow of ${currentModule.title}, leveraging memory indexing and constant-time search guarantees.`}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Chapter Navigation Buttons */}
+                            <div className="flex items-center justify-between">
+                              <button
+                                onClick={() => setActiveChapterTab(0)}
+                                className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-sm transition cursor-pointer"
+                              >
+                                <ArrowLeft size={14} />
+                                <span>Previous: Chapter 1 (Theory)</span>
+                              </button>
+
+                              <button
+                                onClick={() => setActiveChapterTab(2)}
+                                className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition cursor-pointer"
+                              >
+                                <span>Next: Chapter 3 (Architecture &amp; AI Challenge)</span>
+                                <ArrowRight size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── CHAPTER 3: ENTERPRISE ARCHITECTURE & SENIOR AI SCENARIO ── */}
+                        {activeChapterTab === 2 && (
+                          <div className="space-y-6">
+                            {/* Real-World Production Applications */}
+                            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-lg">
+                                    CHAPTER 3
+                                  </span>
+                                  <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Where Is This Used In Production Systems?</h3>
+                                </div>
+                                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+                                  Enterprise Stack Fits
                                 </span>
                               </div>
-                              {q.sampleAnswer && (
-                                <details className="text-xs text-slate-600 font-medium pt-1">
-                                  <summary className="text-indigo-600 font-bold cursor-pointer hover:text-indigo-800">
-                                    Reveal STAR Sample Answer &amp; Architectural Defense
-                                  </summary>
-                                  <p className="mt-2 bg-white border border-slate-100 rounded-xl p-3 text-slate-700 leading-relaxed font-sans">
-                                    {q.sampleAnswer}
-                                  </p>
-                                </details>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                                {(currentModule.ch3?.realWorld || currentModule.realWorld || [
+                                  { domain: '🛒 E-Commerce Platforms', pattern: 'Product ID → Cached Pricing & Inventory', productionNote: 'Distributed cache layer (Redis Cluster) with cache-aside pattern.' },
+                                  { domain: '🏦 Banking & Payments', pattern: 'Account Ledger & Transaction Deduplication', productionNote: 'ACID PostgreSQL / CockroachDB with unique constraint indexes.' },
+                                  { domain: '🌐 Web Applications', pattern: 'JWT Session Lookup & Rate Limiting', productionNote: 'In-memory token stores with sliding-window rate limit counters.' },
+                                  { domain: '⚡ Cloud & APIs', pattern: 'Idempotency Keys & Deduplication Guard', productionNote: 'Distributed locks and Redis TTL keys at API gateway level.' }
+                                ]).map((rw, rwi) => (
+                                  <div key={rwi} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
+                                    <p className="text-xs font-bold text-slate-800">{rw.domain}</p>
+                                    <div className="bg-white border border-slate-200/80 rounded-xl p-2 text-xs font-medium text-indigo-900">
+                                      📌 {rw.pattern}
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 font-medium">
+                                      <span className="font-bold text-slate-700">Production Tech: </span>
+                                      {rw.productionNote}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Engineering Scenario & Live AI Evaluation */}
+                            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-lg">
+                                    SCENARIO CHALLENGE
+                                  </span>
+                                  <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Senior AI Engineering Scenario</h3>
+                                </div>
+                                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                  AI Evaluated
+                                </span>
+                              </div>
+
+                              <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-5 space-y-2">
+                                <p className="text-xs font-bold uppercase tracking-wider text-indigo-700">Production Architecture Scenario:</p>
+                                <p className="text-xs sm:text-sm text-slate-800 font-semibold leading-relaxed">
+                                  {currentModule.ch3?.scenario || currentModule.scenario || `You are building a high-throughput system with millions of daily users. Repeated database queries for hot resources are causing response latency to spike to >2.5s. How would you solve this using ${currentModule.title}?`}
+                                </p>
+                              </div>
+
+                              {/* Progressive Hints Accordion */}
+                              {(currentModule.ch3?.progressiveHints || currentModule.progressiveHints || []).length > 0 && (
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                                      <Lightbulb size={14} className="text-amber-500" />
+                                      Progressive Hints ({Math.max(0, revealedHintIndex + 1)}/{(currentModule.ch3?.progressiveHints || currentModule.progressiveHints)?.length} Revealed)
+                                    </span>
+                                    {revealedHintIndex < (currentModule.ch3?.progressiveHints || currentModule.progressiveHints || []).length - 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setRevealedHintIndex(prev => prev + 1)}
+                                        className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
+                                      >
+                                        + Reveal Hint {revealedHintIndex + 2}
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {(currentModule.ch3?.progressiveHints || currentModule.progressiveHints || []).map((hint, hi) => (
+                                    hi <= revealedHintIndex && (
+                                      <motion.div
+                                        key={hi}
+                                        initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                                        className="bg-amber-50/70 border border-amber-200 text-amber-900 rounded-xl p-3 text-xs font-medium flex items-start gap-2"
+                                      >
+                                        <span className="font-bold text-amber-700">Hint {hi + 1}:</span>
+                                        <span>{hint}</span>
+                                      </motion.div>
+                                    )
+                                  ))}
+                                </div>
                               )}
+
+                              {/* Student Approach Input */}
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <label className="text-xs font-bold text-slate-700">Your Engineering Approach &amp; Reasoning:</label>
+                                  {speechRecognitionSupported && (
+                                    <button
+                                      type="button"
+                                      onClick={toggleVoiceRecording}
+                                      className={`text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition cursor-pointer ${
+                                        isRecordingVoice
+                                          ? 'bg-rose-500 text-white animate-pulse'
+                                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                      }`}
+                                    >
+                                      {isRecordingVoice ? <MicOff size={13} /> : <Mic size={13} />}
+                                      <span>{isRecordingVoice ? 'Listening (Speak approach)...' : 'Voice Input'}</span>
+                                    </button>
+                                  )}
+                                </div>
+
+                                <textarea
+                                  value={studentApproach}
+                                  onChange={e => setStudentApproach(e.target.value)}
+                                  placeholder="Explain what technologies you would use, why you would use them, how the workflow operates, trade-offs (e.g. cache invalidation, consistency), and failure modes..."
+                                  className="w-full h-32 text-xs sm:text-sm text-slate-800 border border-slate-200 rounded-2xl p-4 outline-none focus:border-indigo-500 focus:bg-white bg-slate-50/50 transition font-medium"
+                                />
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={handleEvaluateScenario}
+                                disabled={!studentApproach.trim() || isEvaluatingScenario}
+                                className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-xs sm:text-sm font-bold transition shadow-md cursor-pointer ${
+                                  studentApproach.trim() && !isEvaluatingScenario
+                                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/25'
+                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                                }`}
+                              >
+                                {isEvaluatingScenario ? (
+                                  <>
+                                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <span>Senior Principal Engineer AI Evaluating Your Approach...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Send size={15} />
+                                    <span>Submit Engineering Approach &amp; Get AI Evaluation</span>
+                                  </>
+                                )}
+                              </button>
                             </div>
-                          ))}
-                        </div>
-                      </div>
 
-                      {/* 09 — MASTERY SCORECARD & REVISION */}
-                      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
-                              09
-                            </span>
-                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800">Concept Mastery &amp; Readiness Scorecard</h3>
-                          </div>
-                          <span className="text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
-                            {currentEvaluation ? 'Concept Mastered ✓' : 'In Progress ○'}
-                          </span>
-                        </div>
+                            {/* AI Evaluation & Scorecard */}
+                            {currentEvaluation && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                                className="bg-white border-2 border-emerald-200 rounded-3xl p-6 shadow-sm space-y-5"
+                              >
+                                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-black text-white bg-emerald-600 px-2.5 py-1 rounded-lg">
+                                      EVALUATION SCORE
+                                    </span>
+                                    <h3 className="text-base font-black text-slate-900">AI Engineering Reasoning Evaluation</h3>
+                                  </div>
+                                  <span className="text-2xl font-black text-emerald-600">
+                                    {currentEvaluation.overallScore} / 100
+                                  </span>
+                                </div>
 
-                        {/* Multi-Dimensional Metrics */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                          {[
-                            { label: 'Concept Understanding', score: currentEvaluation?.conceptUnderstanding || 82, color: 'text-indigo-600 bg-indigo-50 border-indigo-100' },
-                            { label: 'Real-World System Fit', score: currentEvaluation?.realWorldUnderstanding || 78, color: 'text-blue-600 bg-blue-50 border-blue-100' },
-                            { label: 'Engineering Reasoning', score: currentEvaluation?.engineeringReasoning || 74, color: 'text-violet-600 bg-violet-50 border-violet-100' },
-                            { label: 'Interview Readiness', score: currentEvaluation?.interviewReadiness || 79, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' }
-                          ].map((met, mi) => (
-                            <div key={mi} className={`rounded-2xl p-3.5 border ${met.color} space-y-1`}>
-                              <p className="text-[10px] font-bold uppercase tracking-wider opacity-80">{met.label}</p>
-                              <p className="text-xl font-black">{met.score}%</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {/* Identified Strengths */}
+                                  <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-4 space-y-2">
+                                    <p className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                                      <CheckCircle2 size={15} className="text-emerald-600" />
+                                      What You Correctly Identified:
+                                    </p>
+                                    <div className="space-y-1.5">
+                                      {currentEvaluation.whatYouIdentified?.map((str, si) => (
+                                        <div key={si} className="flex items-start gap-2 text-xs text-emerald-950 font-medium">
+                                          <span className="text-emerald-600 font-bold">✓</span>
+                                          <span>{str}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  {/* What to Consider */}
+                                  <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 space-y-2">
+                                    <p className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                                      <AlertCircle size={15} className="text-amber-600" />
+                                      What You Should Consider (Edge Cases):
+                                    </p>
+                                    <div className="space-y-1.5">
+                                      {currentEvaluation.whatToConsider?.map((con, ci) => (
+                                        <div key={ci} className="flex items-start gap-2 text-xs text-amber-950 font-medium">
+                                          <span className="text-amber-600 font-bold">⚠</span>
+                                          <span>{con}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+
+                            {/* Chapter Navigation Buttons */}
+                            <div className="flex items-center justify-between">
+                              <button
+                                onClick={() => setActiveChapterTab(1)}
+                                className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-sm transition cursor-pointer"
+                              >
+                                <ArrowLeft size={14} />
+                                <span>Previous: Chapter 2 (Diagram &amp; Code)</span>
+                              </button>
+
+                              <button
+                                onClick={handleNextConcept}
+                                className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition cursor-pointer"
+                              >
+                                <span>Next Module in Track</span>
+                                <ArrowRight size={14} />
+                              </button>
                             </div>
-                          ))}
-                        </div>
-
-                        {/* Weak Area Diagnosis & Next Action */}
-                        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                          <div>
-                            <p className="text-xs font-bold text-slate-800">Next Action in Learning Path:</p>
-                            <p className="text-xs text-slate-500 font-medium">
-                              Continue to master the next architectural gap in your personalized preparation track.
-                            </p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={handleNextConcept}
-                            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition cursor-pointer flex-shrink-0"
-                          >
-                            <span>Continue to Next Concept</span>
-                            <ArrowRight size={14} />
-                          </button>
-                        </div>
-                      </div>
+                        )}
                       </>
                     );
                   })()}
