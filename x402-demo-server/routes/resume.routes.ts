@@ -96,7 +96,7 @@ router.post(
 router.post(
   "/:resumeId/quality",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.05, description: "ATS Quality & Gaps Analysis" }),
+  enforceWorkspacePayment({ priceUsd: 0.03, description: "ATS Quality & AI Resume Auto-Fix Pass" }),
   runQualityAnalysis
 );
 
