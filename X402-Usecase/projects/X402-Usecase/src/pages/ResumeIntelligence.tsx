@@ -432,7 +432,6 @@ EDUCATION & CERTIFICATIONS
         throw new Error('Extraction timed out');
       }
       setPipelineStatus(s => ({ ...s, extraction: 'done' }));
-      setIsAnalyzing(false);
       setUploadStatus('done');
       setResumeIntelUnlocked(true);
     } catch (e) {
@@ -1556,11 +1555,11 @@ EDUCATION & CERTIFICATIONS
                     </div>
                   </div>
                   <div className="flex-1 w-full h-full bg-slate-100 relative">
-                    {(fileUrl || extractedData?.fileUrl) ? (
+                    {(fileUrl || extractedData?.fileUrl || previewUrl) ? (
                       <iframe
                         src={(() => {
-                          const url = fileUrl || extractedData?.fileUrl || '';
-                          if (url.startsWith('http://') || url.startsWith('https://')) return url;
+                          const url = fileUrl || extractedData?.fileUrl || previewUrl || '';
+                          if (url.startsWith('blob:') || url.startsWith('http://') || url.startsWith('https://')) return url;
                           if (url.startsWith('/')) return `${backendOrigin}${url}`;
                           return `${backendOrigin}/uploads/documents/${url}`;
                         })()}
@@ -1568,8 +1567,8 @@ EDUCATION & CERTIFICATIONS
                         title="Original Resume PDF Viewer"
                       />
                     ) : (
-                      <div className="flex flex-col items-center justify-center h-full text-slate-455 space-y-2">
-                        <div className="w-10 h-10 border-2 border-indigo-650 border-t-transparent rounded-full animate-spin" />
+                      <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-2">
+                        <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                         <span className="text-xs font-semibold">Loading PDF Viewer...</span>
                       </div>
                     )}
@@ -1865,27 +1864,25 @@ EDUCATION & CERTIFICATIONS
                   </div>
 
                   {/* Action buttons */}
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 pt-2">
                     <Button
                       variant="outline"
                       onClick={clearFile}
-                      className="flex-1 rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50 gap-2"
+                      className="rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50 gap-2 cursor-pointer px-4"
                     >
                       <UploadCloud size={14} /> Upload Another
                     </Button>
-                    {(extractedData || pipelineStatus.extraction === 'done' || uploadStatus === 'done') && (
-                      <Button
-                        onClick={() => {
-                          setIsAnalyzing(false);
-                          setHasResume(true);
-                          setUploadStatus('done');
-                          setCurrentView('quality');
-                        }}
-                        className="flex-1 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white shadow-md gap-2 hover:opacity-90 transition-all py-3 flex items-center justify-center"
-                      >
-                        <span>Next: View ATS Analysis ($0.03 USDC)</span> <ArrowRight size={14} />
-                      </Button>
-                    )}
+                    <Button
+                      onClick={() => {
+                        setIsAnalyzing(false);
+                        setHasResume(true);
+                        setUploadStatus('done');
+                        setCurrentView('quality');
+                      }}
+                      className="flex-1 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white shadow-md gap-2 hover:opacity-95 transition-all py-3 flex items-center justify-center cursor-pointer"
+                    >
+                      <span>Next: ATS Score, Career Fit & Jobs</span> <ArrowRight size={14} />
+                    </Button>
                   </div>
 
                 </div>
