@@ -312,26 +312,23 @@ const LearnerDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Tile 2: Build */}
-              <div 
-                onClick={() => navigate('/build')}
-                className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-violet-300 transition-all group relative flex flex-col justify-between"
-              >
+              {/* Tile 2: Build (Coming Soon) */}
+              <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-6 relative flex flex-col justify-between cursor-not-allowed select-none opacity-60 backdrop-blur-xs transition-all overflow-hidden">
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <div className="w-11 h-11 bg-violet-50 text-violet-600 rounded-xl flex items-center justify-center border border-violet-100/80">
+                    <div className="w-11 h-11 bg-violet-50/80 text-violet-400 rounded-xl flex items-center justify-center border border-violet-100/60">
                       <Code2 size={20} />
                     </div>
-                    <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-violet-50 group-hover:text-violet-600 transition-colors">
-                      <ArrowRight size={12} />
-                    </div>
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-200/80 px-2.5 py-1 rounded-full border border-slate-300/40 flex items-center gap-1">
+                      <Lock size={10} /> Coming Soon
+                    </span>
                   </div>
-                  <h3 className="font-bold text-slate-800 text-sm mb-1">Build</h3>
+                  <h3 className="font-bold text-slate-700 text-sm mb-1">Build</h3>
                   <p className="text-xs text-slate-400 font-medium leading-relaxed">Code editor, run & debug projects</p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex gap-1.5">
-                  <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Code</span>
-                  <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Debug</span>
+                <div className="mt-4 pt-3 border-t border-slate-200/60 flex gap-1.5 opacity-70">
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Code</span>
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Debug</span>
                 </div>
               </div>
 
@@ -359,63 +356,63 @@ const LearnerDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Tile 4: Research */}
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-rose-300 transition-all group relative flex flex-col justify-between">
+              {/* Tile 4: Research (Coming Soon) */}
+              <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-6 relative flex flex-col justify-between cursor-not-allowed select-none opacity-60 backdrop-blur-xs transition-all overflow-hidden">
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <div className="w-11 h-11 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center border border-rose-100/80">
+                    <div className="w-11 h-11 bg-rose-50/80 text-rose-400 rounded-xl flex items-center justify-center border border-rose-100/60">
                       <FlaskConical size={20} />
                     </div>
-                    <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-rose-50 group-hover:text-rose-600 transition-colors">
-                      <ArrowRight size={12} />
-                    </div>
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-200/80 px-2.5 py-1 rounded-full border border-slate-300/40 flex items-center gap-1">
+                      <Lock size={10} /> Coming Soon
+                    </span>
                   </div>
-                  <h3 className="font-bold text-slate-800 text-sm mb-1">Research</h3>
+                  <h3 className="font-bold text-slate-700 text-sm mb-1">Research</h3>
                   <p className="text-xs text-slate-400 font-medium leading-relaxed">Paper analysis & literature review</p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex gap-1.5">
-                  <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Analyze</span>
-                  <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Discover</span>
+                <div className="mt-4 pt-3 border-t border-slate-200/60 flex gap-1.5 opacity-70">
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Analyze</span>
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Discover</span>
                 </div>
               </div>
 
-              {/* Tile 5: Study (Renamed from Create) */}
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-emerald-300 transition-all group relative flex flex-col justify-between">
+              {/* Tile 5: Study (Coming Soon) */}
+              <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-6 relative flex flex-col justify-between cursor-not-allowed select-none opacity-60 backdrop-blur-xs transition-all overflow-hidden">
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <div className="w-11 h-11 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center border border-emerald-100/80">
+                    <div className="w-11 h-11 bg-emerald-50/80 text-emerald-400 rounded-xl flex items-center justify-center border border-emerald-100/60">
                       <PenLine size={20} />
                     </div>
-                    <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
-                      <ArrowRight size={12} />
-                    </div>
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-200/80 px-2.5 py-1 rounded-full border border-slate-300/40 flex items-center gap-1">
+                      <Lock size={10} /> Coming Soon
+                    </span>
                   </div>
-                  <h3 className="font-bold text-slate-800 text-sm mb-1">Study</h3>
+                  <h3 className="font-bold text-slate-700 text-sm mb-1">Study</h3>
                   <p className="text-xs text-slate-400 font-medium leading-relaxed">Notes, mind maps & summaries</p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex gap-1.5">
-                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Notes</span>
-                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Mindmaps</span>
+                <div className="mt-4 pt-3 border-t border-slate-200/60 flex gap-1.5 opacity-70">
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Notes</span>
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Mindmaps</span>
                 </div>
               </div>
 
-              {/* Tile 6: Practice */}
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-sky-300 transition-all group relative flex flex-col justify-between">
+              {/* Tile 6: Practice (Coming Soon) */}
+              <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-6 relative flex flex-col justify-between cursor-not-allowed select-none opacity-60 backdrop-blur-xs transition-all overflow-hidden">
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <div className="w-11 h-11 bg-sky-50 text-sky-600 rounded-xl flex items-center justify-center border border-sky-100/80">
+                    <div className="w-11 h-11 bg-sky-50/80 text-sky-400 rounded-xl flex items-center justify-center border border-sky-100/60">
                       <Sparkles size={20} />
                     </div>
-                    <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-sky-50 group-hover:text-sky-600 transition-colors">
-                      <ArrowRight size={12} />
-                    </div>
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-200/80 px-2.5 py-1 rounded-full border border-slate-300/40 flex items-center gap-1">
+                      <Lock size={10} /> Coming Soon
+                    </span>
                   </div>
-                  <h3 className="font-bold text-slate-800 text-sm mb-1">Practice</h3>
+                  <h3 className="font-bold text-slate-700 text-sm mb-1">Practice</h3>
                   <p className="text-xs text-slate-400 font-medium leading-relaxed">Mock tests & coding assessments</p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex gap-1.5">
-                  <span className="text-[10px] font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full">Quiz</span>
-                  <span className="text-[10px] font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full">Test</span>
+                <div className="mt-4 pt-3 border-t border-slate-200/60 flex gap-1.5 opacity-70">
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Quiz</span>
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Test</span>
                 </div>
               </div>
 
