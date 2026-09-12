@@ -163,11 +163,13 @@ interface PrepResult {
 //   3. VITE_INTERVIEW_API_URL = "https://sikho-ai.onrender.com/api/v1/interview-pro" (full) → use as-is
 const _RAW_INTERVIEW_URL = import.meta.env.VITE_INTERVIEW_API_URL as string | undefined;
 const PYTHON_API_BASE = (() => {
-  const base = (_RAW_INTERVIEW_URL ?? 'https://sikho-ai.onrender.com').replace(/\/$/, '');
-  // If the env var already contains the full path, use it; otherwise append it
+  let base = (_RAW_INTERVIEW_URL ?? 'https://sikho-ai.onrender.com').replace(/\/$/, '');
+  // Force main backend if stale/dead separate render service URL is set in env
+  if (base.includes('interview-pro-backend.onrender.com') || base.includes('sikho-ai-1.onrender.com')) {
+    base = 'https://sikho-ai.onrender.com';
+  }
   if (base.includes('/interview-pro')) return base;
   if (base.includes('/api/')) return base + '/interview-pro';
-  // bare base URL like https://sikho-ai.onrender.com
   return base + '/api/v1/interview-pro';
 })();
 
