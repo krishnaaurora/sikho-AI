@@ -107,7 +107,7 @@ router.get("/:resumeId/quality", optionalAuthenticate, getQualityAnalysis);
 router.post(
   "/:resumeId/career-fit",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.50, description: "Resume Career Fit & Top Roles" }),
+  enforceWorkspacePayment({ priceUsd: 0.03, description: "Resume Career Fit & Top Roles Pass" }),
   runCareerFit
 );
 
