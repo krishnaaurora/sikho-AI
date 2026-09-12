@@ -1936,15 +1936,15 @@ export class DataEngine {
                           {/* 2 Side-by-Side Pricing Cards */}
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto text-left">
                             <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 space-y-0.5">
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fixed Micro-Price</p>
-                              <p className="text-2xl font-black text-slate-900">0.09 USDC</p>
-                              <p className="text-[11px] font-mono text-slate-500 font-semibold">90,000 micro-units</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fixed Price</p>
+                              <p className="text-2xl font-black text-slate-900">$0.09 USDC</p>
+                              <p className="text-[11px] text-slate-500 font-semibold">One-time micro-payment</p>
                             </div>
 
                             <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 space-y-0.5">
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Settlement Chain</p>
-                              <p className="text-2xl font-black text-indigo-600">Algorand MainNet</p>
-                              <p className="text-[11px] font-mono text-slate-500 font-semibold">ASA ID: 31566704</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Content Access</p>
+                              <p className="text-2xl font-black text-indigo-600">3 Chapters</p>
+                              <p className="text-[11px] text-slate-500 font-semibold">Full module lessons &amp; practice</p>
                             </div>
                           </div>
 
@@ -2490,12 +2490,12 @@ export class DataEngine {
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Micro-Price</p>
                       <p className="text-base font-black text-slate-800">0.03 USDC</p>
-                      <p className="text-[10px] text-slate-400 font-mono">30,000 micro-units</p>
+                      <p className="text-[10px] text-slate-500 font-semibold">Instant Access</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Network &amp; Method</p>
-                      <p className="text-base font-black text-indigo-600">Algorand MainNet</p>
-                      <p className="text-[10px] text-slate-400 font-mono">GET &amp; POST Supported</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Access Type</p>
+                      <p className="text-base font-black text-indigo-600">8+ Questions</p>
+                      <p className="text-[10px] text-slate-500 font-semibold">Full STAR Answers</p>
                     </div>
                   </div>
 
@@ -2651,12 +2651,12 @@ export class DataEngine {
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Micro-Price</p>
                       <p className="text-base font-black text-slate-800">0.03 USDC</p>
-                      <p className="text-[10px] text-slate-400 font-mono">30,000 micro-units</p>
+                      <p className="text-[10px] text-slate-500 font-semibold">Instant Access</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Network &amp; Method</p>
-                      <p className="text-base font-black text-emerald-600">Algorand MainNet</p>
-                      <p className="text-[10px] text-slate-400 font-mono">GET &amp; POST Supported</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Access Type</p>
+                      <p className="text-base font-black text-emerald-600">Full Study Primers</p>
+                      <p className="text-[10px] text-slate-500 font-semibold">Curated Specifications</p>
                     </div>
                   </div>
 
