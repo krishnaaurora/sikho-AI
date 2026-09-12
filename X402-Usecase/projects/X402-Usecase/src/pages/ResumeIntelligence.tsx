@@ -91,20 +91,36 @@ const ResumeIntelligence: React.FC = () => {
   const [hasResume, setHasResume] = useState<boolean>(() => {
     return !!(sessionStorage.getItem('ri_resume_id') || localStorage.getItem('ri_resume_id'));
   });
-  const [extractedData, setExtractedData] = useState<any | null>(() => {
+  const [extractedData, setExtractedDataState] = useState<any | null>(() => {
     try {
       const saved = sessionStorage.getItem('ri_extracted_data');
       return saved ? JSON.parse(saved) : null;
     } catch { return null; }
   });
-  const [fileUrl, setFileUrl] = useState<string | null>(() => {
+  const setExtractedData = useCallback((data: any | null) => {
+    setExtractedDataState(data);
+    try {
+      if (data) sessionStorage.setItem('ri_extracted_data', JSON.stringify(data));
+      else sessionStorage.removeItem('ri_extracted_data');
+    } catch {}
+  }, []);
+
+  const [fileUrl, setFileUrlState] = useState<string | null>(() => {
     return sessionStorage.getItem('ri_file_url') || null;
   });
+  const setFileUrl = useCallback((url: string | null) => {
+    setFileUrlState(url);
+    try {
+      if (url) sessionStorage.setItem('ri_file_url', url);
+      else sessionStorage.removeItem('ri_file_url');
+    } catch {}
+  }, []);
+
   const [localPdfUrl, setLocalPdfUrl] = useState<string | null>(null);
   const [stage, setStageState] = useState<'upload' | 'viewer' | 'ats_dashboard'>(() => {
     const savedStage = sessionStorage.getItem('ri_stage') as 'upload' | 'viewer' | 'ats_dashboard' | null;
     const savedResumeId = sessionStorage.getItem('ri_resume_id') || localStorage.getItem('ri_resume_id');
-    if (savedStage && savedResumeId) return savedStage;
+    if (savedStage === 'viewer' || savedStage === 'ats_dashboard') return savedStage;
     if (savedResumeId) return 'viewer';
     return 'upload';
   });
@@ -1316,31 +1332,74 @@ EDUCATION & CERTIFICATIONS
         
         {/* HEADER SECTION */}
         <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
-          <div />
-          {stage === 'ats_dashboard' && (
-            <div className="flex items-center gap-2">
-              <Button 
-                onClick={() => setStage('viewer')} 
-                variant="outline"
-                className="rounded-xl text-xs font-bold border-slate-200 hover:bg-slate-50 cursor-pointer"
-              >
-                View Extracted Details
-              </Button>
-              <Button 
-                onClick={clearFile} 
-                variant="outline"
-                className="rounded-xl text-xs font-bold border-slate-200 hover:bg-slate-50 cursor-pointer"
-              >
-                Upload New Version
-              </Button>
-              <Button 
-                onClick={() => navigate('/dashboard/learner')}
-                className="rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm cursor-pointer"
-              >
-                Learner Dashboard
-              </Button>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {stage === 'viewer' && (
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
+                  <Sparkles size={10} /> Live Extraction &amp; Preview
+                </span>
+                <h1 className="text-xl font-black text-slate-900 mt-1">Resume Intelligence Pipeline</h1>
+              </div>
+            )}
+            {stage === 'ats_dashboard' && (
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
+                  <CheckCircle2 size={10} /> ATS &amp; Career Intelligence
+                </span>
+                <h1 className="text-xl font-black text-slate-900 mt-1">Resume Intelligence Dashboard</h1>
+              </div>
+            )}
+            {stage === 'upload' && <div />}
+          </div>
+          <div className="flex items-center gap-2">
+            {stage === 'viewer' && (
+              <>
+                <Button 
+                  onClick={clearFile} 
+                  variant="outline"
+                  className="rounded-xl text-xs font-bold border-slate-200 hover:bg-slate-50 cursor-pointer"
+                >
+                  Upload New Version
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setStage('ats_dashboard');
+                    setHasResume(true);
+                    setIsAnalyzing(false);
+                    setUploadStatus('done');
+                    setCurrentView('quality');
+                  }}
+                  className="rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md hover:opacity-95 cursor-pointer flex items-center gap-1.5 px-4"
+                >
+                  <span>Next: ATS &amp; Career Fit</span> <ArrowRight size={14} />
+                </Button>
+              </>
+            )}
+            {stage === 'ats_dashboard' && (
+              <>
+                <Button 
+                  onClick={() => setStage('viewer')} 
+                  variant="outline"
+                  className="rounded-xl text-xs font-bold border-slate-200 hover:bg-slate-50 cursor-pointer"
+                >
+                  View Extracted Details
+                </Button>
+                <Button 
+                  onClick={clearFile} 
+                  variant="outline"
+                  className="rounded-xl text-xs font-bold border-slate-200 hover:bg-slate-50 cursor-pointer"
+                >
+                  Upload New Version
+                </Button>
+                <Button 
+                  onClick={() => navigate('/dashboard/learner')}
+                  className="rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm cursor-pointer"
+                >
+                  Learner Dashboard
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* ========================================================
