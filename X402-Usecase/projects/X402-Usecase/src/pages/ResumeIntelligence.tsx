@@ -88,11 +88,33 @@ const ResumeIntelligence: React.FC = () => {
   const [experienceLevel, setExperienceLevel] = useState('Entry Level');
   const [useProfileData, setUseProfileData] = useState(true);
   const [noTargetGoal, setNoTargetGoal] = useState(false);
-  const [hasResume, setHasResume] = useState(false);
-  const [extractedData, setExtractedData] = useState<any | null>(null);
-  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [hasResume, setHasResume] = useState<boolean>(() => {
+    return !!(sessionStorage.getItem('ri_resume_id') || localStorage.getItem('ri_resume_id'));
+  });
+  const [extractedData, setExtractedData] = useState<any | null>(() => {
+    try {
+      const saved = sessionStorage.getItem('ri_extracted_data');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+  const [fileUrl, setFileUrl] = useState<string | null>(() => {
+    return sessionStorage.getItem('ri_file_url') || null;
+  });
   const [localPdfUrl, setLocalPdfUrl] = useState<string | null>(null);
-  const [stage, setStage] = useState<'upload' | 'viewer' | 'ats_dashboard'>('upload');
+  const [stage, setStageState] = useState<'upload' | 'viewer' | 'ats_dashboard'>(() => {
+    const savedStage = sessionStorage.getItem('ri_stage') as 'upload' | 'viewer' | 'ats_dashboard' | null;
+    const savedResumeId = sessionStorage.getItem('ri_resume_id') || localStorage.getItem('ri_resume_id');
+    if (savedStage && savedResumeId) return savedStage;
+    if (savedResumeId) return 'viewer';
+    return 'upload';
+  });
+
+  const setStage = useCallback((newStage: 'upload' | 'viewer' | 'ats_dashboard') => {
+    setStageState(newStage);
+    try {
+      sessionStorage.setItem('ri_stage', newStage);
+    } catch {}
+  }, []);
   const [currentView, setCurrentView] = useState<'overview' | 'quality' | 'skills' | 'career' | 'readiness' | 'discovery' | 'experience' | 'gaps' | 'market' | 'projects' | 'target' | 'targetmatch' | 'improve' | 'match' | 'action' | 'versions' | 'progress' | 'jobdisc' | 'jobintel' | 'payment' | 'rematch' | 'projectplan' | 'jobs' | 'applications'>('quality');
   const [activeTab, setActiveTab] = useState<string>('Personal Info');
   const [jobAnalysisPaid, setJobAnalysisPaid] = useState<Record<number, boolean>>({});
@@ -301,7 +323,22 @@ EDUCATION & CERTIFICATIONS
   const [matchTab, setMatchTab] = useState<'overview' | 'skills' | 'experience' | 'projects' | 'education' | 'why' | 'missing'>('overview');
 
   // ─── Live Resume ID (from real upload API response) ──────────────
-  const [resumeId, setResumeId] = useState<string | null>(null);
+  const [resumeId, setResumeIdState] = useState<string | null>(() => {
+    return sessionStorage.getItem('ri_resume_id') || localStorage.getItem('ri_resume_id') || null;
+  });
+
+  const setResumeId = useCallback((id: string | null) => {
+    setResumeIdState(id);
+    try {
+      if (id) {
+        sessionStorage.setItem('ri_resume_id', id);
+        localStorage.setItem('ri_resume_id', id);
+      } else {
+        sessionStorage.removeItem('ri_resume_id');
+        localStorage.removeItem('ri_resume_id');
+      }
+    } catch {}
+  }, []);
 
   // ─── Live Match Distribution (Phase 10) ─────────────────────────
   const [liveDistribution, setLiveDistribution] = useState<Record<string, number> | null>(null);
@@ -582,8 +619,17 @@ EDUCATION & CERTIFICATIONS
       fetchMatchedJobs(resumeId);
       fetchImprovements(resumeId);
       fetchCareerFitRoles(resumeId);
+      // Auto-restore extractedData if missing from state
+      if (!extractedData) {
+        apiFetch(`/api/v1/resume/${resumeId}/extraction`).then(res => {
+          if (res.success && res.data) {
+            setExtractedData(res.data);
+            try { sessionStorage.setItem('ri_extracted_data', JSON.stringify(res.data)); } catch {}
+          }
+        }).catch(err => console.warn('[AutoRestore] Extraction fetch:', err));
+      }
     }
-  }, [resumeId, fetchDistribution, fetchMatchedJobs, fetchImprovements]);
+  }, [resumeId, fetchDistribution, fetchMatchedJobs, fetchImprovements, extractedData, apiFetch]);
 
   const [x402Services, setX402Services] = useState<any[]>([]);
   const [x402Transactions, setX402Transactions] = useState<any[]>([]);
@@ -1094,6 +1140,14 @@ EDUCATION & CERTIFICATIONS
     setResumeId(null);
     setExtractedData(null);
     setFileUrl(null);
+    try {
+      sessionStorage.removeItem('ri_stage');
+      sessionStorage.removeItem('ri_resume_id');
+      sessionStorage.removeItem('ri_extracted_data');
+      sessionStorage.removeItem('ri_file_url');
+      sessionStorage.removeItem('ri_file_name');
+      localStorage.removeItem('ri_resume_id');
+    } catch {}
     setStage('upload');
   };
 
