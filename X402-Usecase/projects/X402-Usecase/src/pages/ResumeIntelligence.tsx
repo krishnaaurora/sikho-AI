@@ -118,7 +118,7 @@ const ResumeIntelligence: React.FC = () => {
 
   const [localPdfUrl, setLocalPdfUrl] = useState<string | null>(null);
   const [stage, setStageState] = useState<'upload' | 'viewer' | 'ats_dashboard'>(() => {
-    const savedStage = sessionStorage.getItem('ri_stage') as 'upload' | 'viewer' | 'ats_dashboard' | null;
+    const savedStage = (sessionStorage.getItem('ri_stage') || localStorage.getItem('ri_stage')) as 'upload' | 'viewer' | 'ats_dashboard' | null;
     const savedResumeId = sessionStorage.getItem('ri_resume_id') || localStorage.getItem('ri_resume_id');
     if (savedStage === 'viewer' || savedStage === 'ats_dashboard') return savedStage;
     if (savedResumeId) return 'viewer';
@@ -129,6 +129,7 @@ const ResumeIntelligence: React.FC = () => {
     setStageState(newStage);
     try {
       sessionStorage.setItem('ri_stage', newStage);
+      localStorage.setItem('ri_stage', newStage);
     } catch {}
   }, []);
   const [currentView, setCurrentView] = useState<'overview' | 'quality' | 'skills' | 'career' | 'readiness' | 'discovery' | 'experience' | 'gaps' | 'market' | 'projects' | 'target' | 'targetmatch' | 'improve' | 'match' | 'action' | 'versions' | 'progress' | 'jobdisc' | 'jobintel' | 'payment' | 'rematch' | 'projectplan' | 'jobs' | 'applications'>('quality');
