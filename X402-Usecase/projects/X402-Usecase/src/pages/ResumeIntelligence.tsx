@@ -182,7 +182,94 @@ EDUCATION & CERTIFICATIONS
   }, [location.pathname]);
 
   // Gating & Pricing Model States (Phase 31)
-  const [resumeIntelUnlocked, setResumeIntelUnlocked] = useState(false);
+  const [atsAnalysisUnlocked, setAtsAnalysisUnlocked] = useState(false);
+  const [careerFitUnlocked, setCareerFitUnlocked] = useState(false);
+  const [atsPaymentStep, setAtsPaymentStep] = useState<'402' | 'wallet' | 'verifying' | 'complete' | null>(null);
+  const [careerFitPaymentStep, setCareerFitPaymentStep] = useState<'402' | 'wallet' | 'verifying' | 'complete' | null>(null);
+
+  const unlockAtsAnalysis = async () => {
+    setAtsPaymentStep('402');
+    const targetResumeId = resumeId || "default_resume";
+    try {
+      await apiFetch(`/api/v1/resume/${targetResumeId}/quality`, { method: 'POST' });
+      setAtsPaymentStep('complete');
+      setTimeout(() => {
+        setAtsAnalysisUnlocked(true);
+        setAtsPaymentStep(null);
+        setCurrentView('quality');
+      }, 800);
+    } catch (directErr: any) {
+      if (!activeAddress) {
+        setAtsPaymentStep(null);
+        alert("Please connect your wallet first via the Manage Wallet tab.");
+        return;
+      }
+      try {
+        const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
+        setAtsPaymentStep('wallet');
+        await x402Fetch(`${backendOrigin}/api/v1/resume/${targetResumeId}/quality`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        setAtsPaymentStep('verifying');
+        setTimeout(() => {
+          setAtsPaymentStep('complete');
+          setTimeout(() => {
+            setAtsAnalysisUnlocked(true);
+            setAtsPaymentStep(null);
+            setCurrentView('quality');
+          }, 1000);
+        }, 1200);
+      } catch (err: any) {
+        console.error('[x402] ATS Analysis unlock failed:', err);
+        alert(`Payment verification failed: ${err.message || err}`);
+        setAtsPaymentStep(null);
+      }
+    }
+  };
+
+  const unlockCareerFit = async () => {
+    setCareerFitPaymentStep('402');
+    const targetResumeId = resumeId || "default_resume";
+    try {
+      await apiFetch(`/api/v1/resume/${targetResumeId}/career-fit`, { method: 'POST' });
+      setCareerFitPaymentStep('complete');
+      setTimeout(() => {
+        setCareerFitUnlocked(true);
+        setCareerFitPaymentStep(null);
+        setCurrentView('career');
+      }, 800);
+    } catch (directErr: any) {
+      if (!activeAddress) {
+        setCareerFitPaymentStep(null);
+        alert("Please connect your wallet first via the Manage Wallet tab.");
+        return;
+      }
+      try {
+        const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
+        setCareerFitPaymentStep('wallet');
+        await x402Fetch(`${backendOrigin}/api/v1/resume/${targetResumeId}/career-fit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        setCareerFitPaymentStep('verifying');
+        setTimeout(() => {
+          setCareerFitPaymentStep('complete');
+          setTimeout(() => {
+            setCareerFitUnlocked(true);
+            setCareerFitPaymentStep(null);
+            setCurrentView('career');
+          }, 1000);
+        }, 1200);
+      } catch (err: any) {
+        console.error('[x402] Career Fit unlock failed:', err);
+        alert(`Payment verification failed: ${err.message || err}`);
+        setCareerFitPaymentStep(null);
+      }
+    }
+  };
+
+  const [resumeIntelUnlocked, setResumeIntelUnlocked] = useState(true);
   const [jobDiscoveryUnlocked, setJobDiscoveryUnlocked] = useState(false);
   const [jobDiscoveryPaymentStep, setJobDiscoveryPaymentStep] = useState<'402' | 'wallet' | 'verifying' | 'complete' | null>(null);
   const [activePaymentService, setActivePaymentService] = useState<'job_discovery' | 'job_analysis' | null>(null);
@@ -200,6 +287,7 @@ EDUCATION & CERTIFICATIONS
   const [filterTab, setFilterTab] = useState<'All' | 'Strong' | 'Partial' | 'Listed Only' | 'Missing'>('All');
   const [selectedSkill, setSelectedSkill] = useState<string>('Python');
   const [selectedCareerOverview, setSelectedCareerOverview] = useState('Machine Learning Engineer');
+  const [selectedBucket, setSelectedBucket] = useState<'100%' | '75%' | '50%' | '20%' | '0%'>('75%');
   const [discoveryStep, setDiscoveryStep] = useState(1);
   const [selectedCareerDiscovery, setSelectedCareerDiscovery] = useState('');
   const [customCareer, setCustomCareer] = useState('');
@@ -344,25 +432,12 @@ EDUCATION & CERTIFICATIONS
       }
       setPipelineStatus(s => ({ ...s, extraction: 'done' }));
       setIsAnalyzing(false);
-      setHasResume(true);
       setUploadStatus('done');
-      setCurrentView('quality');
+      setResumeIntelUnlocked(true);
     } catch (e) {
       console.warn('[Pipeline] Extraction polling failed:', e);
       setPipelineStatus(s => ({ ...s, extraction: 'done' }));
       return;
-    }
-
-    // Check if Resume Intelligence pass is already unlocked
-    try {
-      const unlockStatus = await apiFetch(`/api/v1/resume/${rid}/unlock`, { method: 'POST' });
-      if (unlockStatus.success) {
-        setResumeIntelUnlocked(true);
-      }
-    } catch (unlockErr) {
-      // 402 returned — user must pay $0.50 USDC via x402 pass paywall
-      setResumeIntelUnlocked(false);
-      console.info('[Pipeline] Resume Intelligence requires x402 payment pass');
     }
 
     // Step 2, 3, 9 in parallel!
@@ -1797,7 +1872,7 @@ EDUCATION & CERTIFICATIONS
                     >
                       <UploadCloud size={14} /> Upload Another
                     </Button>
-                    {extractedData && (
+                    {(extractedData || pipelineStatus.extraction === 'done' || uploadStatus === 'done') && (
                       <Button
                         onClick={() => {
                           setIsAnalyzing(false);
@@ -1805,9 +1880,9 @@ EDUCATION & CERTIFICATIONS
                           setUploadStatus('done');
                           setCurrentView('quality');
                         }}
-                        className="flex-1 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md gap-2 hover:opacity-90 transition-all animate-bounce"
+                        className="flex-1 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white shadow-md gap-2 hover:opacity-90 transition-all py-3 flex items-center justify-center"
                       >
-                        Next: View Results <ArrowRight size={14} />
+                        <span>Next: View ATS Analysis ($0.03 USDC)</span> <ArrowRight size={14} />
                       </Button>
                     )}
                   </div>
@@ -1930,9 +2005,9 @@ EDUCATION & CERTIFICATIONS
               {/* Nav Items */}
               <div className="space-y-1">
                 {([
-                  { id: 'quality',       emoji: '🎯', label: 'ATS Analysis',      step: 1, sublabel: 'Score & improvements', locked: false },
-                  { id: 'career',        emoji: '🧭', label: 'Career Fit',        step: 2, sublabel: 'Top 5 matches', locked: false },
-                  { id: 'jobs',          emoji: '💼', label: 'Job Opportunities', step: 3, sublabel: 'Live jobs · 🔒 $0.02', locked: !jobDiscoveryUnlocked },
+                  { id: 'quality',       emoji: '🎯', label: 'ATS Analysis',      step: 1, sublabel: atsAnalysisUnlocked ? 'Score & AI Fix' : '🔒 $0.03 USDC Pass', locked: !atsAnalysisUnlocked },
+                  { id: 'career',        emoji: '🧭', label: 'Career Fit',        step: 2, sublabel: careerFitUnlocked ? 'Top 5 matches' : '🔒 $0.03 USDC Pass', locked: !careerFitUnlocked },
+                  { id: 'jobs',          emoji: '💼', label: 'Job Opportunities', step: 3, sublabel: jobDiscoveryUnlocked ? 'Live jobs' : '🔒 $0.02 USDC Pass', locked: !jobDiscoveryUnlocked },
                 ] as const).map((item) => {
                   const isActive = currentView === item.id;
                   const isDone = (
@@ -1953,10 +2028,11 @@ EDUCATION & CERTIFICATIONS
                       {/* Step circle */}
                       <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] flex-shrink-0 transition-all ${
                         isActive ? 'bg-white/20 text-white' :
-                        isDone ? 'bg-emerald-50 border border-emerald-200' :
+                        isDone && !item.locked ? 'bg-emerald-50 border border-emerald-200' :
+                        item.locked ? 'bg-amber-50 text-amber-600 border border-amber-200 font-bold' :
                         'bg-slate-100 border border-slate-200'
                       }`}>
-                        {isDone && !isActive ? '✓' : item.emoji}
+                        {item.locked ? '🔒' : isDone && !isActive ? '✓' : item.emoji}
                       </div>
                       {/* Labels */}
                       <div className="flex-1 min-w-0">
@@ -2255,8 +2331,62 @@ EDUCATION & CERTIFICATIONS
 
               {/* PAGE: QUALITY & ATS ANALYSIS */}
               {currentView === 'quality' && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-                  
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  {!atsAnalysisUnlocked ? (
+                    <div className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-10 text-center space-y-6 shadow-sm">
+                      <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl mx-auto shadow-lg shadow-indigo-100">
+                        🎯
+                      </div>
+                      <div className="max-w-md mx-auto space-y-2">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-black">
+                          <span>🔒 Algorand X402 Micropayment</span>
+                          <span>•</span>
+                          <span>$0.03 USDC</span>
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900">Unlock ATS Quality &amp; AI Resume Auto-Fix Pass</h3>
+                        <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                          Get an in-depth 11-point ATS compatibility score, breakdown of formatting &amp; keyword issues, and download your complete AI auto-fixed ATS optimized resume.
+                        </p>
+                      </div>
+
+                      {/* Payment step feedback */}
+                      {atsPaymentStep === '402' && (
+                        <div className="flex items-center justify-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs font-black text-indigo-700 animate-pulse">
+                          <span>💸 Preparing $0.03 USDC micropayment challenge...</span>
+                        </div>
+                      )}
+                      {atsPaymentStep === 'wallet' && (
+                        <div className="flex items-center justify-center gap-2 p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs font-black text-purple-700 animate-pulse">
+                          <span>🔑 Check your wallet to sign the $0.03 USDC transaction...</span>
+                        </div>
+                      )}
+                      {atsPaymentStep === 'verifying' && (
+                        <div className="flex items-center justify-center gap-2 p-3 bg-amber-50 rounded-xl border border-amber-100 text-xs font-black text-amber-700 animate-pulse">
+                          <span className="animate-spin inline-block text-base">⟳</span>
+                          <span>Verifying Algorand x402 payment settlement on-chain...</span>
+                        </div>
+                      )}
+                      {atsPaymentStep === 'complete' && (
+                        <div className="flex items-center justify-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-xs font-black text-emerald-700">
+                          <span>✓ Payment confirmed ($0.03 USDC) — Unlocking ATS Analysis...</span>
+                        </div>
+                      )}
+
+                      {!atsPaymentStep && (
+                        <div className="space-y-2 max-w-sm mx-auto">
+                          <button
+                            onClick={unlockAtsAnalysis}
+                            className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:opacity-95 text-white font-black text-sm py-4 rounded-2xl shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 group"
+                          >
+                            <span>Unlock ATS Analysis &amp; AI Fix for $0.03 USDC</span>
+                            <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                          </button>
+                          <p className="text-[10px] text-slate-400 font-bold">One-time payment • Settles instantly on Algorand testnet</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
                   {/* Top Header */}
                   <div className="flex items-center justify-between">
                     <div>
@@ -2467,6 +2597,7 @@ EDUCATION & CERTIFICATIONS
                       </button>
 
                     </div>
+                  </div>
 
                   {/* AI AUTO-FIXED ATS RESUME VIEW & DOWNLOAD */}
                   <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 shadow-xl text-white space-y-5 border border-indigo-900/50">
@@ -2521,7 +2652,8 @@ EDUCATION & CERTIFICATIONS
                       {generateEnhancedResumeText()}
                     </div>
                   </div>
-
+                  </div>
+                )}
                 </motion.div>
               )}
 
@@ -2830,7 +2962,62 @@ EDUCATION & CERTIFICATIONS
                 const confidenceColor = (pct: number) => pct >= 80 ? 'text-emerald-600' : pct >= 60 ? 'text-blue-600' : pct >= 40 ? 'text-amber-600' : 'text-red-500';
 
                 return (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    {!careerFitUnlocked ? (
+                      <div className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-10 text-center space-y-6 shadow-sm">
+                        <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl mx-auto shadow-lg shadow-indigo-100">
+                          🧭
+                        </div>
+                        <div className="max-w-md mx-auto space-y-2">
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-black">
+                            <span>🔒 Algorand X402 Micropayment</span>
+                            <span>•</span>
+                            <span>$0.03 USDC</span>
+                          </div>
+                          <h3 className="text-xl font-black text-slate-900">Unlock Career Fit &amp; Top 5 Match Pathways</h3>
+                          <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                            AI analyzes your resume to identify your #1 primary career match and 4 alternative career pathways with match confidence percentages and detailed match reasons.
+                          </p>
+                        </div>
+
+                        {/* Payment step feedback */}
+                        {careerFitPaymentStep === '402' && (
+                          <div className="flex items-center justify-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs font-black text-indigo-700 animate-pulse">
+                            <span>💸 Preparing $0.03 USDC micropayment challenge...</span>
+                          </div>
+                        )}
+                        {careerFitPaymentStep === 'wallet' && (
+                          <div className="flex items-center justify-center gap-2 p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs font-black text-purple-700 animate-pulse">
+                            <span>🔑 Check your wallet to sign the $0.03 USDC transaction...</span>
+                          </div>
+                        )}
+                        {careerFitPaymentStep === 'verifying' && (
+                          <div className="flex items-center justify-center gap-2 p-3 bg-amber-50 rounded-xl border border-amber-100 text-xs font-black text-amber-700 animate-pulse">
+                            <span className="animate-spin inline-block text-base">⟳</span>
+                            <span>Verifying Algorand x402 payment settlement on-chain...</span>
+                          </div>
+                        )}
+                        {careerFitPaymentStep === 'complete' && (
+                          <div className="flex items-center justify-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-xs font-black text-emerald-700">
+                            <span>✓ Payment confirmed ($0.03 USDC) — Unlocking Career Fit...</span>
+                          </div>
+                        )}
+
+                        {!careerFitPaymentStep && (
+                          <div className="space-y-2 max-w-sm mx-auto">
+                            <button
+                              onClick={unlockCareerFit}
+                              className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:opacity-95 text-white font-black text-sm py-4 rounded-2xl shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 group"
+                            >
+                              <span>Unlock Career Fit for $0.03 USDC</span>
+                              <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                            </button>
+                            <p className="text-[10px] text-slate-400 font-bold">One-time payment • Settles instantly on Algorand testnet</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
 
                     {/* Header */}
                     <div className="flex items-center justify-between">
@@ -2965,6 +3152,8 @@ EDUCATION & CERTIFICATIONS
                         )}
                       </>
                     )}
+                  </div>
+                )}
                   </motion.div>
                 );
               })()}
@@ -4138,7 +4327,6 @@ EDUCATION & CERTIFICATIONS
                           </div>
                         </div>
                       </div>
-
                     </div>
                   </div>
                 </motion.div>
@@ -4196,7 +4384,7 @@ EDUCATION & CERTIFICATIONS
                         </div>
                         <h3 className="text-xl font-black text-slate-900">Unlock Live Job Opportunities</h3>
                         <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                          Perform real-time job discovery across Google Search, Greenhouse, Lever &amp; Ashby matched directly against your top 5 career paths with custom match scoring.
+                          Discover live active job postings matching your resume skills and top career pathways with custom AI match scoring.
                         </p>
                       </div>
 
