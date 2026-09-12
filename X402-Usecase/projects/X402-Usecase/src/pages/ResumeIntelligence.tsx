@@ -91,6 +91,7 @@ const ResumeIntelligence: React.FC = () => {
   const [hasResume, setHasResume] = useState(false);
   const [extractedData, setExtractedData] = useState<any | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [localPdfUrl, setLocalPdfUrl] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<'overview' | 'quality' | 'skills' | 'career' | 'readiness' | 'discovery' | 'experience' | 'gaps' | 'market' | 'projects' | 'target' | 'targetmatch' | 'improve' | 'match' | 'action' | 'versions' | 'progress' | 'jobdisc' | 'jobintel' | 'payment' | 'rematch' | 'projectplan' | 'jobs' | 'applications'>('quality');
   const [activeTab, setActiveTab] = useState<string>('Personal Info');
   const [jobAnalysisPaid, setJobAnalysisPaid] = useState<Record<number, boolean>>({});
@@ -993,6 +994,12 @@ EDUCATION & CERTIFICATIONS
     setUploadStatus('uploading');
     setUploadProgress(0);
     setIsAnalyzing(true);
+    try {
+      const blobUrl = URL.createObjectURL(file);
+      setLocalPdfUrl(blobUrl);
+    } catch (e) {
+      console.warn('Could not create object URL:', e);
+    }
 
     const formData = new FormData();
     formData.append('file', file);
@@ -1064,6 +1071,10 @@ EDUCATION & CERTIFICATIONS
   // Reset states
   const clearFile = () => {
     handleRemove();
+    if (localPdfUrl) {
+      try { URL.revokeObjectURL(localPdfUrl); } catch {}
+    }
+    setLocalPdfUrl(null);
     setUploadStatus('idle');
     setUploadProgress(0);
     setError(null);
@@ -1604,10 +1615,10 @@ EDUCATION & CERTIFICATIONS
                     </div>
                   </div>
                   <div className="flex-1 w-full h-full bg-slate-100 relative">
-                    {(fileUrl || extractedData?.fileUrl || previewUrl) ? (
+                    {(localPdfUrl || previewUrl || fileUrl || extractedData?.fileUrl) ? (
                       <iframe
                         src={(() => {
-                          const url = fileUrl || extractedData?.fileUrl || previewUrl || '';
+                          const url = localPdfUrl || previewUrl || fileUrl || extractedData?.fileUrl || '';
                           if (url.startsWith('blob:') || url.startsWith('http://') || url.startsWith('https://')) return url;
                           if (url.startsWith('/')) return `${backendOrigin}${url}`;
                           return `${backendOrigin}/uploads/documents/${url}`;
@@ -1631,11 +1642,25 @@ EDUCATION & CERTIFICATIONS
                     <div className="flex items-center justify-between border-b pb-2.5">
                       <div className="flex items-center gap-2">
                         <span className="text-lg">🧠</span>
-                        <span className="text-sm font-black text-slate-805 tracking-tight uppercase">Resume Intelligence</span>
+                        <span className="text-sm font-black text-slate-800 tracking-tight uppercase">Resume Intelligence</span>
                       </div>
-                      <span className="text-sm font-black text-indigo-600">
-                        {`${Math.max(currentProgress, 5)}%`}
-                      </span>
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xs font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-lg">
+                          {`${Math.max(currentProgress, 5)}%`}
+                        </span>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setIsAnalyzing(false);
+                            setHasResume(true);
+                            setUploadStatus('done');
+                            setCurrentView('quality');
+                          }}
+                          className="rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm hover:opacity-95 transition-all h-8 px-3 flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Next</span> <ArrowRight size={13} />
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="space-y-1">
