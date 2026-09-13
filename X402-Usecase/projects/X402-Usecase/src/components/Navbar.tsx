@@ -163,29 +163,6 @@ const Navbar = () => {
             ) : (
               /* LANDING NAVBAR LAYOUT (LOGGED OUT) */
               <>
-                <div className="hidden md:flex items-center gap-8">
-
-                  {[
-                    { name: "AI Tools", href: "#ai-tools", color: "hover:after:bg-blue-500" },
-                    { name: "Workflow Demo", href: "#workflow-demo", color: "hover:after:bg-purple-500" }
-                  ].map((link) => (
-                    <a 
-                      key={link.name} 
-                      href={link.href}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        const element = document.querySelector(link.href);
-                        if (element) {
-                          element.scrollIntoView({ behavior: 'smooth' });
-                        }
-                      }}
-                      className={`relative text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors duration-200 after:absolute after:-bottom-1 after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:transition-all after:duration-300 ${link.color}`}
-                    >
-                      {link.name}
-                    </a>
-                  ))}
-                </div>
-
                 <div className="hidden md:flex items-center gap-4">
                   <Button variant="ghost" asChild className="rounded-xl font-bold text-slate-700 hover:bg-slate-150">
                     <Link to="/login">Sign In</Link>
@@ -193,9 +170,9 @@ const Navbar = () => {
                   
                   {/* Premium Sparkle visual button */}
                   <Button asChild className="relative rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20 overflow-hidden group">
-                    <Link to="/register" className="flex items-center gap-1.5 text-white">
-                      <span className="text-white">Get Started</span>
-                      <Sparkles className="h-3.5 w-3.5 text-orange-400 group-hover:animate-spin" />
+                    <Link to="/register" className="flex items-center gap-2">
+                      <span>Get Started Free</span>
+                      <Sparkles className="h-4 w-4 text-orange-400 group-hover:rotate-12 transition-transform" />
                     </Link>
                   </Button>
                 </div>
@@ -314,14 +291,12 @@ const Navbar = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="space-y-2 flex flex-col pt-2 pb-4">
-                      <a href="#ai-tools" onClick={(e) => { e.preventDefault(); setIsOpen(false); document.querySelector('#ai-tools')?.scrollIntoView({ behavior: 'smooth' }); }} className="px-3 py-2 text-sm font-semibold text-slate-650 hover:text-indigo-650 transition-all">AI Tools</a>
-                      <a href="#workflow-demo" onClick={(e) => { e.preventDefault(); setIsOpen(false); document.querySelector('#workflow-demo')?.scrollIntoView({ behavior: 'smooth' }); }} className="px-3 py-2 text-sm font-semibold text-slate-650 hover:text-indigo-650 transition-all">Workflow Demo</a>
-                      <div className="border-t border-slate-200 pt-2 flex flex-col gap-2">
+                    <div className="space-y-2 flex flex-col pt-2 pb-2">
+                      <div className="flex flex-col gap-2">
                         <Button variant="ghost" className="w-full rounded-xl font-bold" asChild onClick={() => setIsOpen(false)}>
                           <Link to="/login">Sign In</Link>
                         </Button>
-                        <Button className="w-full rounded-xl font-bold bg-indigo-650 text-white" asChild onClick={() => setIsOpen(false)}>
+                        <Button className="w-full rounded-xl font-bold bg-indigo-600 text-white" asChild onClick={() => setIsOpen(false)}>
                           <Link to="/register" className="flex items-center justify-center gap-1.5">
                             <span>Get Started</span>
                             <Sparkles className="h-3.5 w-3.5 text-orange-400" />
