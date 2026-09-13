@@ -312,7 +312,7 @@ const LearnerDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Tile 2: Build Studio (Active) */}
+              {/* Tile 2: Git Repo Analyser (Active) */}
               <div 
                 onClick={() => navigate('/build')}
                 className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-violet-300 transition-all group relative flex flex-col justify-between"
@@ -326,13 +326,13 @@ const LearnerDashboard: React.FC = () => {
                       <ArrowRight size={12} />
                     </div>
                   </div>
-                  <h3 className="font-bold text-slate-800 text-sm mb-1">Build Studio</h3>
-                  <p className="text-xs text-slate-400 font-medium leading-relaxed">Code editor, vulnerability audit & live debugging</p>
+                  <h3 className="font-bold text-slate-800 text-sm mb-1">Git Repo Analyser</h3>
+                  <p className="text-xs text-slate-400 font-medium leading-relaxed">Multi-file GitHub vulnerability audit, security scanning & code review</p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-100 flex gap-1.5">
-                  <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Code</span>
-                  <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Debug</span>
+                  <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Git Repo</span>
                   <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Security Audit</span>
+                  <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Code Review</span>
                 </div>
               </div>
 

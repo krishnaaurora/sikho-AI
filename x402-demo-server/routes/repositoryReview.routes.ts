@@ -3,6 +3,7 @@ import {
   discover,
   start,
   handleSikhoX402Payment,
+  handleGitRepoAnalyserEndpoint,
   recordSikhoPayment,
   getSikhoChallenge,
   getPrismChallenge,
@@ -14,6 +15,11 @@ import {
 } from "../controllers/repositoryReview.controller";
 
 const router = express.Router();
+
+// Git Repo Analyser - Standalone x402 Merchant Endpoint (GET & POST)
+router.get("/git-repo-analyser", handleGitRepoAnalyserEndpoint);
+router.post("/git-repo-analyser", handleGitRepoAnalyserEndpoint);
+router.all("/git-repo-analyser", handleGitRepoAnalyserEndpoint);
 
 // Repository Review Endpoints
 router.post("/discover", discover);

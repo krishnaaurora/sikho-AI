@@ -668,14 +668,14 @@ export const BuildStudio: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold bg-violet-50 text-violet-700 px-2 py-0.5 rounded-md border border-violet-200/60 flex items-center gap-1">
-                  <Code2 size={12} /> GitHub Review
+                  <Code2 size={12} /> Git Repo Analyser
                 </span>
                 <span className="text-[11px] font-semibold text-slate-400">
-                  x402 Dual-Settlement Marketplace
+                  x402 Protocol • Algorand MainNet
                 </span>
               </div>
               <h1 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
-                Multi-File GitHub Repository Security Audit &amp; Code Review
+                Git Repo Analyser: Multi-File GitHub Vulnerability Audit &amp; Code Review
               </h1>
             </div>
           </div>

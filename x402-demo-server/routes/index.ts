@@ -32,5 +32,7 @@ router.use("/x402", x402Routes);
 router.use("/interview-pro", interviewProRoutes);
 router.use("/services", servicesRoutes);
 router.use("/services/github-review", repositoryReviewRoutes);
+router.use("/repository-review", repositoryReviewRoutes);
+router.use("/git-repo-analyser", repositoryReviewRoutes);
 
 export default router;
