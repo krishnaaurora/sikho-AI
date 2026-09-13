@@ -241,6 +241,23 @@ export const BuildStudio: React.FC = () => {
       const params = await client.getTransactionParams().do();
       const enc = new TextEncoder();
 
+      // Pre-check user's ALGO balance against Minimum Balance Requirement (MBR) + transaction fee
+      try {
+        const acctInfo: any = await client.accountInformation(activeAddress).do();
+        const algoBal = Number(acctInfo.amount || 0);
+        const minBal = Number(acctInfo['min-balance'] || acctInfo.minBalance || (acctInfo.assets?.length ? 100000 + acctInfo.assets.length * 100000 : 100000));
+        const feeNeeded = Number(params.fee || 1000);
+        if (algoBal - feeNeeded < minBal) {
+          throw new Error(
+            `Insufficient ALGO for Network Fee: Your wallet (${activeAddress.slice(0, 6)}...${activeAddress.slice(-4)}) has an ALGO balance of ${(algoBal / 1e6).toFixed(6)} ALGO, but requires at least ${((minBal + feeNeeded) / 1e6).toFixed(6)} ALGO (Minimum Balance Requirement ${(minBal / 1e6).toFixed(4)} ALGO + ${(feeNeeded / 1e6).toFixed(4)} ALGO network fee). Please add ~0.01 ALGO to your wallet to send transactions.`
+          );
+        }
+      } catch (acctErr: any) {
+        if (acctErr.message && acctErr.message.includes('Insufficient ALGO')) {
+          throw acctErr;
+        }
+      }
+
       // 2. User connected wallet signs REAL x402 payment ($0.05 USDC / 50,000 micro-USDC)
       const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
         sender: activeAddress,
@@ -327,6 +344,9 @@ export const BuildStudio: React.FC = () => {
       if (typeof userMsg === 'string' && userMsg.includes('underflow on subtracting')) {
         userMsg = `Insufficient USDC Balance: Paying Sikho fee requires $0.05 USDC. Please fund your Algorand wallet with USDC.`;
       }
+      if (typeof userMsg === 'string' && (userMsg.includes('below min') || userMsg.includes('TransactionPool.Remember'))) {
+        userMsg = `Insufficient ALGO for Network Fee: Your connected wallet (${activeAddress.slice(0, 6)}...${activeAddress.slice(-4)}) has USDC, but requires ~0.001 ALGO to pay the Algorand transaction fee (current ALGO balance is below minimum account requirement). Please add a small amount of ALGO (~0.01 ALGO) to your wallet.`;
+      }
       setError(userMsg);
       setFileReviews((prev) =>
         prev.map((f) =>
@@ -386,6 +406,23 @@ export const BuildStudio: React.FC = () => {
 
       const params = await client.getTransactionParams().do();
       const enc = new TextEncoder();
+
+      // Pre-check user's ALGO balance against Minimum Balance Requirement (MBR) + transaction fee
+      try {
+        const acctInfo: any = await client.accountInformation(activeAddress).do();
+        const algoBal = Number(acctInfo.amount || 0);
+        const minBal = Number(acctInfo['min-balance'] || acctInfo.minBalance || (acctInfo.assets?.length ? 100000 + acctInfo.assets.length * 100000 : 100000));
+        const feeNeeded = Number(params.fee || 1000);
+        if (algoBal - feeNeeded < minBal) {
+          throw new Error(
+            `Insufficient ALGO for Network Fee: Your wallet (${activeAddress.slice(0, 6)}...${activeAddress.slice(-4)}) has an ALGO balance of ${(algoBal / 1e6).toFixed(6)} ALGO, but requires at least ${((minBal + feeNeeded) / 1e6).toFixed(6)} ALGO (Minimum Balance Requirement ${(minBal / 1e6).toFixed(4)} ALGO + ${(feeNeeded / 1e6).toFixed(4)} ALGO network fee). Please add ~0.01 ALGO to your wallet to send transactions.`
+          );
+        }
+      } catch (acctErr: any) {
+        if (acctErr.message && acctErr.message.includes('Insufficient ALGO')) {
+          throw acctErr;
+        }
+      }
 
       // 2. Prompt user's connected wallet to sign REAL x402 payment directly to Prism PayTo ($0.20)
       const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
@@ -481,6 +518,9 @@ export const BuildStudio: React.FC = () => {
       let userMsg = err.message || 'Failed to authorize Prism x402 review.';
       if (typeof userMsg === 'string' && userMsg.includes('underflow on subtracting')) {
         userMsg = `Insufficient USDC Balance: Paying Prism requires $0.20 USDC. Please fund your Algorand wallet with USDC.`;
+      }
+      if (typeof userMsg === 'string' && (userMsg.includes('below min') || userMsg.includes('TransactionPool.Remember'))) {
+        userMsg = `Insufficient ALGO for Network Fee: Your connected wallet (${activeAddress.slice(0, 6)}...${activeAddress.slice(-4)}) has USDC, but requires ~0.001 ALGO to pay the Algorand transaction fee (current ALGO balance is below minimum account requirement). Please add a small amount of ALGO (~0.01 ALGO) to your wallet.`;
       }
       setError(userMsg);
       setFileReviews((prev) =>
