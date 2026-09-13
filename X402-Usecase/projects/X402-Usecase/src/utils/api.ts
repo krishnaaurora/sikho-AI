@@ -378,6 +378,13 @@ export const githubReviewApi = {
     });
   },
 
+  async reviewFile(reviewId: string, fileId: string, userPaymentTxId: string) {
+    return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.GITHUB_REVIEW_FILE_REVIEW(reviewId, fileId), {
+      method: 'POST',
+      body: JSON.stringify({ reviewId, fileId, userPaymentTxId }),
+    });
+  },
+
   async getReviewStatus(reviewId: string) {
     return fetchAPI<ApiResponse<{
       review: any;

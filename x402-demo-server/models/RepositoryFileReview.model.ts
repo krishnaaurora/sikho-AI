@@ -19,11 +19,16 @@ export interface IRepositoryFileReview extends Document {
     | "failed"
     | "retry_required";
 
+  userPaymentAmount: number; // 250000 micro-USDC ($0.25)
+  userPaymentStatus: "pending" | "confirmed" | "failed";
+  userPaymentTxId?: string;
+
   platformFeeAmount: number; // 50000 micro-USDC ($0.05)
   platformFeeStatus: "pending" | "completed" | "failed";
   platformFeeTransactionId?: string;
 
   providerAmount: number; // 200000 micro-USDC ($0.20)
+  providerPaymentStatus: "pending" | "confirmed" | "failed";
   providerPaymentTxId?: string;
   prismRequestId?: string;
 
@@ -81,6 +86,20 @@ const RepositoryFileReviewSchema = new Schema<IRepositoryFileReview>(
       default: "pending",
       index: true,
     },
+    userPaymentAmount: {
+      type: Number,
+      default: 250000,
+    },
+    userPaymentStatus: {
+      type: String,
+      enum: ["pending", "confirmed", "failed"],
+      default: "pending",
+    },
+    userPaymentTxId: {
+      type: String,
+      sparse: true,
+      index: true,
+    },
     platformFeeAmount: {
       type: Number,
       default: 50000,
@@ -97,6 +116,11 @@ const RepositoryFileReviewSchema = new Schema<IRepositoryFileReview>(
     providerAmount: {
       type: Number,
       default: 200000,
+    },
+    providerPaymentStatus: {
+      type: String,
+      enum: ["pending", "confirmed", "failed"],
+      default: "pending",
     },
     providerPaymentTxId: {
       type: String,

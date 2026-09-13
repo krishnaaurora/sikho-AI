@@ -13,23 +13,18 @@ import {
   fetchRawGithubFileContent,
 } from "./githubRepository.service";
 import { processPlatformFee } from "./platformFee.service";
-import { getServiceById } from "./serviceRegistry";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
 
-const CONCURRENCY_LIMIT = parseInt(
-  process.env.REPOSITORY_REVIEW_CONCURRENCY || "3",
-  10
-);
-
 /**
- * 1. Independent On-Chain Verification of User's Total Repository Payment
+ * 1. Independent On-Chain Verification of User's $0.25 Payment for a Single File
  */
-async function verifyOnChainRepositoryPayment(
+export async function verifyOnChainFilePayment(
   txId: string,
   expectedReceiver: string,
   expectedAssetId: string,
-  expectedTotalMicro: number
+  expectedMicroAmount: number,
+  fileReviewId: string
 ): Promise<{ confirmed: boolean; sender: string; amount: number }> {
   if (!txId || typeof txId !== "string" || txId.trim().length === 0) {
     throw new Error(
@@ -37,19 +32,20 @@ async function verifyOnChainRepositoryPayment(
     );
   }
 
-  // Prevent replay attacks: ensure txId is not already used in a completed repository review
-  const existingCompleted = await RepositoryReview.findOne({
+  // Prevent replay attacks: ensure txId is not already consumed by another file review
+  const existingCompleted = await RepositoryFileReview.findOne({
     userPaymentTxId: txId,
-    status: { $in: ["completed", "processing", "partial"] },
+    fileReviewId: { $ne: fileReviewId },
+    userPaymentStatus: "confirmed",
   });
   if (existingCompleted) {
     throw new Error(
-      `Transaction ${txId} has already been consumed (replay attack detected).`
+      `Transaction ${txId} has already been consumed for file ${existingCompleted.filePath} (replay attack detected).`
     );
   }
 
   logger.info(
-    `[Repository Payment] Verifying on-chain tx ${txId} for ${expectedTotalMicro} micro-USDC on Algorand MainNet...`
+    `[File Payment] Verifying on-chain tx ${txId} for ${expectedMicroAmount} micro-USDC on Algorand MainNet...`
   );
 
   // Query Algorand MainNet Indexer (Algonode public API)
@@ -107,10 +103,10 @@ async function verifyOnChainRepositoryPayment(
     );
   }
 
-  if (amount < expectedTotalMicro) {
+  if (amount < expectedMicroAmount) {
     throw new Error(
-      `Insufficient payment amount: expected ${expectedTotalMicro} micro-USDC ($${(
-        expectedTotalMicro / 1000000
+      `Insufficient payment amount: expected ${expectedMicroAmount} micro-USDC ($${(
+        expectedMicroAmount / 1000000
       ).toFixed(2)}), received ${amount} micro-USDC.`
     );
   }
@@ -122,7 +118,7 @@ async function verifyOnChainRepositoryPayment(
   }
 
   logger.info(
-    `[Repository Payment] Verified tx ${txId}: ${amount} micro-USDC from ${sender} to ${receiver}`
+    `[File Payment] Verified tx ${txId}: ${amount} micro-USDC from ${sender} to ${receiver}`
   );
   return { confirmed: true, sender, amount };
 }
@@ -252,9 +248,12 @@ export async function discoverRepository(
       size: file.size,
       sha: file.sha,
       status: "pending",
+      userPaymentAmount: 250000,
+      userPaymentStatus: "pending",
       platformFeeAmount: 50000,
       platformFeeStatus: "pending",
       providerAmount: 200000,
+      providerPaymentStatus: "pending",
     }))
   );
 
@@ -265,98 +264,63 @@ export async function discoverRepository(
 }
 
 /**
- * 4. Start Repository Review Execution after verifying User Payment
+ * 4. Execute a Single File Review with its Own Independent $0.25 User Payment
  */
-export async function startRepositoryReview(
+export async function executeFileReviewWithPayment(
   reviewId: string,
-  userPaymentTxId: string,
-  providerPaymentTxId?: string
-): Promise<IRepositoryReview> {
+  fileId: string,
+  userPaymentTxId: string
+): Promise<IRepositoryFileReview> {
   const review = await RepositoryReview.findOne({ reviewId });
   if (!review) {
     throw new Error(`Repository review "${reviewId}" not found.`);
   }
 
-  if (review.status === "processing" || review.status === "completed") {
-    return review;
+  const fileDoc = await RepositoryFileReview.findOne({
+    repositoryReviewId: reviewId,
+    fileReviewId: fileId,
+  });
+  if (!fileDoc) {
+    throw new Error(`File review record "${fileId}" not found in review "${reviewId}".`);
+  }
+
+  // Idempotency: If already completed, return immediately
+  if (fileDoc.status === "completed" && fileDoc.reviewResult) {
+    logger.info(`File ${fileDoc.filePath} is already completed. Returning cached result.`);
+    return fileDoc;
   }
 
   const treasuryAddress =
     process.env.AVM_ADDRESS ||
     "2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY";
+  const prismEndpoint =
+    process.env.PRISM_ENDPOINT ||
+    "https://prism-99h2.onrender.com/code-review-accurate";
   const prismPayTo =
     process.env.PRISM_PAYTO ||
     "FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE";
-
-  let senderAddr = "";
-
-  if (providerPaymentTxId) {
-    // Mode A: User signed 2 atomic transactions (1 for Sikho platform fee, 1 for Prism provider payment)
-    const expectedSikhoMicro = Math.round(review.platformFeeTotal * 1000000);
-    const expectedPrismMicro = Math.round(review.providerTotal * 1000000);
-
-    const sikhoRes = await verifyOnChainRepositoryPayment(
-      userPaymentTxId,
-      treasuryAddress,
-      "31566704",
-      expectedSikhoMicro
-    );
-    senderAddr = sikhoRes.sender;
-
-    const prismRes = await verifyOnChainRepositoryPayment(
-      providerPaymentTxId,
-      prismPayTo,
-      "31566704",
-      expectedPrismMicro
-    );
-
-    review.userPaymentTxId = userPaymentTxId;
-    review.providerPaymentTxId = providerPaymentTxId;
-    review.senderAddress = senderAddr || prismRes.sender;
-  } else {
-    // Mode B: User signed single upfront transaction covering full amount to Sikho treasury
-    const expectedTotalMicro = Math.round(review.userTotal * 1000000);
-    const verifyRes = await verifyOnChainRepositoryPayment(
-      userPaymentTxId,
-      treasuryAddress,
-      "31566704",
-      expectedTotalMicro
-    );
-    review.userPaymentTxId = userPaymentTxId;
-    review.senderAddress = verifyRes.sender;
-  }
-
-  review.status = "processing";
-  await review.save();
-
-  // Trigger background batch processing asynchronously
-  runRepositoryProcessingQueue(reviewId).catch((err) => {
-    logger.error(
-      `[Repository Review] Background queue error for ${reviewId}: ${err.message}`
-    );
-  });
-
-  return review;
-}
-
-/**
- * 5. Single File Review Orchestration (Sikho Fee + Prism x402 Review)
- */
-export async function processSingleFileReview(
-  review: IRepositoryReview,
-  fileDoc: IRepositoryFileReview
-): Promise<void> {
-  if (fileDoc.status === "completed") {
-    logger.info(`File ${fileDoc.filePath} is already completed. Skipping.`);
-    return;
-  }
 
   fileDoc.status = "processing";
   fileDoc.startedAt = new Date();
   await fileDoc.save();
 
   try {
-    // ── STEP A: Call Sikho AI Platform Fee Endpoint ($0.05 / 50,000 micro-USDC) ──
+    // ── STEP 1: Verify User's Real On-Chain Payment for THIS File ($0.25 = 250,000 micro-USDC) ──
+    const expectedFileMicroUSDC = 250000; // $0.25
+    await verifyOnChainFilePayment(
+      userPaymentTxId,
+      treasuryAddress,
+      "31566704", // USDC ASA ID
+      expectedFileMicroUSDC,
+      fileDoc.fileReviewId
+    );
+
+    fileDoc.userPaymentTxId = userPaymentTxId;
+    fileDoc.userPaymentStatus = "confirmed";
+    fileDoc.userPaymentAmount = expectedFileMicroUSDC;
+    await fileDoc.save();
+
+    // ── STEP 2: Call Sikho AI Platform Fee Endpoint ($0.05 = 50,000 micro-USDC) ──
     fileDoc.status = "fee_pending";
     await fileDoc.save();
 
@@ -376,7 +340,7 @@ export async function processSingleFileReview(
     fileDoc.status = "fee_completed";
     await fileDoc.save();
 
-    // ── STEP B: Fetch Raw File Content from GitHub ──
+    // ── STEP 3: Fetch Raw File Content from GitHub ──
     const fileContent = await fetchRawGithubFileContent(
       review.owner,
       review.repository,
@@ -384,18 +348,11 @@ export async function processSingleFileReview(
       fileDoc.filePath
     );
 
-    // ── STEP C: Invoke Prism x402 Code Review Endpoint ($0.20 / 200,000 micro-USDC) ──
-    const prismEndpoint =
-      process.env.PRISM_ENDPOINT ||
-      "https://prism-99h2.onrender.com/code-review-accurate";
-    const prismPayTo =
-      process.env.PRISM_PAYTO ||
-      "FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE";
-
+    // ── STEP 4: Call Prism Code Review API ($0.20 = 200,000 micro-USDC via REAL x402) ──
     fileDoc.status = "provider_payment_pending";
     await fileDoc.save();
 
-    // Initial probe to trigger HTTP 402 Payment Required
+    // Initial probe to trigger HTTP 402 challenge
     let initialRes: any;
     try {
       initialRes = await axios.post(
@@ -411,7 +368,7 @@ export async function processSingleFileReview(
             Accept: "application/json",
           },
           validateStatus: (status) => status < 500,
-          timeout: 20000,
+          timeout: 25000,
         }
       );
     } catch (err: any) {
@@ -440,34 +397,21 @@ export async function processSingleFileReview(
         } catch (_) {}
       }
 
-      // Check idempotency: If we already paid Prism for this file or repository, reuse the transaction
       let paymentSignatureHeader = "";
       if (!providerTxId) {
-        if (review.providerPaymentTxId) {
-          providerTxId = review.providerPaymentTxId;
-          const sigPayload = {
-            txid: providerTxId,
-            sender: review.senderAddress || env.AVM_ADDRESS,
-            network: "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
-          };
-          paymentSignatureHeader = Buffer.from(
-            JSON.stringify(sigPayload)
-          ).toString("base64");
-        } else {
-          const paymentRes = await signAndBroadcastPrismPayment(
-            challengeReq?.payTo || prismPayTo,
-            200000,
-            "31566704",
-            fileDoc.filePath,
-            challengeReq?.extra
-          );
-          providerTxId = paymentRes.providerPaymentTxId;
-          paymentSignatureHeader = paymentRes.paymentSignatureHeader;
-        }
+        const paymentRes = await signAndBroadcastPrismPayment(
+          challengeReq?.payTo || prismPayTo,
+          200000,
+          "31566704",
+          fileDoc.filePath,
+          challengeReq?.extra
+        );
+        providerTxId = paymentRes.providerPaymentTxId;
+        paymentSignatureHeader = paymentRes.paymentSignatureHeader;
       } else {
         const sigPayload = {
           txid: providerTxId,
-          sender: review.senderAddress || env.AVM_ADDRESS,
+          sender: env.AVM_ADDRESS,
           network: "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
         };
         paymentSignatureHeader = Buffer.from(
@@ -476,6 +420,7 @@ export async function processSingleFileReview(
       }
 
       fileDoc.providerPaymentTxId = providerTxId;
+      fileDoc.providerPaymentStatus = "confirmed";
       fileDoc.status = "provider_payment_confirmed";
       await fileDoc.save();
 
@@ -495,7 +440,7 @@ export async function processSingleFileReview(
             "X-PAYMENT": paymentSignatureHeader,
           },
           validateStatus: (status) => status < 500,
-          timeout: 40000,
+          timeout: 45000,
         }
       );
 
@@ -503,7 +448,7 @@ export async function processSingleFileReview(
         reviewResult = paidRes.data;
       } else {
         throw new Error(
-          `Prism code review failed with status ${paidRes.status}: ${JSON.stringify(
+          `Prism review failed with status ${paidRes.status}: ${JSON.stringify(
             paidRes.data
           )}`
         );
@@ -518,72 +463,31 @@ export async function processSingleFileReview(
       throw new Error(`No review result received for file ${fileDoc.filePath}`);
     }
 
-    // ── STEP D: Mark File Completed ──
+    // ── STEP 5: Mark File Completed ──
     fileDoc.status = "completed";
     fileDoc.reviewResult = reviewResult;
     fileDoc.completedAt = new Date();
     fileDoc.error = undefined;
     await fileDoc.save();
 
-    logger.info(
-      `[Repository Review] File ${fileDoc.filePath} completed successfully.`
-    );
+    // ── STEP 6: Update Repository Summary ──
+    await aggregateRepositoryReview(review.reviewId);
+
+    return fileDoc;
   } catch (err: any) {
-    logger.error(
-      `[Repository Review] File ${fileDoc.filePath} failed: ${err.message}`
-    );
+    logger.error(`[File Review] Error on ${fileDoc.filePath}: ${err.message}`);
     fileDoc.status = "failed";
-    fileDoc.error = err.message || "File review orchestration error";
+    fileDoc.error = err.message || "File review execution failed.";
     await fileDoc.save();
+    await aggregateRepositoryReview(review.reviewId);
+    throw err;
   }
 }
 
-export const executeFileReview = processSingleFileReview;
+export const executeFileReview = executeFileReviewWithPayment;
 
 /**
- * 6. Background Queue Processor with controlled concurrency (2–3 files at a time)
- */
-async function runRepositoryProcessingQueue(reviewId: string): Promise<void> {
-  const review = await RepositoryReview.findOne({ reviewId });
-  if (!review) return;
-
-  const files = await RepositoryFileReview.find({
-    repositoryReviewId: reviewId,
-  });
-
-  const pendingFiles = files.filter(
-    (f) => f.status === "pending" || f.status === "retry_required"
-  );
-
-  logger.info(
-    `[Repository Review] Starting processing queue for ${reviewId} (${pendingFiles.length} pending files, concurrency: ${CONCURRENCY_LIMIT})`
-  );
-
-  // Process in chunks of CONCURRENCY_LIMIT
-  for (let i = 0; i < pendingFiles.length; i += CONCURRENCY_LIMIT) {
-    const chunk = pendingFiles.slice(i, i + CONCURRENCY_LIMIT);
-    await Promise.all(
-      chunk.map((fileDoc) => processSingleFileReview(review, fileDoc))
-    );
-
-    // Update progress counters in parent review
-    const allFiles = await RepositoryFileReview.find({
-      repositoryReviewId: reviewId,
-    });
-    const completedCount = allFiles.filter((f) => f.status === "completed").length;
-    const failedCount = allFiles.filter((f) => f.status === "failed").length;
-
-    review.completedFiles = completedCount;
-    review.failedFiles = failedCount;
-    await review.save();
-  }
-
-  // Final Aggregation
-  await aggregateRepositoryReview(reviewId);
-}
-
-/**
- * 7. Aggregate Findings and Generate Repository-Level Summary
+ * 5. Aggregate Findings and Generate Repository-Level Summary
  */
 export async function aggregateRepositoryReview(
   reviewId: string
@@ -641,26 +545,28 @@ export async function aggregateRepositoryReview(
     overallScore: completedFiles.length > 0 ? avgOverallScore : 0,
     securityScore: completedFiles.length > 0 ? avgSecurityScore : 0,
     testCoverageEstimate: "85%",
-    summary: `Comprehensive senior AI review completed across ${completedFiles.length} of ${allFiles.length} reviewable source files for repository ${review.owner}/${review.repository}.`,
+    summary: `Senior AI review completed across ${completedFiles.length} of ${allFiles.length} reviewable source files for repository ${review.owner}/${review.repository}.`,
     criticalCount,
     highCount,
     mediumCount,
     lowCount,
     findingsCount: totalFindings,
     architecturalNotes:
-      "Enforce parameterized queries, defensive input schema validation, and complete resource teardowns across all handlers.",
+      "Enforce defensive input validation, parameterized queries, and strict CORS policies across microservices.",
     recommendations: Array.from(recommendationsSet).slice(0, 8),
   };
 
   review.aggregateReview = aggregate;
   review.completedAt = new Date();
 
-  if (failedFiles.length === 0 && completedFiles.length === allFiles.length) {
+  if (completedFiles.length === allFiles.length && allFiles.length > 0) {
     review.status = "completed";
   } else if (completedFiles.length > 0) {
     review.status = "partial";
+  } else if (failedFiles.length > 0) {
+    review.status = "partial";
   } else {
-    review.status = "failed";
+    review.status = "awaiting_payment";
   }
 
   await review.save();
@@ -668,17 +574,13 @@ export async function aggregateRepositoryReview(
 }
 
 /**
- * 8. Retry a Single Failed File
+ * 6. Retry a Single Failed File with user payment verification
  */
 export async function retrySingleFileReview(
   reviewId: string,
-  fileId: string
+  fileId: string,
+  userPaymentTxId?: string
 ): Promise<IRepositoryFileReview> {
-  const review = await RepositoryReview.findOne({ reviewId });
-  if (!review) {
-    throw new Error(`Repository review "${reviewId}" not found.`);
-  }
-
   const fileDoc = await RepositoryFileReview.findOne({
     repositoryReviewId: reviewId,
     fileReviewId: fileId,
@@ -688,18 +590,10 @@ export async function retrySingleFileReview(
     throw new Error(`File review "${fileId}" not found.`);
   }
 
-  if (fileDoc.status === "completed") {
-    return fileDoc;
+  const txIdToUse = userPaymentTxId || fileDoc.userPaymentTxId;
+  if (!txIdToUse) {
+    throw new Error("Missing userPaymentTxId for file review.");
   }
 
-  fileDoc.status = "retry_required";
-  await fileDoc.save();
-
-  // Run single file review
-  await processSingleFileReview(review, fileDoc);
-
-  // Recalculate aggregation
-  await aggregateRepositoryReview(reviewId);
-
-  return fileDoc;
+  return executeFileReviewWithPayment(reviewId, fileId, txIdToUse);
 }

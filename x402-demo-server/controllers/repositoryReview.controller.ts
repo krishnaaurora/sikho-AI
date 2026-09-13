@@ -3,7 +3,8 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { sendSuccessResponse } from "../utils/response";
 import {
   discoverRepository,
-  startRepositoryReview,
+  executeFileReviewWithPayment,
+  aggregateRepositoryReview,
   retrySingleFileReview,
 } from "../services/repositoryReview.service";
 import RepositoryReview from "../models/RepositoryReview.model";
@@ -56,26 +57,54 @@ export const discover = asyncHandler(async (req: Request, res: Response) => {
   );
 });
 
-export const start = asyncHandler(async (req: Request, res: Response) => {
-  const { reviewId, userPaymentTxId, providerPaymentTxId } = req.body;
+export const reviewSingleFile = asyncHandler(async (req: Request, res: Response) => {
+  const reviewId: string =
+    typeof req.params.reviewId === "string"
+      ? req.params.reviewId
+      : req.body.reviewId || "";
 
-  if (!reviewId || !userPaymentTxId) {
+  const fileId: string =
+    typeof req.params.fileId === "string"
+      ? req.params.fileId
+      : req.body.fileId || "";
+
+  const { userPaymentTxId } = req.body;
+
+  if (!reviewId || !fileId || !userPaymentTxId) {
     return res.status(400).json({
       success: false,
-      message: "reviewId and userPaymentTxId are required.",
+      message: "reviewId, fileId, and userPaymentTxId are required for per-file review.",
     });
   }
 
-  const review = await startRepositoryReview(
-    reviewId,
-    userPaymentTxId,
-    providerPaymentTxId
-  );
+  const result = await executeFileReviewWithPayment(reviewId, fileId, userPaymentTxId);
 
   sendSuccessResponse(
     res,
+    { file: result },
+    "File review executed and verified successfully",
+    200
+  );
+});
+
+export const start = asyncHandler(async (req: Request, res: Response) => {
+  const { reviewId, fileId, userPaymentTxId } = req.body;
+
+  if (fileId && userPaymentTxId) {
+    const result = await executeFileReviewWithPayment(reviewId, fileId, userPaymentTxId);
+    return sendSuccessResponse(
+      res,
+      { file: result },
+      "File review executed and verified successfully",
+      200
+    );
+  }
+
+  const review = await RepositoryReview.findOne({ reviewId });
+  sendSuccessResponse(
+    res,
     review,
-    "Payment verified and repository review processing started",
+    "Repository review session initialized",
     200
   );
 });

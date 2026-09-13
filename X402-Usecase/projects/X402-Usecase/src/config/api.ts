@@ -30,6 +30,7 @@ export const API_ENDPOINTS = {
   GITHUB_REVIEW_START: `${API_BASE_URL}/services/github-review/start`,
   GITHUB_REVIEW_STATUS: (reviewId: string) => `${API_BASE_URL}/services/github-review/${reviewId}`,
   GITHUB_REVIEW_FILES: (reviewId: string) => `${API_BASE_URL}/services/github-review/${reviewId}/files`,
+  GITHUB_REVIEW_FILE_REVIEW: (reviewId: string, fileId: string) => `${API_BASE_URL}/services/github-review/${reviewId}/files/${fileId}/review`,
   GITHUB_REVIEW_RETRY: (reviewId: string, fileId: string) => `${API_BASE_URL}/services/github-review/${reviewId}/files/${fileId}/retry`,
   PLATFORM_FEE: `${API_BASE_URL}/payments/platform-fee`,
 };
