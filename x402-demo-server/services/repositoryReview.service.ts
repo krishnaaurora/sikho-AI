@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import axios from "axios";
+import algosdk from "algosdk";
 import RepositoryReview, {
   IRepositoryReview,
   IAggregateReview,
@@ -84,7 +85,7 @@ export async function verifyOnChainSikhoPayment(
     );
   }
 
-  const assetTransfer = txData["asset-transfer-transaction"] || txData.txn;
+  const assetTransfer = txData["asset-transfer-transaction"] || txData.txn?.txn || txData.txn;
   if (!assetTransfer) {
     throw new Error(
       `Transaction ${txId} is not an asset transfer transaction.`
@@ -94,7 +95,7 @@ export async function verifyOnChainSikhoPayment(
   const assetId = String(assetTransfer["asset-id"] || assetTransfer.xaid || "");
   const amount = Number(assetTransfer["amount"] || assetTransfer.aamt || 0);
   const receiver = String(assetTransfer["receiver"] || assetTransfer.arcv || "");
-  const sender = String(txData["sender"] || txData.txn?.snd || "");
+  const sender = String(txData["sender"] || txData.txn?.txn?.snd || txData.txn?.snd || "");
 
   if (assetId !== expectedAssetId) {
     throw new Error(
@@ -287,16 +288,34 @@ export async function recordSikhoPaymentForFile(
   let sender = senderAddress || "";
 
   // Try to decode paymentSignature if base64 encoded JSON
-  if (paymentSignatureOrTxId && !paymentSignatureOrTxId.startsWith("tx_") && paymentSignatureOrTxId.length > 30) {
+  if (paymentSignatureOrTxId && paymentSignatureOrTxId.length > 30) {
     try {
       const decoded = JSON.parse(
         Buffer.from(paymentSignatureOrTxId, "base64").toString("utf-8")
       );
-      if (decoded.txid || decoded.txId || decoded.transactionId) {
-        txId = decoded.txid || decoded.txId || decoded.transactionId;
+
+      // 1. Check x402 AVM exact payload paymentGroup
+      const paymentGroup = decoded.payload?.paymentGroup || decoded.paymentGroup;
+      const paymentIndex = typeof decoded.payload?.paymentIndex === "number" ? decoded.payload.paymentIndex : (decoded.paymentIndex || 0);
+      if (Array.isArray(paymentGroup) && paymentGroup[paymentIndex]) {
+        try {
+          const stxnBytes = Buffer.from(paymentGroup[paymentIndex], "base64");
+          const stxn: any = algosdk.decodeSignedTransaction(stxnBytes);
+          if (stxn?.txn) {
+            txId = stxn.txn.txID();
+            sender = algosdk.encodeAddress(stxn.txn.sender?.publicKey || stxn.txn.from?.publicKey);
+          }
+        } catch (stxnErr: any) {
+          logger.warn(`Failed to decode signed transaction from paymentGroup: ${stxnErr.message}`);
+        }
       }
-      if (decoded.sender) {
-        sender = decoded.sender;
+
+      // 2. Check direct txid fields
+      if (!txId || txId === paymentSignatureOrTxId) {
+        txId = decoded.payload?.txid || decoded.payload?.txId || decoded.payload?.transactionId || decoded.txid || decoded.txId || decoded.transactionId || txId;
+      }
+      if (!sender) {
+        sender = decoded.payload?.sender || decoded.payload?.payer || decoded.sender || decoded.payer || "";
       }
     } catch (_) {
       // Not base64 json, treat as raw txId

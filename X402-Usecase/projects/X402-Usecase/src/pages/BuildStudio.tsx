@@ -313,15 +313,25 @@ export const BuildStudio: React.FC = () => {
       // Wait for on-chain confirmation
       await algosdk.waitForConfirmation(client, txId, 4);
 
-      // 3. Construct standard x402 Payment-Signature header
+      // 3. Construct exact Algorand x402 v2 paymentGroup payload
+      const base64SignedTx = btoa(
+        Array.from(signedRaw[0])
+          .map((byte) => String.fromCharCode(byte))
+          .join('')
+      );
+
       const signaturePayload = {
         x402Version: 2,
         scheme: 'exact',
         network: 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=',
         payload: {
+          paymentGroup: [base64SignedTx],
+          paymentIndex: 0,
           txid: txId,
           sender: activeAddress,
         },
+        txid: txId,
+        sender: activeAddress,
       };
       const paymentSignatureHeader = btoa(JSON.stringify(signaturePayload));
 
@@ -479,15 +489,25 @@ export const BuildStudio: React.FC = () => {
       // Wait for on-chain confirmation
       await algosdk.waitForConfirmation(client, prismTxId, 4);
 
-      // 3. Construct standard x402 Payment-Signature header
+      // 3. Construct exact Algorand x402 v2 paymentGroup payload
+      const base64SignedTx = btoa(
+        Array.from(signedRaw[0])
+          .map((byte) => String.fromCharCode(byte))
+          .join('')
+      );
+
       const signaturePayload = {
         x402Version: 2,
         scheme: 'exact',
         network: 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=',
         payload: {
+          paymentGroup: [base64SignedTx],
+          paymentIndex: 0,
           txid: prismTxId,
           sender: activeAddress,
         },
+        txid: prismTxId,
+        sender: activeAddress,
       };
       const paymentSignatureHeader = btoa(JSON.stringify(signaturePayload));
 
