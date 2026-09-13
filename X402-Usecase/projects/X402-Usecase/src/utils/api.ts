@@ -45,7 +45,16 @@ async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
     try {
       const errorData = await response.json();
       if (errorData && errorData.message) {
-        errorMessage = errorData.message;
+        try {
+          const parsed = typeof errorData.message === 'string' ? JSON.parse(errorData.message) : errorData.message;
+          if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.message) {
+            errorMessage = parsed.map((p: any) => p.message).join(', ');
+          } else {
+            errorMessage = errorData.message;
+          }
+        } catch (_) {
+          errorMessage = errorData.message;
+        }
       }
     } catch (_) {
       // ignore JSON parsing errors

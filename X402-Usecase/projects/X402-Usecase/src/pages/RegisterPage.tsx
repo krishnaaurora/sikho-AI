@@ -125,6 +125,14 @@ const RegisterPage: React.FC = () => {
     setError('');
     setSuccess('');
 
+    if (!registerData.password) {
+      setError('Password is required');
+      return;
+    }
+    if (registerData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
     if (registerData.password !== registerData.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -449,6 +457,7 @@ const RegisterPage: React.FC = () => {
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
+                        minLength={6}
                         value={registerData.password}
                         onChange={e => setRegisterData({ ...registerData, password: e.target.value })}
                         className="w-full px-3.5 py-2 pr-10 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 text-sm font-semibold outline-none focus:border-indigo-500"
@@ -472,6 +481,7 @@ const RegisterPage: React.FC = () => {
                       <input
                         type={showConfirmPassword ? 'text' : 'password'}
                         required
+                        minLength={6}
                         value={registerData.confirmPassword}
                         onChange={e => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
                         className="w-full px-3.5 py-2 pr-10 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 text-sm font-semibold outline-none focus:border-indigo-500"
