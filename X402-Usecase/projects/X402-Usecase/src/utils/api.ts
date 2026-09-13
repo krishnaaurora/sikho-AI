@@ -296,3 +296,45 @@ export const aiApi = {
   },
 };
 
+export const servicesApi = {
+  async getRegistry() {
+    return fetchAPI<ApiResponse<any[]>>(API_ENDPOINTS.SERVICES_REGISTRY);
+  },
+
+  async orchestrateCodeReview(data: {
+    serviceId?: string;
+    payload: {
+      file_path?: string;
+      raw_url?: string;
+      code?: string;
+      language?: string;
+    };
+    userPaymentTxId?: string;
+  }) {
+    return fetchAPI<ApiResponse<{
+      transaction: any;
+      service: any;
+      result: any;
+      receipts: {
+        userPaymentTxId?: string;
+        providerPaymentTxId: string;
+        providerPayTo: string;
+        providerAmount: number;
+        platformFee: number;
+        userTotalAmount: number;
+        currency: string;
+        network: string;
+        verifiedAt: string;
+      };
+    }>>(API_ENDPOINTS.SERVICES_ORCHESTRATE_REVIEW, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async getTransactions() {
+    return fetchAPI<ApiResponse<any[]>>(API_ENDPOINTS.SERVICES_TRANSACTIONS);
+  },
+};
+
+

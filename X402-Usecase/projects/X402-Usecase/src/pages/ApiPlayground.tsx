@@ -28,24 +28,34 @@ const ENDPOINTS: EndpointInfo[] = [
   { path: "/api/v1/ai/interactive-lab", name: "8. Interactive Lab", price: "$0.003", icon: <Compass size={16} />, placeholderInput: JSON.stringify({ labId: "http-request-response", topic: "HTTP" }, null, 2) },
   { path: "/api/v1/ai/resume-analysis", name: "9. Resume Analysis", price: "$0.004", icon: <UserCheck size={16} />, placeholderInput: JSON.stringify({ resumeText: "Sneha, Backend Developer. Skills: Python, Node.js.", targetRole: "Software Engineer" }, null, 2) },
   { path: "/api/v1/ai/career-roadmap", name: "10. Career Roadmap", price: "$0.005", icon: <Compass size={16} />, placeholderInput: JSON.stringify({ targetRole: "ML Engineer", currentSkills: ["Python", "Machine Learning"], experienceLevel: "Beginner" }, null, 2) },
-  { path: "https://prism-99h2.onrender.com/code-review-accurate", name: "11. Senior Code Review (x402 Global Challenge)", price: "$0.200", icon: <ShieldAlert size={16} />, placeholderInput: JSON.stringify({ file_path: "src/index.ts", raw_url: "https://raw.githubusercontent.com/algorandfoundation/algokit-utils-ts/main/src/index.ts" }, null, 2) },
+  { path: "https://prism-99h2.onrender.com/code-review-accurate", name: "11. Senior Code Review (Raw Prism x402 Challenge)", price: "$0.200", icon: <ShieldAlert size={16} />, placeholderInput: JSON.stringify({ file_path: "src/index.ts", raw_url: "https://raw.githubusercontent.com/algorandfoundation/algokit-utils-ts/main/src/index.ts" }, null, 2) },
+  { 
+    path: "/api/v1/services/code-review/orchestrate", 
+    name: "12. Prism Code Review (Sikho Marketplace 2-Tier Orchestration)", 
+    price: "$0.250", 
+    icon: <ShieldAlert size={16} />, 
+    placeholderInput: JSON.stringify({ 
+      rawUrl: "https://raw.githubusercontent.com/algorandfoundation/algokit-utils-ts/main/src/index.ts",
+      filePath: "src/index.ts"
+    }, null, 2) 
+  },
   { 
     path: "/api/v1/interview-pro/interview-questions", 
-    name: "12. Technical Interview Questions (x402 AI Pass)", 
+    name: "13. Technical Interview Questions (x402 AI Pass)", 
     price: "$0.030", 
     icon: <MessageSquare size={16} />, 
     placeholderInput: JSON.stringify({ role: "Full Stack Software Engineer", experience: "Senior", gaps: ["System Design", "Database Indexing", "Distributed Caching"] }, null, 2) 
   },
   { 
     path: "/api/v1/interview-pro/learning-path", 
-    name: "13. Learning Path 3-Module Batch (x402 AI Pass)", 
+    name: "14. Learning Path 3-Module Batch (x402 AI Pass)", 
     price: "$0.090", 
     icon: <Compass size={16} />, 
     placeholderInput: JSON.stringify({ batch: 2, role: "Full Stack Software Engineer", modulesToUnlock: 3 }, null, 2) 
   },
   { 
     path: "/api/v1/interview-pro/study-resources", 
-    name: "14. Curated Study Resources (x402 AI Pass)", 
+    name: "15. Curated Study Resources (x402 AI Pass)", 
     price: "$0.030", 
     icon: <HelpCircle size={16} />, 
     placeholderInput: JSON.stringify({ topic: "System Design & Modern Backend Architecture", gaps: ["Distributed Systems", "SQL Indexing"] }, null, 2) 
@@ -159,6 +169,8 @@ const ApiPlayground: React.FC = () => {
 
     if (signedPaymentHeader) {
       headers["X-PAYMENT"] = signedPaymentHeader;
+      headers["Payment-Signature"] = signedPaymentHeader;
+      headers["payment-signature"] = signedPaymentHeader;
     }
 
     try {
@@ -200,11 +212,27 @@ const ApiPlayground: React.FC = () => {
       });
       setResponseHeaders(headersObj);
 
-      const json = await response.json();
-      setResponseBody(json);
+      let json: any = null;
+      try {
+        json = await response.json();
+        setResponseBody(json);
+      } catch (_) {
+        setResponseBody({ message: "Non-JSON response received" });
+      }
 
       if (response.status === 402) {
-        setPaymentRequiredPayload(json);
+        const prHeader = response.headers.get("payment-required") || response.headers.get("Payment-Required");
+        if (prHeader) {
+          try {
+            const b64 = prHeader.includes(",") ? prHeader.split(",")[1].trim() : prHeader.trim();
+            const decoded = JSON.parse(atob(b64));
+            setPaymentRequiredPayload(decoded);
+          } catch (_) {
+            setPaymentRequiredPayload(json);
+          }
+        } else {
+          setPaymentRequiredPayload(json);
+        }
       } else {
         setPaymentRequiredPayload(null);
       }
@@ -222,7 +250,15 @@ const ApiPlayground: React.FC = () => {
     }
 
     try {
-      const requirement = paymentRequiredPayload.accepts[0];
+      const requirement = paymentRequiredPayload.accepts?.[0] || 
+                          paymentRequiredPayload.requirements?.[0] || 
+                          (Array.isArray(paymentRequiredPayload) ? paymentRequiredPayload[0] : paymentRequiredPayload);
+      
+      if (!requirement || !requirement.payTo) {
+        alert("Invalid 402 requirement payload: missing payTo address.");
+        return;
+      }
+
       const algosdk = (window as any).algosdk;
       if (!algosdk) {
         alert("algosdk library not loaded on window context.");

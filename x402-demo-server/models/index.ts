@@ -37,4 +37,6 @@ export * from "./LearningVersion.model";
 export * from "./Job.model";
 export { default as X402Service } from "./X402Service.model";
 export { default as X402Transaction } from "./X402Transaction.model";
+export { default as ServiceTransaction } from "./ServiceTransaction.model";
+export * from "./ServiceTransaction.model";
 

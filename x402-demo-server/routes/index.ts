@@ -11,6 +11,7 @@ import analyticsRoutes from "./analytics.routes";
 import resumeRoutes from "./resume.routes";
 import x402Routes from "./x402.routes";
 import interviewProRoutes from "./interview_pro.routes";
+import servicesRoutes from "./services.routes";
 
 const router = express.Router();
 
@@ -26,5 +27,6 @@ router.use("/analytics", analyticsRoutes);
 router.use("/resume", resumeRoutes);
 router.use("/x402", x402Routes);
 router.use("/interview-pro", interviewProRoutes);
+router.use("/services", servicesRoutes);
 
 export default router;
