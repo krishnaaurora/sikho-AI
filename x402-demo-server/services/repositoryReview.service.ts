@@ -462,7 +462,7 @@ export async function getPrismChallengeForFile(
         );
         const accepts = decoded.accepts?.[0] || decoded;
         if (accepts.payTo) challengePayTo = accepts.payTo;
-        if (accepts.amount) challengeAmount = accepts.amount;
+        if (accepts.amount) challengeAmount = Number(accepts.amount);
         if (accepts.asset) challengeAsset = String(accepts.asset);
         if (accepts.network) challengeNetwork = accepts.network;
       } catch (_) {}
@@ -474,7 +474,7 @@ export async function getPrismChallengeForFile(
     filePath: fileDoc.filePath,
     language: fileDoc.language,
     payTo: challengePayTo,
-    amountMicroUSDC: challengeAmount,
+    amountMicroUSDC: Number(challengeAmount),
     assetId: challengeAsset,
     network: challengeNetwork,
     paymentRequiredHeader,

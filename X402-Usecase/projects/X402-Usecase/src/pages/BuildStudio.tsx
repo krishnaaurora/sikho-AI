@@ -347,10 +347,12 @@ export const BuildStudio: React.FC = () => {
       }
       const challenge = challengeRes.data;
 
-      const prismPayTo = challenge.payTo || 'FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE';
-      const amountMicroUSDC = Number(challenge.amountMicroUSDC || (challenge as any).amount || 200000);
-      const assetId = Number(challenge.assetId || (challenge as any).asset || 31566704);
-      const network = challenge.network || 'algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
+      const prismPayTo = challenge.payTo || (challenge as any).accepts?.[0]?.payTo || 'FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE';
+      const rawAmount = challenge.amountMicroUSDC || (challenge as any).amount || (challenge as any).accepts?.[0]?.amount || 200000;
+      const rawAsset = challenge.assetId || (challenge as any).asset || (challenge as any).accepts?.[0]?.asset || 31566704;
+      const amountMicroUSDC = typeof rawAmount === 'number' ? rawAmount : parseInt(String(rawAmount), 10) || 200000;
+      const assetId = typeof rawAsset === 'number' ? rawAsset : parseInt(String(rawAsset), 10) || 31566704;
+      const network = challenge.network || (challenge as any).accepts?.[0]?.network || 'algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
 
       const client = new algosdk.Algodv2(
         import.meta.env.VITE_ALGOD_TOKEN || '',
