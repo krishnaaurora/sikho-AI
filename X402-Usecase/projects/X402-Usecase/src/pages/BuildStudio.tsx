@@ -397,7 +397,10 @@ export const BuildStudio: React.FC = () => {
       // 3. Construct standard x402 Payment-Signature header
       const signaturePayload = {
         txid: prismTxId,
+        txId: prismTxId,
+        transactionId: prismTxId,
         sender: activeAddress,
+        payer: activeAddress,
         network,
       };
       const paymentSignatureHeader = btoa(JSON.stringify(signaturePayload));

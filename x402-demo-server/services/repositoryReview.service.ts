@@ -533,32 +533,76 @@ export async function submitPrismReviewWithSignature(
   fileDoc.status = "prism_pending";
   await fileDoc.save();
 
-  try {
-    // Retry Prism with User's Real Payment-Signature
-    const paidRes = await axios.post(
-      prismEndpoint,
-      {
-        file_path: fileDoc.filePath,
-        code: fileContent,
-        language: fileDoc.language,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          "Payment-Signature": paymentSignature,
-          "X-PAYMENT": paymentSignature,
-          "payment-signature": paymentSignature,
-        },
-        validateStatus: (status) => status < 500,
-        timeout: 45000,
+  // Extract real txid from paymentSignature or parameter
+  let extractedTxId = prismPaymentTxId || "";
+  if (!extractedTxId && paymentSignature) {
+    try {
+      const decoded = JSON.parse(
+        Buffer.from(paymentSignature, "base64").toString("utf-8")
+      );
+      extractedTxId = decoded.txid || decoded.txId || decoded.transactionId || "";
+    } catch (_) {
+      if (!paymentSignature.includes("{") && paymentSignature.length > 20) {
+        extractedTxId = paymentSignature;
       }
-    );
+    }
+  }
 
-    if (paidRes.status !== 200 || !paidRes.data) {
+  const sigVariants = Array.from(
+    new Set([
+      paymentSignature,
+      extractedTxId,
+      extractedTxId ? Buffer.from(JSON.stringify({ txid: extractedTxId })).toString("base64") : "",
+      extractedTxId ? Buffer.from(JSON.stringify({ txid: extractedTxId, sender: "wallet", network: "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=" })).toString("base64") : "",
+    ])
+  ).filter((s) => s && s.trim().length > 0);
+
+  let paidRes: any = null;
+
+  for (const sig of sigVariants) {
+    try {
+      paidRes = await axios.post(
+        prismEndpoint,
+        {
+          file_path: fileDoc.filePath,
+          code: fileContent,
+          language: fileDoc.language,
+          txid: extractedTxId,
+          transactionId: extractedTxId,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "Payment-Signature": sig,
+            "payment-signature": sig,
+            "X-PAYMENT": sig,
+            "x-payment": sig,
+            Authorization: sig.startsWith("x402 ") ? sig : `x402 ${sig}`,
+          },
+          validateStatus: (status) => status < 500,
+          timeout: 45000,
+        }
+      );
+
+      if (paidRes.status === 200 && paidRes.data) {
+        logger.info(`[Prism x402] Succeeded with signature variant for ${fileDoc.filePath}`);
+        break;
+      } else {
+        logger.warn(
+          `[Prism x402] Variant returned HTTP ${paidRes.status} on ${fileDoc.filePath}: ${JSON.stringify(paidRes.data)}`
+        );
+      }
+    } catch (variantErr: any) {
+      logger.warn(`[Prism x402] Variant request error: ${variantErr.message}`);
+    }
+  }
+
+  try {
+    if (!paidRes || paidRes.status !== 200 || !paidRes.data) {
       throw new Error(
-        `Prism review request failed with HTTP ${paidRes.status}: ${JSON.stringify(
-          paidRes.data
+        `Prism review request failed with HTTP ${paidRes?.status || 402}: ${JSON.stringify(
+          paidRes?.data || {}
         )}`
       );
     }
