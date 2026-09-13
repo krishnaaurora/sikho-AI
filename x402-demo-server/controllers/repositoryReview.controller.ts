@@ -57,7 +57,7 @@ export const discover = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const start = asyncHandler(async (req: Request, res: Response) => {
-  const { reviewId, userPaymentTxId } = req.body;
+  const { reviewId, userPaymentTxId, providerPaymentTxId } = req.body;
 
   if (!reviewId || !userPaymentTxId) {
     return res.status(400).json({
@@ -66,7 +66,11 @@ export const start = asyncHandler(async (req: Request, res: Response) => {
     });
   }
 
-  const review = await startRepositoryReview(reviewId, userPaymentTxId);
+  const review = await startRepositoryReview(
+    reviewId,
+    userPaymentTxId,
+    providerPaymentTxId
+  );
 
   sendSuccessResponse(
     res,

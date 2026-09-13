@@ -371,10 +371,10 @@ export const githubReviewApi = {
     return this.discover(repoUrl, maxFiles);
   },
 
-  async startReview(reviewId: string, userPaymentTxId: string) {
+  async startReview(reviewId: string, userPaymentTxId: string, providerPaymentTxId?: string) {
     return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.GITHUB_REVIEW_START, {
       method: 'POST',
-      body: JSON.stringify({ reviewId, userPaymentTxId }),
+      body: JSON.stringify({ reviewId, userPaymentTxId, providerPaymentTxId }),
     });
   },
 

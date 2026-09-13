@@ -36,6 +36,8 @@ export interface IRepositoryReview extends Document {
   userTotal: number;
 
   userPaymentTxId?: string;
+  providerPaymentTxId?: string;
+  senderAddress?: string;
 
   status:
     | "discovering"
@@ -127,6 +129,14 @@ const RepositoryReviewSchema = new Schema<IRepositoryReview>(
       type: String,
       sparse: true,
       index: true,
+    },
+    providerPaymentTxId: {
+      type: String,
+      sparse: true,
+      index: true,
+    },
+    senderAddress: {
+      type: String,
     },
     status: {
       type: String,

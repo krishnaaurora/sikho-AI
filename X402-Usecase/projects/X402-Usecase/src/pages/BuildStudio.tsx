@@ -208,11 +208,16 @@ export const BuildStudio: React.FC = () => {
     setError(null);
 
     try {
-      // Calculate total micro-USDC ($0.25 * N files = userTotal * 1,000,000)
-      const expectedMicroUSDC = Math.round(discoveryData.userTotal * 1000000);
+      // Calculate micro-USDC for both Sikho Fee ($0.05 × N) and Prism Review ($0.20 × N)
+      const expectedSikhoMicro = Math.round(discoveryData.platformFeeTotal * 1000000);
+      const expectedPrismMicro = Math.round(discoveryData.providerTotal * 1000000);
+
       const treasuryAddress =
         import.meta.env.VITE_AVM_ADDRESS ||
         '2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY';
+      const prismPayTo =
+        import.meta.env.VITE_PRISM_PAYTO ||
+        'FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE';
 
       const client = new algosdk.Algodv2(
         import.meta.env.VITE_ALGOD_TOKEN || '',
@@ -222,38 +227,58 @@ export const BuildStudio: React.FC = () => {
 
       const params = await client.getTransactionParams().do();
       const enc = new TextEncoder();
-      const noteBytes = enc.encode(
-        JSON.stringify({
-          service: 'multi-file-github-review',
-          reviewId: discoveryData.reviewId,
-          repo: `${discoveryData.owner}/${discoveryData.repository}`,
-          files: discoveryData.reviewableFileCount,
-          timestamp: Date.now(),
-        })
-      );
 
-      const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      // 1. Transaction 1: Sikho Platform Fee ($0.05 × N)
+      const txSikho = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
         sender: activeAddress,
         receiver: treasuryAddress,
-        amount: expectedMicroUSDC,
+        amount: expectedSikhoMicro,
         assetIndex: 31566704, // Algorand MainNet USDC ASA
         suggestedParams: params,
-        note: noteBytes,
+        note: enc.encode(
+          JSON.stringify({
+            service: 'sikho-platform-fee',
+            reviewId: discoveryData.reviewId,
+            files: discoveryData.reviewableFileCount,
+            timestamp: Date.now(),
+          })
+        ),
       } as any);
 
-      const binaryTx = tx.toByte();
-      const signedArray = await signTransactions([binaryTx]);
+      // 2. Transaction 2: Prism AI Code Review Payment ($0.20 × N)
+      const txPrism = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+        sender: activeAddress,
+        receiver: prismPayTo,
+        amount: expectedPrismMicro,
+        assetIndex: 31566704, // Algorand MainNet USDC ASA
+        suggestedParams: params,
+        note: enc.encode(
+          JSON.stringify({
+            service: 'prism-code-review',
+            reviewId: discoveryData.reviewId,
+            repo: `${discoveryData.owner}/${discoveryData.repository}`,
+            files: discoveryData.reviewableFileCount,
+            timestamp: Date.now(),
+          })
+        ),
+      } as any);
+
+      // Atomic Grouping: Group both transactions so wallet approves 2 transfers simultaneously
+      algosdk.assignGroupID([txSikho, txPrism]);
+
+      const signedArray = await signTransactions([txSikho.toByte(), txPrism.toByte()]);
       const signedRaw = signedArray.filter(Boolean) as Uint8Array[];
 
       const sendRes: any = await client.sendRawTransaction(signedRaw).do();
-      const txId: string = sendRes.txId || sendRes.txid || (tx as any).txID();
-      console.log(`[Multi-File Review] User payment broadcast on Algorand MainNet: ${txId}`);
+      const sikhoTxId: string = (txSikho as any).txID();
+      const prismTxId: string = (txPrism as any).txID();
+      console.log(`[Multi-File Review] Dual Atomic Transactions broadcast: Sikho=${sikhoTxId}, Prism=${prismTxId}`);
 
       // Wait for on-chain confirmation
-      await algosdk.waitForConfirmation(client, txId, 4);
+      await algosdk.waitForConfirmation(client, sikhoTxId, 4);
 
-      // Call backend to start multi-file batch execution
-      const startRes = await githubReviewApi.startReview(discoveryData.reviewId, txId);
+      // Call backend to start multi-file batch execution with both transaction proofs
+      const startRes = await githubReviewApi.startReview(discoveryData.reviewId, sikhoTxId, prismTxId);
       if (!startRes.success) {
         throw new Error(startRes.message || 'Failed to initialize repository review queue.');
       }
@@ -593,27 +618,27 @@ export const BuildStudio: React.FC = () => {
               </div>
             </div>
 
-            {/* Single Payment & Start Trigger */}
+            {/* Dual Payment & Start Trigger */}
             {reviewState === 'discovered' && (
               <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-100">
                 <div className="text-xs text-slate-500">
-                  Clicking below authorizes <strong>ONE Algorand transaction</strong> of <strong>${discoveryData.userTotal.toFixed(2)} USDC</strong> to Sikho treasury.
+                  Clicking below authorizes <strong>2 Atomic Transfers in 1 prompt</strong>: <strong>${discoveryData.platformFeeTotal.toFixed(2)} USDC</strong> to Sikho + <strong>${discoveryData.providerTotal.toFixed(2)} USDC</strong> directly to Prism.
                 </div>
 
                 <button
                   onClick={handlePayAndStartReview}
                   disabled={isPaying}
-                  className="w-full sm:w-auto px-8 py-3.5 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-400 text-white text-xs font-black rounded-xl flex items-center justify-center gap-2.5 shadow-md shadow-violet-500/20 transition shrink-0"
+                  className="w-full sm:w-auto px-8 py-3.5 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-400 text-white text-xs font-black rounded-xl flex items-center justify-center gap-2.5 shadow-md shadow-violet-500/20 transition shrink-0 cursor-pointer"
                 >
                   {isPaying ? (
                     <>
                       <RefreshCw size={15} className="animate-spin" />
-                      <span>Authorizing Algorand Payment...</span>
+                      <span>Signing Dual Transactions...</span>
                     </>
                   ) : (
                     <>
                       <Lock size={15} />
-                      <span>Pay ${discoveryData.userTotal.toFixed(2)} USDC &amp; Start Review</span>
+                      <span>Sign 2 Transfers (${discoveryData.userTotal.toFixed(2)} USDC Total) &amp; Review</span>
                     </>
                   )}
                 </button>

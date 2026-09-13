@@ -269,7 +269,8 @@ export async function discoverRepository(
  */
 export async function startRepositoryReview(
   reviewId: string,
-  userPaymentTxId: string
+  userPaymentTxId: string,
+  providerPaymentTxId?: string
 ): Promise<IRepositoryReview> {
   const review = await RepositoryReview.findOne({ reviewId });
   if (!review) {
@@ -280,21 +281,51 @@ export async function startRepositoryReview(
     return review;
   }
 
-  // Calculate expected user payment in micro-USDC ($0.25 × N files)
-  const expectedMicroUSDC = Math.round(review.userTotal * 1000000);
   const treasuryAddress =
     process.env.AVM_ADDRESS ||
     "2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY";
+  const prismPayTo =
+    process.env.PRISM_PAYTO ||
+    "FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE";
 
-  // Independently verify on-chain user payment on Algorand MainNet
-  await verifyOnChainRepositoryPayment(
-    userPaymentTxId,
-    treasuryAddress,
-    "31566704", // USDC ASA ID
-    expectedMicroUSDC
-  );
+  let senderAddr = "";
 
-  review.userPaymentTxId = userPaymentTxId;
+  if (providerPaymentTxId) {
+    // Mode A: User signed 2 atomic transactions (1 for Sikho platform fee, 1 for Prism provider payment)
+    const expectedSikhoMicro = Math.round(review.platformFeeTotal * 1000000);
+    const expectedPrismMicro = Math.round(review.providerTotal * 1000000);
+
+    const sikhoRes = await verifyOnChainRepositoryPayment(
+      userPaymentTxId,
+      treasuryAddress,
+      "31566704",
+      expectedSikhoMicro
+    );
+    senderAddr = sikhoRes.sender;
+
+    const prismRes = await verifyOnChainRepositoryPayment(
+      providerPaymentTxId,
+      prismPayTo,
+      "31566704",
+      expectedPrismMicro
+    );
+
+    review.userPaymentTxId = userPaymentTxId;
+    review.providerPaymentTxId = providerPaymentTxId;
+    review.senderAddress = senderAddr || prismRes.sender;
+  } else {
+    // Mode B: User signed single upfront transaction covering full amount to Sikho treasury
+    const expectedTotalMicro = Math.round(review.userTotal * 1000000);
+    const verifyRes = await verifyOnChainRepositoryPayment(
+      userPaymentTxId,
+      treasuryAddress,
+      "31566704",
+      expectedTotalMicro
+    );
+    review.userPaymentTxId = userPaymentTxId;
+    review.senderAddress = verifyRes.sender;
+  }
+
   review.status = "processing";
   await review.save();
 
@@ -409,22 +440,34 @@ export async function processSingleFileReview(
         } catch (_) {}
       }
 
-      // Check idempotency: If we already paid Prism for this file, reuse the transaction
+      // Check idempotency: If we already paid Prism for this file or repository, reuse the transaction
       let paymentSignatureHeader = "";
       if (!providerTxId) {
-        const paymentRes = await signAndBroadcastPrismPayment(
-          challengeReq?.payTo || prismPayTo,
-          200000,
-          "31566704",
-          fileDoc.filePath,
-          challengeReq?.extra
-        );
-        providerTxId = paymentRes.providerPaymentTxId;
-        paymentSignatureHeader = paymentRes.paymentSignatureHeader;
+        if (review.providerPaymentTxId) {
+          providerTxId = review.providerPaymentTxId;
+          const sigPayload = {
+            txid: providerTxId,
+            sender: review.senderAddress || env.AVM_ADDRESS,
+            network: "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
+          };
+          paymentSignatureHeader = Buffer.from(
+            JSON.stringify(sigPayload)
+          ).toString("base64");
+        } else {
+          const paymentRes = await signAndBroadcastPrismPayment(
+            challengeReq?.payTo || prismPayTo,
+            200000,
+            "31566704",
+            fileDoc.filePath,
+            challengeReq?.extra
+          );
+          providerTxId = paymentRes.providerPaymentTxId;
+          paymentSignatureHeader = paymentRes.paymentSignatureHeader;
+        }
       } else {
         const sigPayload = {
           txid: providerTxId,
-          sender: env.AVM_ADDRESS,
+          sender: review.senderAddress || env.AVM_ADDRESS,
           network: "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
         };
         paymentSignatureHeader = Buffer.from(
