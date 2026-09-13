@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '@txnlab/use-wallet-react';
+import algosdk from 'algosdk';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Code2, ShieldAlert, Sparkles, Terminal, FileCode, CheckCircle2,
@@ -128,7 +129,7 @@ export const DataStream: React.FC = () => {
 
 export const BuildStudio: React.FC = () => {
   const navigate = useNavigate();
-  const { activeAddress } = useWallet();
+  const { activeAddress, signTransactions } = useWallet();
 
   const [inputMode, setInputMode] = useState<'url' | 'code' | 'upload'>('url');
   const [filePath, setFilePath] = useState('src/index.ts');
@@ -144,6 +145,7 @@ export const BuildStudio: React.FC = () => {
     userPrice: 0.25,
     currency: 'USDC',
     payToAddress: 'FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE',
+    platformTreasuryAddress: '2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY',
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -168,6 +170,7 @@ export const BuildStudio: React.FC = () => {
               userPrice: prismService.userPrice || 0.25,
               currency: prismService.currency || 'USDC',
               payToAddress: prismService.payToAddress || 'FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE',
+              platformTreasuryAddress: prismService.platformTreasuryAddress || '2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY',
             });
           }
         }
@@ -199,24 +202,58 @@ export const BuildStudio: React.FC = () => {
   };
 
   const executeCodeReview = async () => {
+    if (!activeAddress) {
+      setError("Please connect your Algorand wallet (Pera, Defly, Kibisis, or Lute) in the top navigation bar to sign the $0.25 USDC payment.");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setAuditResult(null);
-    setActiveStepIndex(1);
+    setActiveStepIndex(1); // 1. Prompting Wallet & Authorizing Payment
 
     try {
-      // Step 1: User Payment Authorization ($0.25 USDC)
-      const simUserTxId = activeAddress 
-        ? `algo_usr_${activeAddress.substring(0, 8)}_${Date.now().toString(36)}`
-        : `algo_usr_settle_${Math.random().toString(36).substring(2, 10)}`;
+      // Step 1: Real On-Chain Payment of 250,000 micro-USDC ($0.25) to Sikho Platform Treasury
+      const client = new algosdk.Algodv2(
+        import.meta.env.VITE_ALGOD_TOKEN || '',
+        import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud',
+        import.meta.env.VITE_ALGOD_PORT || ''
+      );
 
-      await new Promise((r) => setTimeout(r, 600));
-      setActiveStepIndex(2); // Platform fee processed
+      const params = await client.getTransactionParams().do();
+      const enc = new TextEncoder();
+      const noteBytes = enc.encode(
+        JSON.stringify({
+          service: 'prism-code-review',
+          app: 'sikho-ai',
+          file: filePath.trim() || 'src/index.ts',
+          timestamp: Date.now()
+        })
+      );
 
-      await new Promise((r) => setTimeout(r, 600));
-      setActiveStepIndex(3); // Prism x402 challenge received ($0.20 USDC)
+      const treasuryAddress = serviceInfo.platformTreasuryAddress || '2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY';
+      
+      const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+        from: activeAddress,
+        to: treasuryAddress,
+        amount: 250000, // 250,000 micro-USDC ($0.25 USDC)
+        assetIndex: 31566704, // Algorand MainNet USDC ASA ID
+        suggestedParams: params,
+        note: noteBytes,
+      });
 
-      // Step 2: Backend Orchestration (invokes Prism with x402 payment & verification)
+      const binaryTx = tx.toByte();
+      const signedArray = await signTransactions([binaryTx]);
+      
+      const { txId } = await client.sendRawTransaction(signedArray).do();
+      console.log(`[GitHub Review] User payment broadcast on Algorand MainNet with TxID: ${txId}`);
+
+      // Wait for block confirmation on Algorand
+      await algosdk.waitForConfirmation(client, txId, 4);
+      setActiveStepIndex(2); // 2. Platform fee processed & payment confirmed
+
+      // Step 2: Invoke Backend Orchestrator with real transaction ID
+      setActiveStepIndex(3); // 3. Invoking Prism x402 endpoint
       const res = await servicesApi.orchestrateCodeReview({
         serviceId: 'prism-code-review',
         payload: {
@@ -225,12 +262,12 @@ export const BuildStudio: React.FC = () => {
           code: inputMode !== 'url' ? codeContent : undefined,
           language,
         },
-        userPaymentTxId: simUserTxId,
+        userPaymentTxId: txId,
       });
 
-      setActiveStepIndex(4); // Prism payment verified
-      await new Promise((r) => setTimeout(r, 500));
-      setActiveStepIndex(5); // Review completed
+      setActiveStepIndex(4); // 4. Provider payment verified & analysis completed
+      await new Promise((r) => setTimeout(r, 400));
+      setActiveStepIndex(5); // 5. Review ready
 
       if (res.success && res.data) {
         const rawResult = res.data.result;

@@ -56,9 +56,11 @@ export const getTransactionHistory = asyncHandler(async (req: any, res: Response
 
 export const getTransactionById = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const transaction = await ServiceTransaction.findOne({
-    $or: [{ _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null }, { requestId: id }],
-  });
+  let query: any = { requestId: id };
+  if (/^[0-9a-fA-F]{24}$/.test(id)) {
+    query = { $or: [{ _id: id }, { requestId: id }] };
+  }
+  const transaction = await ServiceTransaction.findOne(query);
 
   if (!transaction) {
     return res.status(404).json({ success: false, message: "Transaction not found" });
