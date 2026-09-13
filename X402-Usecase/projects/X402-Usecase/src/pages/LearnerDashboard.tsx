@@ -312,23 +312,27 @@ const LearnerDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Tile 2: Build (Coming Soon) */}
-              <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-6 relative flex flex-col justify-between cursor-not-allowed select-none opacity-60 backdrop-blur-xs transition-all overflow-hidden">
+              {/* Tile 2: Build Studio (Active) */}
+              <div 
+                onClick={() => navigate('/build')}
+                className="bg-white border border-slate-200/80 rounded-2xl p-6 cursor-pointer hover:shadow-md hover:border-violet-300 transition-all group relative flex flex-col justify-between"
+              >
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <div className="w-11 h-11 bg-violet-50/80 text-violet-400 rounded-xl flex items-center justify-center border border-violet-100/60">
+                    <div className="w-11 h-11 bg-violet-50 text-violet-600 rounded-xl flex items-center justify-center border border-violet-100/80">
                       <Code2 size={20} />
                     </div>
-                    <span className="text-[10px] font-bold text-slate-500 bg-slate-200/80 px-2.5 py-1 rounded-full border border-slate-300/40 flex items-center gap-1">
-                      <Lock size={10} /> Coming Soon
-                    </span>
+                    <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-violet-50 group-hover:text-violet-600 transition-colors">
+                      <ArrowRight size={12} />
+                    </div>
                   </div>
-                  <h3 className="font-bold text-slate-700 text-sm mb-1">Build</h3>
-                  <p className="text-xs text-slate-400 font-medium leading-relaxed">Code editor, run & debug projects</p>
+                  <h3 className="font-bold text-slate-800 text-sm mb-1">Build Studio</h3>
+                  <p className="text-xs text-slate-400 font-medium leading-relaxed">Code editor, vulnerability audit & live debugging</p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-200/60 flex gap-1.5 opacity-70">
-                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Code</span>
-                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">Debug</span>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex gap-1.5">
+                  <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Code</span>
+                  <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Debug</span>
+                  <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Security Audit</span>
                 </div>
               </div>
 
