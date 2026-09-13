@@ -277,8 +277,8 @@ const ApiPlayground: React.FC = () => {
 
       // Build exact token payment transfer
       const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-        from: activeAddress,
-        to: requirement.payTo,
+        sender: activeAddress,
+        receiver: requirement.payTo,
         amount: parseInt(requirement.amount),
         assetIndex: parseInt(requirement.asset),
         suggestedParams: params,

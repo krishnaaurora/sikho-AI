@@ -161,8 +161,8 @@ async function signAndBroadcastProviderPayment(
   const note = enc.encode(JSON.stringify(challengeReq?.extra || { service: "prism-code-review" }));
 
   const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-    from: account.addr,
-    to: payTo,
+    sender: account.addr,
+    receiver: payTo,
     amount,
     assetIndex,
     suggestedParams: params,

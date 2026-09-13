@@ -166,8 +166,8 @@ async function signAndBroadcastPrismPayment(
   );
 
   const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-    from: account.addr,
-    to: payTo,
+    sender: account.addr,
+    receiver: payTo,
     amount,
     assetIndex: parseInt(assetId, 10),
     suggestedParams: params,

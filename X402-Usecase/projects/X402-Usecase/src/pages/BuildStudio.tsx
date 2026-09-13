@@ -200,8 +200,8 @@ export const BuildStudio: React.FC = () => {
       );
 
       const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-        from: activeAddress,
-        to: treasuryAddress,
+        sender: activeAddress,
+        receiver: treasuryAddress,
         amount: expectedMicroUSDC,
         assetIndex: 31566704, // Algorand MainNet USDC ASA
         suggestedParams: params,
