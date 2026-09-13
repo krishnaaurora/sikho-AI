@@ -6,6 +6,7 @@ import { Mail, Lock, ArrowRight, Sparkles, Eye, EyeOff } from 'lucide-react';
 import authSidebarImg from '../assets/auth_sidebar.png';
 
 import { InteractiveDotsCanvas } from '../components/ui/InteractiveDotsCanvas';
+import { AuthFeatureNodes } from '../components/ui/AuthFeatureNodes';
 
 const LoginPage: React.FC = () => {
   const { login, user } = useAuth();
@@ -64,7 +65,10 @@ const LoginPage: React.FC = () => {
         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-accent/10 rounded-full blur-[100px]" />
         
         {/* Interactive canvas dot decoration */}
-        <InteractiveDotsCanvas dotSpacing={20} dotRadius={1.5} interactiveRadius={140} />
+        <InteractiveDotsCanvas dotSpacing={28} dotRadius={1.2} interactiveRadius={180} />
+
+        {/* Floating interactive course & feature nodes with one-line hover descriptions */}
+        <AuthFeatureNodes />
 
         {/* Top-Left Logo */}
         <Link to="/" className="absolute top-8 left-8 flex items-center gap-2.5 z-20 group">

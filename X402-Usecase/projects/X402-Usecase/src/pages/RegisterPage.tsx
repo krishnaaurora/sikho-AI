@@ -11,6 +11,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { authApi } from '../utils/api';
 import { InteractiveDotsCanvas } from '../components/ui/InteractiveDotsCanvas';
+import { AuthFeatureNodes } from '../components/ui/AuthFeatureNodes';
 
 const RegisterPage: React.FC = () => {
   const { register, user, checkAuth } = useAuth();
@@ -389,7 +390,10 @@ const RegisterPage: React.FC = () => {
               <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px] animate-pulse" />
               <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-accent/10 rounded-full blur-[100px]" />
               
-              <InteractiveDotsCanvas dotSpacing={20} dotRadius={1.5} interactiveRadius={140} />
+              <InteractiveDotsCanvas dotSpacing={28} dotRadius={1.2} interactiveRadius={180} />
+
+              {/* Floating interactive course & feature nodes with one-line hover descriptions */}
+              <AuthFeatureNodes />
 
               <Link to="/" className="relative z-20 flex items-center gap-2.5 group w-fit">
                 <img src="/logo.png" alt="Logo" className="h-14 w-auto object-contain rounded-xl group-hover:scale-105 transition-transform" />
