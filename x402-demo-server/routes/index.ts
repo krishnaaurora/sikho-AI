@@ -12,6 +12,8 @@ import resumeRoutes from "./resume.routes";
 import x402Routes from "./x402.routes";
 import interviewProRoutes from "./interview_pro.routes";
 import servicesRoutes from "./services.routes";
+import repositoryReviewRoutes from "./repositoryReview.routes";
+import platformFeeRoutes from "./platformFee.routes";
 
 const router = express.Router();
 
@@ -21,6 +23,7 @@ router.use("/admin", adminRoutes);
 router.use("/courses", courseRoutes);
 router.use("/lessons", lessonRoutes);
 router.use("/payments", paymentRoutes);
+router.use("/payments", platformFeeRoutes);
 router.use("/wallets", walletRoutes);
 router.use("/ai", aiRoutes);
 router.use("/analytics", analyticsRoutes);
@@ -28,5 +31,6 @@ router.use("/resume", resumeRoutes);
 router.use("/x402", x402Routes);
 router.use("/interview-pro", interviewProRoutes);
 router.use("/services", servicesRoutes);
+router.use("/services/github-review", repositoryReviewRoutes);
 
 export default router;

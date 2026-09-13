@@ -337,4 +337,76 @@ export const servicesApi = {
   },
 };
 
+export const githubReviewApi = {
+  async discoverRepo(repoUrl: string) {
+    return fetchAPI<ApiResponse<{
+      reviewId: string;
+      owner: string;
+      repository: string;
+      repoUrl: string;
+      defaultBranch: string;
+      commitSha: string;
+      reviewableFileCount: number;
+      prismPricePerFile: number;
+      platformFeePerFile: number;
+      userPricePerFile: number;
+      providerTotal: number;
+      platformFeeTotal: number;
+      userTotal: number;
+      status: string;
+      files: Array<{
+        fileReviewId: string;
+        filePath: string;
+        language: string;
+        size: number;
+        status: string;
+      }>;
+    }>>(API_ENDPOINTS.GITHUB_REVIEW_DISCOVER, {
+      method: 'POST',
+      body: JSON.stringify({ repoUrl }),
+    });
+  },
+
+  async startReview(reviewId: string, userPaymentTxId: string) {
+    return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.GITHUB_REVIEW_START, {
+      method: 'POST',
+      body: JSON.stringify({ reviewId, userPaymentTxId }),
+    });
+  },
+
+  async getReviewStatus(reviewId: string) {
+    return fetchAPI<ApiResponse<{
+      review: any;
+      files: any[];
+    }>>(API_ENDPOINTS.GITHUB_REVIEW_STATUS(reviewId));
+  },
+
+  async getReviewFiles(reviewId: string) {
+    return fetchAPI<ApiResponse<any[]>>(API_ENDPOINTS.GITHUB_REVIEW_FILES(reviewId));
+  },
+
+  async retryFile(reviewId: string, fileId: string) {
+    return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.GITHUB_REVIEW_RETRY(reviewId, fileId), {
+      method: 'POST',
+    });
+  },
+
+  async recordPlatformFee(data: {
+    reviewId: string;
+    fileId: string;
+    filePath?: string;
+    amount?: number;
+    currency?: string;
+    assetId?: string;
+    network?: string;
+    purpose?: string;
+  }) {
+    return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.PLATFORM_FEE, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+
 

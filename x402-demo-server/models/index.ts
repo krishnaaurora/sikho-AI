@@ -39,4 +39,10 @@ export { default as X402Service } from "./X402Service.model";
 export { default as X402Transaction } from "./X402Transaction.model";
 export { default as ServiceTransaction } from "./ServiceTransaction.model";
 export * from "./ServiceTransaction.model";
+export { default as RepositoryReview } from "./RepositoryReview.model";
+export * from "./RepositoryReview.model";
+export { default as RepositoryFileReview } from "./RepositoryFileReview.model";
+export * from "./RepositoryFileReview.model";
+export { default as PlatformFeeTransaction } from "./PlatformFeeTransaction.model";
+export * from "./PlatformFeeTransaction.model";
 
