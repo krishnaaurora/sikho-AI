@@ -72,7 +72,7 @@ const LoginPage: React.FC = () => {
         </Link>
 
         {/* Bottom Text Overlay */}
-        <div className="absolute bottom-16 left-12 right-12 z-20 text-white">
+        <div className="absolute bottom-16 left-12 right-12 z-20 text-white pointer-events-none select-none">
           <span className="px-3 py-1 bg-primary/20 text-primary border border-primary/30 text-xs font-semibold rounded-full uppercase tracking-wider">
             Web3 Educational Platform
           </span>

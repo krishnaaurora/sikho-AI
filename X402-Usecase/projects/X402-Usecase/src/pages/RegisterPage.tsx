@@ -395,7 +395,7 @@ const RegisterPage: React.FC = () => {
                 <img src="/logo.png" alt="Logo" className="h-14 w-auto object-contain rounded-xl group-hover:scale-105 transition-transform" />
               </Link>
 
-              <div className="relative z-20 text-white max-w-lg mb-8">
+              <div className="relative z-20 text-white max-w-lg mb-8 pointer-events-none select-none">
                 <span className="px-3 py-1 bg-primary/20 text-primary border border-primary/30 text-xs font-semibold rounded-full uppercase tracking-wider">
                   AI-Powered Learning Platform
                 </span>
