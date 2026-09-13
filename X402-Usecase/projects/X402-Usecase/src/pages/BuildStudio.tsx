@@ -319,7 +319,7 @@ export const BuildStudio: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold bg-violet-50 text-violet-700 px-2 py-0.5 rounded-md border border-violet-200/60 flex items-center gap-1">
-                  <Github size={12} /> GitHub Review
+                  <Code2 size={12} /> GitHub Review
                 </span>
                 <span className="text-[11px] font-semibold text-slate-400">
                   x402 Service Marketplace
