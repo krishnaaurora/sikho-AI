@@ -10,6 +10,8 @@ import {
   DollarSign, CheckCheck, GitBranch, FolderGit2, AlertCircle,
   FileCheck, ShieldCheck, ArrowRight, CornerDownRight
 } from 'lucide-react';
+import { ExactAvmScheme } from '@x402-avm/avm';
+import { x402Client } from '@x402-avm/fetch';
 import { githubReviewApi } from '../utils/api';
 
 interface DiscoveredFileMeta {
@@ -405,130 +407,116 @@ export const BuildStudio: React.FC = () => {
       }
       const challenge = challengeRes.data;
 
-      const prismPayTo = challenge.payTo || (challenge as any).accepts?.[0]?.payTo || 'FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE';
-      const rawAmount = challenge.amountMicroUSDC || (challenge as any).amount || (challenge as any).accepts?.[0]?.amount || 200000;
-      const rawAsset = challenge.assetId || (challenge as any).asset || (challenge as any).accepts?.[0]?.asset || 31566704;
-      const amountMicroUSDC = typeof rawAmount === 'number' ? rawAmount : parseInt(String(rawAmount), 10) || 200000;
-      const assetId = typeof rawAsset === 'number' ? rawAsset : parseInt(String(rawAsset), 10) || 31566704;
-      const network = challenge.network || (challenge as any).accepts?.[0]?.network || 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
+      let paymentRequired: any = null;
+      if (challenge.paymentRequiredHeader) {
+        try {
+          const b64 = challenge.paymentRequiredHeader.includes(',')
+            ? challenge.paymentRequiredHeader.split(',')[1].trim()
+            : challenge.paymentRequiredHeader.trim();
+          paymentRequired = JSON.parse(atob(b64));
+        } catch (_) {}
+      }
+
+      if (!paymentRequired) {
+        const prismPayTo = challenge.payTo || (challenge as any).accepts?.[0]?.payTo || 'FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE';
+        const rawAmount = challenge.amountMicroUSDC || (challenge as any).amount || (challenge as any).accepts?.[0]?.amount || 12000;
+        const rawAsset = challenge.assetId || (challenge as any).asset || (challenge as any).accepts?.[0]?.asset || 31566704;
+        const amountMicroUSDC = typeof rawAmount === 'number' ? rawAmount : parseInt(String(rawAmount), 10) || 12000;
+        const assetId = typeof rawAsset === 'number' ? rawAsset : parseInt(String(rawAsset), 10) || 31566704;
+        const network = challenge.network || (challenge as any).accepts?.[0]?.network || 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
+
+        paymentRequired = {
+          x402Version: 2,
+          error: 'Payment required',
+          resource: {
+            url: 'https://prism-99h2.onrender.com/code-review-accurate',
+            description: 'Performs comprehensive senior-engineer code review and security auditing on a single code file using high-precision LLM reasoning.',
+            mimeType: 'application/json',
+          },
+          accepts: [
+            {
+              scheme: 'exact',
+              network,
+              amount: String(amountMicroUSDC),
+              asset: String(assetId),
+              payTo: prismPayTo,
+              maxTimeoutSeconds: 300,
+              extra: {
+                asset: Number(assetId),
+                tag: 'x402-global-challenge',
+                decimals: 6,
+                feePayer: 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
+              },
+            },
+          ],
+        };
+      }
+
+      const reqAccepts = paymentRequired.accepts?.[0] || paymentRequired;
+      const targetNetwork = reqAccepts.network || 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
+      const targetAmount = reqAccepts.amount;
+      const targetAsset = reqAccepts.asset;
+      const targetPayTo = reqAccepts.payTo;
 
       console.log('=== PRISM X402 CHALLENGE ===');
       console.log('status:', 402);
       console.log('header paymentRequiredHeader present:', !!challenge.paymentRequiredHeader);
       console.log('decoded payment requirements:', {
         x402Version: 2,
-        scheme: 'exact',
-        network,
-        amount: amountMicroUSDC,
-        asset: assetId,
-        payTo: prismPayTo,
+        scheme: reqAccepts.scheme || 'exact',
+        network: targetNetwork,
+        amount: targetAmount,
+        asset: targetAsset,
+        payTo: targetPayTo,
       });
 
-      const client = new algosdk.Algodv2(
-        import.meta.env.VITE_ALGOD_TOKEN || '',
-        import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud',
-        import.meta.env.VITE_ALGOD_PORT || ''
-      );
+      // 2. Build AVM Signer for ExactAvmScheme using connected wallet
+      const avmSigner = {
+        address: activeAddress,
+        signTransactions: async (txns: Uint8Array[], indexesToSign?: number[]) => {
+          const indices = indexesToSign || txns.map((_, i) => i);
+          const txnsToSign = indices.map((i) => txns[i]);
 
-      const params = await client.getTransactionParams().do();
-      const enc = new TextEncoder();
+          console.log('=== PRISM X402 PAYMENT ===');
+          console.log('activeAddress:', activeAddress);
+          console.log('transaction sender:', activeAddress);
+          console.log('transaction receiver:', targetPayTo);
+          console.log('asset:', targetAsset);
+          console.log('amount:', targetAmount);
+          console.log('paymentIndex:', indices[0] ?? 0);
+          console.log('paymentGroup length:', txns.length);
 
-      // Pre-check user's ALGO balance against Minimum Balance Requirement (MBR) + transaction fee
-      try {
-        const acctInfo: any = await client.accountInformation(activeAddress).do();
-        const algoBal = Number(acctInfo.amount || 0);
-        const minBal = Number(acctInfo['min-balance'] || acctInfo.minBalance || (acctInfo.assets?.length ? 100000 + acctInfo.assets.length * 100000 : 100000));
-        const feeNeeded = Number(params.fee || 1000);
-        if (algoBal - feeNeeded < minBal) {
-          throw new Error(
-            `Insufficient ALGO for Network Fee: Your wallet (${activeAddress.slice(0, 6)}...${activeAddress.slice(-4)}) has an ALGO balance of ${(algoBal / 1e6).toFixed(6)} ALGO, but requires at least ${((minBal + feeNeeded) / 1e6).toFixed(6)} ALGO (Minimum Balance Requirement ${(minBal / 1e6).toFixed(4)} ALGO + ${(feeNeeded / 1e6).toFixed(4)} ALGO network fee). Please add ~0.01 ALGO to your wallet to send transactions.`
-          );
-        }
-      } catch (acctErr: any) {
-        if (acctErr.message && acctErr.message.includes('Insufficient ALGO')) {
-          throw acctErr;
-        }
-      }
+          const signed = await signTransactions(txnsToSign);
+          const signedList = signed.filter(Boolean) as Uint8Array[];
+          if (!signedList.length) {
+            throw new Error('Prism transaction signing was cancelled by user.');
+          }
 
-      // 2. Prompt user's connected wallet to sign REAL x402 payment directly to Prism PayTo
-      const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-        sender: activeAddress,
-        receiver: prismPayTo,
-        amount: Number(amountMicroUSDC),
-        assetIndex: Number(assetId),
-        suggestedParams: params,
-        note: enc.encode(
-          JSON.stringify({
-            service: 'prism-code-review',
-            reviewId: activeReviewId,
-            fileId: file.fileReviewId,
-            filePath: file.filePath,
-            timestamp: Date.now(),
-          })
-        ),
-      } as any);
-
-      const txSender = algosdk.encodeAddress((tx as any).sender.publicKey);
-      const txReceiver = algosdk.encodeAddress((tx as any).assetTransfer.receiver.publicKey);
-      const txAmount = (tx as any).assetTransfer.amount.toString();
-      const txAssetIndex = (tx as any).assetTransfer.assetIndex.toString();
-
-      console.log('=== PRISM X402 PAYMENT ===');
-      console.log('activeAddress:', activeAddress);
-      console.log('transaction sender:', txSender);
-      console.log('transaction receiver:', txReceiver);
-      console.log('asset:', txAssetIndex);
-      console.log('amount:', txAmount);
-      console.log('paymentIndex:', 0);
-      console.log('paymentGroup length:', 1);
-
-      if (txSender !== activeAddress) {
-        throw new Error(
-          `CRITICAL X402 SENDER MISMATCH: Connected wallet address (${activeAddress}) does not match transaction sender (${txSender}). Aborting payment!`
-        );
-      }
-
-      const signedArray = await signTransactions([tx.toByte()]);
-      const signedRaw = signedArray.filter(Boolean) as Uint8Array[];
-      if (!signedRaw.length) {
-        throw new Error('Prism transaction signing was cancelled by user.');
-      }
-
-      await client.sendRawTransaction(signedRaw).do();
-      const prismTxId: string = (tx as any).txID();
-      console.log(`[Prism x402] User payment broadcast for ${file.filePath}: TxID=${prismTxId}`);
-
-      // Wait for on-chain confirmation
-      await algosdk.waitForConfirmation(client, prismTxId, 4);
-
-      // 3. Construct exact Algorand x402 v2 paymentGroup payload
-      const base64SignedTx = btoa(
-        Array.from(signedRaw[0])
-          .map((byte) => String.fromCharCode(byte))
-          .join('')
-      );
-
-      const signaturePayload = {
-        x402Version: 2,
-        scheme: 'exact',
-        network: network || 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=',
-        payload: {
-          paymentGroup: [base64SignedTx],
-          paymentIndex: 0,
-          txid: prismTxId,
-          sender: activeAddress,
+          let sIdx = 0;
+          return txns.map((txn, i) => {
+            if (indexesToSign && !indexesToSign.includes(i)) {
+              return null;
+            }
+            return signedList[sIdx++] || null;
+          });
         },
-        txid: prismTxId,
-        sender: activeAddress,
       };
-      const paymentSignatureHeader = btoa(JSON.stringify(signaturePayload));
 
-      // 4. Submit Payment-Signature to Prism & retrieve code review
+      const scheme = new ExactAvmScheme(avmSigner, {
+        algodUrl: import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud',
+      });
+
+      const x402Cl = new x402Client();
+      x402Cl.register(targetNetwork as any, scheme as any);
+
+      const paymentPayload = await x402Cl.createPaymentPayload(paymentRequired);
+      const paymentSignatureHeader = btoa(JSON.stringify(paymentPayload));
+
+      // 3. Submit Payment-Signature to Prism & retrieve code review
       const submitRes = await githubReviewApi.submitPrismReview(
         activeReviewId,
         file.fileReviewId,
-        paymentSignatureHeader,
-        prismTxId
+        paymentSignatureHeader
       );
       if (!submitRes.success || !submitRes.data) {
         throw new Error(submitRes.message || 'Prism code review verification failed.');
