@@ -122,8 +122,13 @@ function AppContent() {
                 <SearchResults />
               </ProtectedRoute>
             } />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <LearnerDashboard />
+              </ProtectedRoute>
+            } />
             <Route path="/dashboard/learner" element={
-              <ProtectedRoute requiredRole="learner">
+              <ProtectedRoute>
                 <LearnerDashboard />
               </ProtectedRoute>
             } />
@@ -152,6 +157,7 @@ function AppContent() {
                 <AdminDashboard />
               </ProtectedRoute>
             } />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
       </WalletProvider>
