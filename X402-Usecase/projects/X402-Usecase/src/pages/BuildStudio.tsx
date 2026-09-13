@@ -687,89 +687,101 @@ export const BuildStudio: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-mono text-slate-700">
                   {fileReviews.map((f) => (
-                    <tr key={f.fileReviewId} className="hover:bg-slate-50/60 transition">
-                      <td className="py-3 px-4 font-bold text-slate-900 flex items-center gap-2 max-w-[320px] truncate">
-                        <FileCode size={14} className="text-slate-400 shrink-0" />
-                        <span className="truncate">{f.filePath}</span>
-                      </td>
+                    <React.Fragment key={f.fileReviewId}>
+                      <tr className="hover:bg-slate-50/60 transition">
+                        <td className="py-3 px-4 font-bold text-slate-900 flex items-center gap-2 max-w-[320px] truncate">
+                          <FileCode size={14} className="text-slate-400 shrink-0" />
+                          <span className="truncate">{f.filePath}</span>
+                        </td>
 
-                      <td className="py-3 px-4">
-                        {f.status === 'completed' ? (
-                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1">
-                            <CheckCircle2 size={10} /> Completed
-                          </span>
-                        ) : f.status === 'processing' || f.status === 'fee_pending' || f.status === 'provider_payment_pending' ? (
-                          <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1">
-                            <RefreshCw size={10} className="animate-spin" /> Processing
-                          </span>
-                        ) : f.status === 'failed' ? (
-                          <span className="bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1">
-                            <AlertTriangle size={10} /> Failed
-                          </span>
-                        ) : (
-                          <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded text-[10px] font-bold">
-                            ○ Pending
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Sikho Platform Fee */}
-                      <td className="py-3 px-4 text-[11px]">
-                        {f.platformFeeTransactionId ? (
-                          <div className="flex items-center gap-1.5 text-emerald-700 font-semibold">
-                            <Check size={12} />
-                            <span>Paid $0.05</span>
-                            <span className="text-[9px] font-mono text-slate-400 truncate max-w-[90px]">
-                              ({f.platformFeeTransactionId})
+                        <td className="py-3 px-4">
+                          {f.status === 'completed' ? (
+                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1">
+                              <CheckCircle2 size={10} /> Completed
                             </span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400">Waiting...</span>
-                        )}
-                      </td>
+                          ) : f.status === 'processing' || f.status === 'fee_pending' || f.status === 'provider_payment_pending' ? (
+                            <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1">
+                              <RefreshCw size={10} className="animate-spin" /> Processing
+                            </span>
+                          ) : f.status === 'failed' ? (
+                            <span className="bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1">
+                              <AlertTriangle size={10} /> Failed
+                            </span>
+                          ) : (
+                            <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                              ○ Pending
+                            </span>
+                          )}
+                        </td>
 
-                      {/* Prism Provider Payment */}
-                      <td className="py-3 px-4 text-[11px]">
-                        {f.providerPaymentTxId ? (
-                          <div className="flex items-center gap-1.5 text-emerald-700 font-semibold">
-                            <Check size={12} />
-                            <span>Paid $0.20</span>
-                            <a
-                              href={`https://allo.info/tx/${f.providerPaymentTxId}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-violet-600 hover:underline flex items-center gap-0.5 text-[9px] font-mono"
-                              title="Verify on Algorand Explorer"
+                        {/* Sikho Platform Fee */}
+                        <td className="py-3 px-4 text-[11px]">
+                          {f.platformFeeTransactionId ? (
+                            <div className="flex items-center gap-1.5 text-emerald-700 font-semibold">
+                              <Check size={12} />
+                              <span>Paid $0.05</span>
+                              <span className="text-[9px] font-mono text-slate-400 truncate max-w-[90px]">
+                                ({f.platformFeeTransactionId})
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">Waiting...</span>
+                          )}
+                        </td>
+
+                        {/* Prism Provider Payment */}
+                        <td className="py-3 px-4 text-[11px]">
+                          {f.providerPaymentTxId ? (
+                            <div className="flex items-center gap-1.5 text-emerald-700 font-semibold">
+                              <Check size={12} />
+                              <span>Paid $0.20</span>
+                              <a
+                                href={`https://allo.info/tx/${f.providerPaymentTxId}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-violet-600 hover:underline flex items-center gap-0.5 text-[9px] font-mono"
+                                title="Verify on Algorand Explorer"
+                              >
+                                Tx <ExternalLink size={9} />
+                              </a>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">Waiting...</span>
+                          )}
+                        </td>
+
+                        {/* Action / Expand */}
+                        <td className="py-3 px-4 text-right">
+                          {f.status === 'completed' ? (
+                            <button
+                              onClick={() =>
+                                setExpandedFileId(expandedFileId === f.fileReviewId ? null : f.fileReviewId)
+                              }
+                              className="px-2.5 py-1 text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition"
                             >
-                              Tx <ExternalLink size={9} />
-                            </a>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400">Waiting...</span>
-                        )}
-                      </td>
-
-                      {/* Action / Expand */}
-                      <td className="py-3 px-4 text-right">
-                        {f.status === 'completed' ? (
-                          <button
-                            onClick={() =>
-                              setExpandedFileId(expandedFileId === f.fileReviewId ? null : f.fileReviewId)
-                            }
-                            className="px-2.5 py-1 text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition"
-                          >
-                            {expandedFileId === f.fileReviewId ? 'Hide Review' : 'View Review'}
-                          </button>
-                        ) : f.status === 'failed' ? (
-                          <button
-                            onClick={() => handleRetryFile(f.fileReviewId)}
-                            className="px-2.5 py-1 text-[10px] font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition"
-                          >
-                            Retry
-                          </button>
-                        ) : null}
-                      </td>
-                    </tr>
+                              {expandedFileId === f.fileReviewId ? 'Hide Review' : 'View Review'}
+                            </button>
+                          ) : f.status === 'failed' ? (
+                            <button
+                              onClick={() => handleRetryFile(f.fileReviewId)}
+                              className="px-2.5 py-1 text-[10px] font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition"
+                            >
+                              Retry
+                            </button>
+                          ) : null}
+                        </td>
+                      </tr>
+                      {f.status === 'failed' && f.error && (
+                        <tr key={`err_${f.fileReviewId}`} className="bg-red-50/60 text-[11px] text-red-700">
+                          <td colSpan={5} className="py-2.5 px-4 font-mono">
+                            <div className="flex items-center gap-2">
+                              <AlertCircle size={14} className="shrink-0 text-red-600" />
+                              <span><strong>Error:</strong> {f.error}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>
