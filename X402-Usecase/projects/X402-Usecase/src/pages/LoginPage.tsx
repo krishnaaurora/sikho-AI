@@ -30,6 +30,16 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    if (!loginData.password) {
+      setError('Password is required');
+      return;
+    }
+    if (loginData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -140,6 +150,7 @@ const LoginPage: React.FC = () => {
                     <input
                       type={showPassword ? 'text' : 'password'}
                       required
+                      minLength={6}
                       value={loginData.password}
                       onChange={(e) =>
                         setLoginData({ ...loginData, password: e.target.value })
