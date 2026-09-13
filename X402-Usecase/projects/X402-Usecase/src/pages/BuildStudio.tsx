@@ -111,6 +111,7 @@ export const BuildStudio: React.FC = () => {
   const [activeReviewId, setActiveReviewId] = useState<string | null>(null);
   const [maxFilesLimit, setMaxFilesLimit] = useState<number>(3); // Default to 3 files ($0.75) for 1-click acceptance test
   const [walletUsdcBalance, setWalletUsdcBalance] = useState<number | null>(null);
+  const [walletAlgoBalance, setWalletAlgoBalance] = useState<number | null>(null);
 
   const [isProcessingFileId, setIsProcessingFileId] = useState<string | null>(null);
   const [isSequentialRunning, setIsSequentialRunning] = useState(false);
@@ -131,10 +132,11 @@ export const BuildStudio: React.FC = () => {
     };
   }, []);
 
-  // Fetch connected wallet USDC balance (ASA 31566704)
+  // Fetch connected wallet USDC balance (ASA 31566704) and ALGO balance
   useEffect(() => {
     if (!activeAddress) {
       setWalletUsdcBalance(null);
+      setWalletAlgoBalance(null);
       return;
     }
     const fetchBalance = async () => {
@@ -144,7 +146,9 @@ export const BuildStudio: React.FC = () => {
           import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud',
           import.meta.env.VITE_ALGOD_PORT || ''
         );
-        const acctInfo = await client.accountInformation(activeAddress).do();
+        const acctInfo: any = await client.accountInformation(activeAddress).do();
+        setWalletAlgoBalance(Number(acctInfo.amount || 0) / 1000000);
+
         const assets: any[] = acctInfo.assets || [];
         const usdcAsset = assets.find(
           (a: any) => a['asset-id'] === 31566704 || a.assetId === 31566704
@@ -155,7 +159,7 @@ export const BuildStudio: React.FC = () => {
           setWalletUsdcBalance(0);
         }
       } catch (e) {
-        console.warn('Could not fetch wallet USDC balance:', e);
+        console.warn('Could not fetch wallet balance:', e);
       }
     };
     fetchBalance();
@@ -698,8 +702,30 @@ export const BuildStudio: React.FC = () => {
                 {walletUsdcBalance !== null && (
                   <div className="bg-violet-50 border border-violet-200 text-violet-800 text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shrink-0 font-medium">
                     <DollarSign size={13} className="text-violet-600" />
-                    <span>Balance:</span>
-                    <span className="font-bold font-mono text-violet-950">${walletUsdcBalance.toFixed(2)} USDC</span>
+                    <span>USDC:</span>
+                    <span className="font-bold font-mono text-violet-950">${walletUsdcBalance.toFixed(2)}</span>
+                  </div>
+                )}
+                {walletAlgoBalance !== null && (
+                  <div
+                    className={`border text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shrink-0 font-medium ${
+                      walletAlgoBalance < 0.201
+                        ? 'bg-amber-50 border-amber-300 text-amber-900'
+                        : 'bg-slate-50 border-slate-200 text-slate-800'
+                    }`}
+                    title={
+                      walletAlgoBalance < 0.201
+                        ? 'Low ALGO for fees: Algorand requires ~0.201 ALGO minimum balance + fee to send USDC'
+                        : 'ALGO Balance for network transaction fees'
+                    }
+                  >
+                    <span>ALGO:</span>
+                    <span className="font-bold font-mono">{walletAlgoBalance.toFixed(4)}</span>
+                    {walletAlgoBalance < 0.201 && (
+                      <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-bold">
+                        Add 0.01 ALGO for fees
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
