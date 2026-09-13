@@ -171,7 +171,13 @@ export const getSikhoChallenge = asyncHandler(async (req: Request, res: Response
     "X-PAYMENT-RESPONSE, PAYMENT-REQUIRED, PAYMENT-RESPONSE"
   );
   res.setHeader("PAYMENT-REQUIRED", encodedRequired);
-  return res.status(402).json(challenge);
+
+  sendSuccessResponse(
+    res,
+    challenge,
+    "Sikho x402 payment challenge retrieved successfully",
+    200
+  );
 });
 
 /**

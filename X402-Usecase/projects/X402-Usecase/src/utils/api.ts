@@ -42,16 +42,17 @@ async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     if (response.status === 402) {
+      let errorData: any = {};
       try {
-        const errorData = await response.json();
-        return {
-          success: true,
-          data: errorData,
-          ...errorData,
-        } as unknown as T;
+        errorData = await response.json();
       } catch (_) {
-        // ignore JSON parsing errors
+        errorData = { success: true, message: "Payment Required" };
       }
+      return {
+        success: true,
+        data: errorData,
+        ...(typeof errorData === "object" ? errorData : {}),
+      } as unknown as T;
     }
 
     let errorMessage = `API error: ${response.status}`;
