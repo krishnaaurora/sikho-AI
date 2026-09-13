@@ -259,6 +259,26 @@ export const BuildStudio: React.FC = () => {
         ),
       } as any);
 
+      const txSender = algosdk.encodeAddress((tx as any).sender.publicKey);
+      const txReceiver = algosdk.encodeAddress((tx as any).assetTransfer.receiver.publicKey);
+      const txAmount = (tx as any).assetTransfer.amount.toString();
+      const txAssetIndex = (tx as any).assetTransfer.assetIndex.toString();
+
+      console.log('=== [DIAGNOSTIC LOG: Sikho x402 Payment] ===');
+      console.log('activeAddress:', activeAddress);
+      console.log('transaction.sender:', txSender);
+      console.log('transaction.receiver:', txReceiver);
+      console.log('transaction.assetIndex:', txAssetIndex);
+      console.log('transaction.amount:', txAmount);
+      console.log('challenge.payTo:', sikhoPayTo);
+      console.log('challenge.maxAmountRequired:', amountMicro);
+
+      if (txSender !== activeAddress) {
+        throw new Error(
+          `CRITICAL X402 SENDER MISMATCH: Connected wallet address (${activeAddress}) does not match transaction sender (${txSender}). Aborting payment!`
+        );
+      }
+
       const signedArray = await signTransactions([tx.toByte()]);
       const signedRaw = signedArray.filter(Boolean) as Uint8Array[];
       if (!signedRaw.length) {
@@ -274,9 +294,13 @@ export const BuildStudio: React.FC = () => {
 
       // 3. Construct standard x402 Payment-Signature header
       const signaturePayload = {
-        txid: txId,
-        sender: activeAddress,
-        network,
+        x402Version: 2,
+        scheme: 'exact',
+        network: 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=',
+        payload: {
+          txid: txId,
+          sender: activeAddress,
+        },
       };
       const paymentSignatureHeader = btoa(JSON.stringify(signaturePayload));
 
@@ -381,6 +405,26 @@ export const BuildStudio: React.FC = () => {
         ),
       } as any);
 
+      const txSender = algosdk.encodeAddress((tx as any).sender.publicKey);
+      const txReceiver = algosdk.encodeAddress((tx as any).assetTransfer.receiver.publicKey);
+      const txAmount = (tx as any).assetTransfer.amount.toString();
+      const txAssetIndex = (tx as any).assetTransfer.assetIndex.toString();
+
+      console.log('=== [DIAGNOSTIC LOG: Prism x402 Payment] ===');
+      console.log('activeAddress:', activeAddress);
+      console.log('transaction.sender:', txSender);
+      console.log('transaction.receiver:', txReceiver);
+      console.log('transaction.assetIndex:', txAssetIndex);
+      console.log('transaction.amount:', txAmount);
+      console.log('challenge.payTo:', prismPayTo);
+      console.log('challenge.maxAmountRequired:', amountMicroUSDC);
+
+      if (txSender !== activeAddress) {
+        throw new Error(
+          `CRITICAL X402 SENDER MISMATCH: Connected wallet address (${activeAddress}) does not match transaction sender (${txSender}). Aborting payment!`
+        );
+      }
+
       const signedArray = await signTransactions([tx.toByte()]);
       const signedRaw = signedArray.filter(Boolean) as Uint8Array[];
       if (!signedRaw.length) {
@@ -403,11 +447,6 @@ export const BuildStudio: React.FC = () => {
           txid: prismTxId,
           sender: activeAddress,
         },
-        txid: prismTxId,
-        txId: prismTxId,
-        transactionId: prismTxId,
-        sender: activeAddress,
-        payer: activeAddress,
       };
       const paymentSignatureHeader = btoa(JSON.stringify(signaturePayload));
 
