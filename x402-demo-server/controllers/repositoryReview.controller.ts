@@ -3,6 +3,9 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { sendSuccessResponse } from "../utils/response";
 import {
   discoverRepository,
+  recordSikhoPaymentForFile,
+  getPrismChallengeForFile,
+  submitPrismReviewWithSignature,
   executeFileReviewWithPayment,
   aggregateRepositoryReview,
   retrySingleFileReview,
@@ -50,6 +53,10 @@ export const discover = asyncHandler(async (req: Request, res: Response) => {
         language: f.language,
         size: f.size,
         status: f.status,
+        sikhoPaymentStatus: f.sikhoPaymentStatus,
+        sikhoPaymentTxId: f.sikhoPaymentTxId,
+        prismPaymentStatus: f.prismPaymentStatus,
+        prismPaymentTxId: f.prismPaymentTxId,
       })),
     },
     "Repository discovered and reviewable files parsed successfully",
@@ -57,6 +64,111 @@ export const discover = asyncHandler(async (req: Request, res: Response) => {
   );
 });
 
+/**
+ * Step 1: User verifies & records $0.05 Sikho platform fee payment
+ */
+export const recordSikhoPayment = asyncHandler(async (req: Request, res: Response) => {
+  const reviewId: string =
+    typeof req.params.reviewId === "string"
+      ? req.params.reviewId
+      : req.body.reviewId || "";
+
+  const fileId: string =
+    typeof req.params.fileId === "string"
+      ? req.params.fileId
+      : req.body.fileId || "";
+
+  const { sikhoPaymentTxId } = req.body;
+
+  if (!reviewId || !fileId || !sikhoPaymentTxId) {
+    return res.status(400).json({
+      success: false,
+      message: "reviewId, fileId, and sikhoPaymentTxId are required.",
+    });
+  }
+
+  const result = await recordSikhoPaymentForFile(reviewId, fileId, sikhoPaymentTxId);
+
+  sendSuccessResponse(
+    res,
+    { file: result },
+    "Sikho platform fee ($0.05) verified and recorded successfully",
+    200
+  );
+});
+
+/**
+ * Step 2A: Fetch Prism 402 Challenge for user wallet signing
+ */
+export const getPrismChallenge = asyncHandler(async (req: Request, res: Response) => {
+  const reviewId: string =
+    typeof req.params.reviewId === "string"
+      ? req.params.reviewId
+      : req.body.reviewId || "";
+
+  const fileId: string =
+    typeof req.params.fileId === "string"
+      ? req.params.fileId
+      : req.body.fileId || "";
+
+  if (!reviewId || !fileId) {
+    return res.status(400).json({
+      success: false,
+      message: "reviewId and fileId are required.",
+    });
+  }
+
+  const result = await getPrismChallengeForFile(reviewId, fileId);
+
+  sendSuccessResponse(
+    res,
+    result,
+    "Prism x402 payment challenge retrieved successfully",
+    200
+  );
+});
+
+/**
+ * Step 2B: Submit User's Signed x402 Payment-Signature & Execute Real Prism Code Review
+ */
+export const submitPrismReview = asyncHandler(async (req: Request, res: Response) => {
+  const reviewId: string =
+    typeof req.params.reviewId === "string"
+      ? req.params.reviewId
+      : req.body.reviewId || "";
+
+  const fileId: string =
+    typeof req.params.fileId === "string"
+      ? req.params.fileId
+      : req.body.fileId || "";
+
+  const { paymentSignature, prismPaymentTxId } = req.body;
+
+  if (!reviewId || !fileId || !paymentSignature) {
+    return res.status(400).json({
+      success: false,
+      message: "reviewId, fileId, and paymentSignature are required.",
+    });
+  }
+
+  const result = await submitPrismReviewWithSignature(
+    reviewId,
+    fileId,
+    paymentSignature,
+    prismPaymentTxId
+  );
+
+  sendSuccessResponse(
+    res,
+    { file: result },
+    "Prism x402 code review executed and settled successfully",
+    200
+  );
+});
+
+/**
+ * Unified single file review handler
+ */
 export const reviewSingleFile = asyncHandler(async (req: Request, res: Response) => {
   const reviewId: string =
     typeof req.params.reviewId === "string"
@@ -68,16 +180,15 @@ export const reviewSingleFile = asyncHandler(async (req: Request, res: Response)
       ? req.params.fileId
       : req.body.fileId || "";
 
-  const { userPaymentTxId } = req.body;
+  const { sikhoPaymentTxId, userPaymentTxId, paymentSignature, prismPaymentTxId } = req.body;
 
-  if (!reviewId || !fileId || !userPaymentTxId) {
-    return res.status(400).json({
-      success: false,
-      message: "reviewId, fileId, and userPaymentTxId are required for per-file review.",
-    });
-  }
-
-  const result = await executeFileReviewWithPayment(reviewId, fileId, userPaymentTxId);
+  const result = await executeFileReviewWithPayment(
+    reviewId,
+    fileId,
+    sikhoPaymentTxId || userPaymentTxId,
+    paymentSignature,
+    prismPaymentTxId
+  );
 
   sendSuccessResponse(
     res,
@@ -88,18 +199,7 @@ export const reviewSingleFile = asyncHandler(async (req: Request, res: Response)
 });
 
 export const start = asyncHandler(async (req: Request, res: Response) => {
-  const { reviewId, fileId, userPaymentTxId } = req.body;
-
-  if (fileId && userPaymentTxId) {
-    const result = await executeFileReviewWithPayment(reviewId, fileId, userPaymentTxId);
-    return sendSuccessResponse(
-      res,
-      { file: result },
-      "File review executed and verified successfully",
-      200
-    );
-  }
-
+  const { reviewId } = req.body;
   const review = await RepositoryReview.findOne({ reviewId });
   sendSuccessResponse(
     res,
@@ -172,17 +272,25 @@ export const retryFile = asyncHandler(async (req: Request, res: Response) => {
       ? req.params.fileId[0]
       : "";
 
+  const { sikhoPaymentTxId, paymentSignature, prismPaymentTxId } = req.body;
+
   if (!reviewId || !fileId) {
     return res
       .status(400)
       .json({ success: false, message: "reviewId and fileId are required." });
   }
 
-  const updatedFile = await retrySingleFileReview(reviewId, fileId);
+  const updatedFile = await retrySingleFileReview(
+    reviewId,
+    fileId,
+    sikhoPaymentTxId,
+    paymentSignature,
+    prismPaymentTxId
+  );
 
   sendSuccessResponse(
     res,
-    updatedFile,
+    { file: updatedFile },
     "File review retry executed successfully",
     200
   );

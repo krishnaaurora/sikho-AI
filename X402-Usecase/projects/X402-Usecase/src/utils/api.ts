@@ -378,6 +378,36 @@ export const githubReviewApi = {
     });
   },
 
+  async submitSikhoPayment(reviewId: string, fileId: string, sikhoPaymentTxId: string) {
+    return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.GITHUB_REVIEW_SIKHO_PAYMENT(reviewId, fileId), {
+      method: 'POST',
+      body: JSON.stringify({ reviewId, fileId, sikhoPaymentTxId }),
+    });
+  },
+
+  async getPrismChallenge(reviewId: string, fileId: string) {
+    return fetchAPI<ApiResponse<{
+      fileReviewId: string;
+      filePath: string;
+      language: string;
+      payTo: string;
+      amountMicroUSDC: number;
+      assetId: string;
+      network: string;
+      paymentRequiredHeader?: string;
+    }>>(API_ENDPOINTS.GITHUB_REVIEW_PRISM_CHALLENGE(reviewId, fileId), {
+      method: 'POST',
+      body: JSON.stringify({ reviewId, fileId }),
+    });
+  },
+
+  async submitPrismReview(reviewId: string, fileId: string, paymentSignature: string, prismPaymentTxId?: string) {
+    return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.GITHUB_REVIEW_PRISM_SUBMIT(reviewId, fileId), {
+      method: 'POST',
+      body: JSON.stringify({ reviewId, fileId, paymentSignature, prismPaymentTxId }),
+    });
+  },
+
   async reviewFile(reviewId: string, fileId: string, userPaymentTxId: string) {
     return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.GITHUB_REVIEW_FILE_REVIEW(reviewId, fileId), {
       method: 'POST',
@@ -396,9 +426,10 @@ export const githubReviewApi = {
     return fetchAPI<ApiResponse<any[]>>(API_ENDPOINTS.GITHUB_REVIEW_FILES(reviewId));
   },
 
-  async retryFile(reviewId: string, fileId: string) {
+  async retryFile(reviewId: string, fileId: string, sikhoPaymentTxId?: string, paymentSignature?: string) {
     return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.GITHUB_REVIEW_RETRY(reviewId, fileId), {
       method: 'POST',
+      body: JSON.stringify({ reviewId, fileId, sikhoPaymentTxId, paymentSignature }),
     });
   },
 

@@ -44,6 +44,13 @@ interface FileReviewItem {
   language: string;
   size: number;
   status: string;
+  sikhoPaymentAmount?: number;
+  sikhoPaymentStatus?: string;
+  sikhoPaymentTxId?: string;
+  prismPaymentAmount?: number;
+  prismPaymentStatus?: string;
+  prismPaymentTxId?: string;
+  prismPaymentResponse?: string;
   userPaymentAmount?: number;
   userPaymentStatus?: string;
   userPaymentTxId?: string;
@@ -197,29 +204,19 @@ export const BuildStudio: React.FC = () => {
     }
   };
 
-  // 2. Pay & Review Single File ($0.25 on-chain USDC transfer from User -> Sikho Treasury)
-  const handlePayAndReviewSingleFile = async (file: FileReviewItem): Promise<boolean> => {
+  // 2. Step 1: User pays $0.05 USDC to Sikho Treasury
+  const handlePaySikhoFee = async (file: FileReviewItem): Promise<string | null> => {
     if (!activeAddress) {
       setError('Please connect your Algorand wallet in the top navigation bar to proceed with payment.');
-      return false;
+      return null;
     }
-
     if (!activeReviewId) {
       setError('Repository review session not found. Please discover repository again.');
-      return false;
+      return null;
     }
 
     setIsProcessingFileId(file.fileReviewId);
     setError(null);
-
-    // Update local state to show payment processing for this file
-    setFileReviews((prev) =>
-      prev.map((f) =>
-        f.fileReviewId === file.fileReviewId
-          ? { ...f, status: 'processing', userPaymentStatus: 'pending' }
-          : f
-      )
-    );
 
     try {
       const treasuryAddress =
@@ -235,16 +232,16 @@ export const BuildStudio: React.FC = () => {
       const params = await client.getTransactionParams().do();
       const enc = new TextEncoder();
 
-      // Per-File Payment: Exact $0.25 (250,000 micro-USDC) for THIS file only
+      // Exactly 50,000 micro-USDC ($0.05) to Sikho Treasury
       const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
         sender: activeAddress,
         receiver: treasuryAddress,
-        amount: 250000, // $0.25 micro-USDC
+        amount: 50000,
         assetIndex: 31566704, // Algorand MainNet USDC ASA
         suggestedParams: params,
         note: enc.encode(
           JSON.stringify({
-            service: 'sikho-file-review',
+            service: 'sikho-platform-fee',
             reviewId: activeReviewId,
             fileId: file.fileReviewId,
             filePath: file.filePath,
@@ -256,24 +253,142 @@ export const BuildStudio: React.FC = () => {
       const signedArray = await signTransactions([tx.toByte()]);
       const signedRaw = signedArray.filter(Boolean) as Uint8Array[];
       if (!signedRaw.length) {
-        throw new Error('Transaction signing was cancelled by user.');
+        throw new Error('Sikho platform fee signing was cancelled by user.');
       }
 
       await client.sendRawTransaction(signedRaw).do();
       const txId: string = (tx as any).txID();
-      console.log(`[Per-File Review] User Payment Broadcast for ${file.filePath}: TxID=${txId}`);
+      console.log(`[Sikho Payment] User broadcast for ${file.filePath}: TxID=${txId}`);
 
       // Wait for on-chain confirmation
       await algosdk.waitForConfirmation(client, txId, 4);
 
-      // Trigger backend single-file execution:
-      // Backend verifies $0.25 on-chain -> calls Sikho fee ($0.05) -> calls Prism x402 ($0.20)
-      const reviewRes = await githubReviewApi.reviewFile(activeReviewId, file.fileReviewId, txId);
-      if (!reviewRes.success || !reviewRes.data) {
-        throw new Error(reviewRes.message || 'File review execution failed.');
+      // Verify on backend
+      const res = await githubReviewApi.submitSikhoPayment(activeReviewId, file.fileReviewId, txId);
+      if (!res.success || !res.data) {
+        throw new Error(res.message || 'Failed to verify Sikho platform fee on backend.');
       }
 
-      const updatedFile = reviewRes.data.file;
+      const updatedFile = res.data.file;
+      setFileReviews((prev) =>
+        prev.map((f) => (f.fileReviewId === file.fileReviewId ? { ...f, ...updatedFile } : f))
+      );
+
+      return txId;
+    } catch (err: any) {
+      console.error(`Sikho payment error on ${file.filePath}:`, err);
+      let userMsg = err.message || 'Failed to authorize Sikho platform fee.';
+      if (typeof userMsg === 'string' && userMsg.includes('underflow on subtracting')) {
+        userMsg = `Insufficient USDC Balance: Paying Sikho platform fee requires $0.05 USDC. Please fund your Algorand wallet with USDC.`;
+      }
+      setError(userMsg);
+      setFileReviews((prev) =>
+        prev.map((f) =>
+          f.fileReviewId === file.fileReviewId
+            ? { ...f, status: 'failed', error: userMsg }
+            : f
+        )
+      );
+      return null;
+    } finally {
+      setIsProcessingFileId(null);
+    }
+  };
+
+  // 3. Step 2: User pays $0.20 USDC directly to Prism via Real x402 Protocol
+  const handlePayPrismReview = async (file: FileReviewItem): Promise<boolean> => {
+    if (!activeAddress) {
+      setError('Please connect your Algorand wallet in the top navigation bar.');
+      return false;
+    }
+    if (!activeReviewId) {
+      setError('Repository review session not found.');
+      return false;
+    }
+
+    // Ensure Step 1 (Sikho fee) is confirmed first
+    let currentFile = fileReviews.find((f) => f.fileReviewId === file.fileReviewId) || file;
+    if (currentFile.sikhoPaymentStatus !== 'confirmed') {
+      const sikhoTxId = await handlePaySikhoFee(currentFile);
+      if (!sikhoTxId) return false;
+      currentFile = { ...currentFile, sikhoPaymentStatus: 'confirmed', sikhoPaymentTxId: sikhoTxId, status: 'sikho_paid' };
+    }
+
+    setIsProcessingFileId(file.fileReviewId);
+    setError(null);
+
+    try {
+      // 1. Fetch 402 challenge parameters from Prism via backend
+      const challengeRes = await githubReviewApi.getPrismChallenge(activeReviewId, file.fileReviewId);
+      if (!challengeRes.success || !challengeRes.data) {
+        throw new Error(challengeRes.message || 'Failed to retrieve Prism x402 payment challenge.');
+      }
+      const challenge = challengeRes.data;
+
+      const prismPayTo = challenge.payTo || 'FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE';
+      const amountMicroUSDC = challenge.amountMicroUSDC || 200000;
+      const assetId = parseInt(challenge.assetId || '31566704', 10);
+
+      const client = new algosdk.Algodv2(
+        import.meta.env.VITE_ALGOD_TOKEN || '',
+        import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud',
+        import.meta.env.VITE_ALGOD_PORT || ''
+      );
+
+      const params = await client.getTransactionParams().do();
+      const enc = new TextEncoder();
+
+      // 2. Prompt user's connected wallet to sign REAL x402 payment directly to Prism PayTo ($0.20)
+      const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+        sender: activeAddress,
+        receiver: prismPayTo,
+        amount: amountMicroUSDC,
+        assetIndex: assetId,
+        suggestedParams: params,
+        note: enc.encode(
+          JSON.stringify({
+            service: 'prism-code-review',
+            reviewId: activeReviewId,
+            fileId: file.fileReviewId,
+            filePath: file.filePath,
+            timestamp: Date.now(),
+          })
+        ),
+      } as any);
+
+      const signedArray = await signTransactions([tx.toByte()]);
+      const signedRaw = signedArray.filter(Boolean) as Uint8Array[];
+      if (!signedRaw.length) {
+        throw new Error('Prism transaction signing was cancelled by user.');
+      }
+
+      await client.sendRawTransaction(signedRaw).do();
+      const prismTxId: string = (tx as any).txID();
+      console.log(`[Prism x402] User payment broadcast for ${file.filePath}: TxID=${prismTxId}`);
+
+      // Wait for on-chain confirmation
+      await algosdk.waitForConfirmation(client, prismTxId, 4);
+
+      // 3. Construct standard x402 Payment-Signature header
+      const signaturePayload = {
+        txid: prismTxId,
+        sender: activeAddress,
+        network: challenge.network || 'algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=',
+      };
+      const paymentSignatureHeader = btoa(JSON.stringify(signaturePayload));
+
+      // 4. Submit Payment-Signature to Prism & retrieve code review
+      const submitRes = await githubReviewApi.submitPrismReview(
+        activeReviewId,
+        file.fileReviewId,
+        paymentSignatureHeader,
+        prismTxId
+      );
+      if (!submitRes.success || !submitRes.data) {
+        throw new Error(submitRes.message || 'Prism code review verification failed.');
+      }
+
+      const updatedFile = submitRes.data.file;
       setFileReviews((prev) =>
         prev.map((f) => (f.fileReviewId === file.fileReviewId ? { ...f, ...updatedFile } : f))
       );
@@ -289,10 +404,10 @@ export const BuildStudio: React.FC = () => {
 
       return true;
     } catch (err: any) {
-      console.error(`Error reviewing file ${file.filePath}:`, err);
-      let userMsg = err.message || 'Failed to authorize payment or review file.';
+      console.error(`Prism review error on ${file.filePath}:`, err);
+      let userMsg = err.message || 'Failed to authorize Prism x402 review.';
       if (typeof userMsg === 'string' && userMsg.includes('underflow on subtracting')) {
-        userMsg = `Insufficient USDC Balance: Reviewing this file requires $0.25 USDC. Please fund your Algorand wallet with USDC.`;
+        userMsg = `Insufficient USDC Balance: Paying Prism requires $0.20 USDC. Please fund your Algorand wallet with USDC.`;
       }
       setError(userMsg);
       setFileReviews((prev) =>
@@ -308,7 +423,12 @@ export const BuildStudio: React.FC = () => {
     }
   };
 
-  // 3. Sequential Review All Pending Files (One by One)
+  // 4. Pay & Review Single File (Executes Step 1 then Step 2)
+  const handlePayAndReviewSingleFile = async (file: FileReviewItem): Promise<boolean> => {
+    return handlePayPrismReview(file);
+  };
+
+  // 5. Sequential Review All Pending Files (One by One)
   const handleReviewAllSequentially = async () => {
     if (!discoveryData || !activeReviewId) return;
 
@@ -320,7 +440,7 @@ export const BuildStudio: React.FC = () => {
     for (const file of pendingFiles) {
       const ok = await handlePayAndReviewSingleFile(file);
       if (!ok) {
-        console.warn(`Stopping sequential review runner due to failure or cancellation on ${file.filePath}`);
+        console.warn(`Stopping sequential review runner on ${file.filePath}`);
         break;
       }
     }
@@ -581,7 +701,7 @@ export const BuildStudio: React.FC = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
               <div>
                 <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100">
-                  2. Discovered Tree &amp; Per-File Pricing Architecture
+                  2. Discovered Tree &amp; Per-File Architecture
                 </span>
                 <div className="flex items-center gap-3 mt-2">
                   <h3 className="text-lg font-black text-slate-900">
@@ -599,16 +719,16 @@ export const BuildStudio: React.FC = () => {
               {/* Price Breakdown Summary */}
               <div className="flex items-center gap-4 bg-slate-50 border border-slate-200/80 p-3.5 rounded-xl">
                 <div className="text-right">
-                  <div className="text-[10px] text-slate-500 font-bold uppercase">Rate Per File</div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase">Cost Per File</div>
                   <div className="text-xl font-black text-violet-700">
                     $0.25 USDC
                   </div>
                 </div>
                 <div className="h-8 w-px bg-slate-200" />
                 <div className="text-[11px] text-slate-600 space-y-0.5">
-                  <div>Prism Code Review: <strong>$0.20 / file (Real x402)</strong></div>
-                  <div>Sikho AI Platform Fee: <strong>$0.05 / file</strong></div>
-                  <div className="text-[10px] text-violet-600 font-semibold">Total for {discoveryData.reviewableFileCount} files: ${(discoveryData.reviewableFileCount * 0.25).toFixed(2)} (Billed Independently)</div>
+                  <div>1. Sikho Platform Fee: <strong>$0.05 / file</strong> (User Wallet Sign)</div>
+                  <div>2. Prism Code Review: <strong>$0.20 / file</strong> (User Wallet Real x402)</div>
+                  <div className="text-[10px] text-violet-600 font-semibold">Total for {discoveryData.reviewableFileCount} files: ${(discoveryData.reviewableFileCount * 0.25).toFixed(2)} (Paid Independently)</div>
                 </div>
               </div>
             </div>
@@ -616,7 +736,7 @@ export const BuildStudio: React.FC = () => {
             {/* Architecture Banner */}
             <div className="p-3.5 bg-violet-50/60 border border-violet-100 rounded-xl flex items-center justify-between gap-4">
               <div className="text-xs text-violet-900">
-                <strong>Independent Per-File Settlement:</strong> Each file is paid and reviewed independently (User pays $0.25 → Sikho logs $0.05 fee → Prism executes REAL x402 $0.20 review).
+                <strong>Two Wallet Signings Per File:</strong> For each file, your connected wallet signs <strong>$0.05 to Sikho</strong>, then signs <strong>$0.20 directly to Prism via REAL x402</strong>.
               </div>
               <button
                 onClick={handleReviewAllSequentially}
@@ -637,104 +757,122 @@ export const BuildStudio: React.FC = () => {
               </button>
             </div>
 
-            {/* Discovered Files Table with Per-File Actions */}
+            {/* Discovered Files Table with 2-Step Actions */}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
                 <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200 uppercase text-[10px]">
                   <tr>
                     <th className="py-3 px-4">File Path</th>
-                    <th className="py-3 px-4">Cost</th>
-                    <th className="py-3 px-4">User Payment ($0.25)</th>
-                    <th className="py-3 px-4">Sikho Fee ($0.05)</th>
-                    <th className="py-3 px-4">Prism Payment ($0.20)</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Action</th>
+                    <th className="py-3 px-4">Step 1: Sikho Fee ($0.05)</th>
+                    <th className="py-3 px-4">Step 2: Prism x402 ($0.20)</th>
+                    <th className="py-3 px-4">Review Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-mono text-slate-700">
                   {fileReviews.map((f) => {
                     const isCurrentProcessing = isProcessingFileId === f.fileReviewId;
+                    const isSikhoPaid = f.sikhoPaymentStatus === 'confirmed';
+                    const isPrismPaid = f.prismPaymentStatus === 'confirmed';
+
                     return (
                       <React.Fragment key={f.fileReviewId}>
                         <tr className="hover:bg-slate-50/60 transition">
                           <td className="py-3 px-4 font-bold text-slate-900 flex items-center gap-2 max-w-[280px] truncate">
                             <FileCode size={14} className="text-slate-400 shrink-0" />
-                            <span className="truncate">{f.filePath}</span>
+                            <div className="truncate">
+                              <span className="truncate block">{f.filePath}</span>
+                              <span className="text-[10px] text-slate-400 font-normal">
+                                {f.language} • {(f.size / 1024).toFixed(1)} KB
+                              </span>
+                            </div>
                           </td>
 
-                          <td className="py-3 px-4 font-bold text-violet-700">
-                            $0.25
-                          </td>
-
-                          {/* User Payment */}
+                          {/* Step 1: Sikho Fee */}
                           <td className="py-3 px-4 text-[11px]">
-                            {f.userPaymentTxId ? (
+                            {isSikhoPaid ? (
                               <div className="flex items-center gap-1 text-emerald-700 font-semibold">
                                 <Check size={12} />
-                                <a
-                                  href={`https://allo.info/tx/${f.userPaymentTxId}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-violet-600 hover:underline flex items-center gap-0.5 text-[10px] font-mono"
-                                  title="Verify User Payment On-Chain"
-                                >
-                                  Paid <ExternalLink size={9} />
-                                </a>
+                                <span>Paid $0.05</span>
+                                {f.sikhoPaymentTxId && (
+                                  <a
+                                    href={`https://allo.info/tx/${f.sikhoPaymentTxId}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-violet-600 hover:underline flex items-center gap-0.5 text-[9px] font-mono ml-1"
+                                    title="View Sikho Fee Transaction On-Chain"
+                                  >
+                                    Tx <ExternalLink size={8} />
+                                  </a>
+                                )}
                               </div>
-                            ) : isCurrentProcessing ? (
-                              <span className="text-blue-600 flex items-center gap-1">
-                                <RefreshCw size={10} className="animate-spin" /> Signing...
+                            ) : isCurrentProcessing && !isSikhoPaid ? (
+                              <span className="text-blue-600 flex items-center gap-1 font-semibold">
+                                <RefreshCw size={10} className="animate-spin" /> Signing $0.05...
                               </span>
                             ) : (
-                              <span className="text-slate-400">Unpaid</span>
+                              <button
+                                onClick={() => handlePaySikhoFee(f)}
+                                disabled={isCurrentProcessing || isSequentialRunning}
+                                className="px-2.5 py-1 text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition cursor-pointer border border-slate-200"
+                              >
+                                Pay $0.05
+                              </button>
                             )}
                           </td>
 
-                          {/* Sikho Platform Fee */}
+                          {/* Step 2: Prism Real x402 Payment */}
                           <td className="py-3 px-4 text-[11px]">
-                            {f.platformFeeTransactionId ? (
+                            {isPrismPaid ? (
                               <div className="flex items-center gap-1 text-emerald-700 font-semibold">
                                 <Check size={12} />
-                                <span>$0.05</span>
+                                <span>Paid $0.20 x402</span>
+                                {f.prismPaymentTxId && (
+                                  <a
+                                    href={`https://allo.info/tx/${f.prismPaymentTxId}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-violet-600 hover:underline flex items-center gap-0.5 text-[9px] font-mono ml-1"
+                                    title="View Real x402 Settlement On-Chain"
+                                  >
+                                    Tx <ExternalLink size={8} />
+                                  </a>
+                                )}
                               </div>
+                            ) : isCurrentProcessing && isSikhoPaid ? (
+                              <span className="text-blue-600 flex items-center gap-1 font-semibold">
+                                <RefreshCw size={10} className="animate-spin" /> Signing x402 $0.20...
+                              </span>
+                            ) : isSikhoPaid ? (
+                              <button
+                                onClick={() => handlePayPrismReview(f)}
+                                disabled={isCurrentProcessing || isSequentialRunning}
+                                className="px-2.5 py-1 text-[10px] font-bold bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition cursor-pointer shadow-xs"
+                              >
+                                Pay $0.20 x402
+                              </button>
                             ) : (
-                              <span className="text-slate-400">Waiting...</span>
+                              <span className="text-slate-400">Requires Step 1</span>
                             )}
                           </td>
 
-                          {/* Prism Real x402 Provider Payment */}
-                          <td className="py-3 px-4 text-[11px]">
-                            {f.providerPaymentTxId ? (
-                              <div className="flex items-center gap-1 text-emerald-700 font-semibold">
-                                <Check size={12} />
-                                <a
-                                  href={`https://allo.info/tx/${f.providerPaymentTxId}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-violet-600 hover:underline flex items-center gap-0.5 text-[10px] font-mono"
-                                  title="Verify Prism x402 Settlement On-Chain"
-                                >
-                                  $0.20 x402 <ExternalLink size={9} />
-                                </a>
-                              </div>
-                            ) : (
-                              <span className="text-slate-400">Waiting...</span>
-                            )}
-                          </td>
-
-                          {/* Status */}
+                          {/* Review Status */}
                           <td className="py-3 px-4">
                             {f.status === 'completed' ? (
                               <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1">
                                 <CheckCircle2 size={10} /> Completed
                               </span>
-                            ) : isCurrentProcessing || f.status === 'processing' ? (
+                            ) : isCurrentProcessing || f.status === 'prism_pending' ? (
                               <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1">
                                 <RefreshCw size={10} className="animate-spin" /> Reviewing...
                               </span>
                             ) : f.status === 'failed' ? (
                               <span className="bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1">
                                 <AlertTriangle size={10} /> Failed
+                              </span>
+                            ) : isSikhoPaid ? (
+                              <span className="bg-violet-50 text-violet-700 border border-violet-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                                ○ Ready for x402
                               </span>
                             ) : (
                               <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded text-[10px] font-bold">
@@ -756,17 +894,35 @@ export const BuildStudio: React.FC = () => {
                               </button>
                             ) : f.status === 'failed' ? (
                               <button
-                                onClick={() => handlePayAndReviewSingleFile(f)}
+                                onClick={() => handlePayPrismReview(f)}
                                 disabled={isCurrentProcessing || isSequentialRunning}
                                 className="px-2.5 py-1 text-[10px] font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition cursor-pointer"
                               >
-                                Retry ($0.25)
+                                Retry Review
+                              </button>
+                            ) : isSikhoPaid ? (
+                              <button
+                                onClick={() => handlePayPrismReview(f)}
+                                disabled={isCurrentProcessing || isSequentialRunning}
+                                className="px-3 py-1 text-[10px] font-bold bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white rounded-lg transition shadow-xs cursor-pointer flex items-center gap-1 ml-auto"
+                              >
+                                {isCurrentProcessing ? (
+                                  <>
+                                    <RefreshCw size={10} className="animate-spin" />
+                                    <span>Reviewing...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Lock size={10} />
+                                    <span>Pay $0.20 x402</span>
+                                  </>
+                                )}
                               </button>
                             ) : (
                               <button
                                 onClick={() => handlePayAndReviewSingleFile(f)}
                                 disabled={isCurrentProcessing || isSequentialRunning}
-                                className="px-3 py-1 text-[10px] font-bold bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white rounded-lg transition shadow-xs cursor-pointer flex items-center gap-1 ml-auto"
+                                className="px-3 py-1 text-[10px] font-bold bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-lg transition shadow-xs cursor-pointer flex items-center gap-1 ml-auto"
                               >
                                 {isCurrentProcessing ? (
                                   <>
@@ -776,7 +932,7 @@ export const BuildStudio: React.FC = () => {
                                 ) : (
                                   <>
                                     <Lock size={10} />
-                                    <span>Pay $0.25 &amp; Review</span>
+                                    <span>Pay &amp; Review ($0.25)</span>
                                   </>
                                 )}
                               </button>
@@ -785,7 +941,7 @@ export const BuildStudio: React.FC = () => {
                         </tr>
                         {f.status === 'failed' && f.error && (
                           <tr key={`err_${f.fileReviewId}`} className="bg-red-50/60 text-[11px] text-red-700">
-                            <td colSpan={7} className="py-2.5 px-4 font-mono">
+                            <td colSpan={5} className="py-2.5 px-4 font-mono">
                               <div className="flex items-center gap-2">
                                 <AlertCircle size={14} className="shrink-0 text-red-600" />
                                 <span><strong>Error:</strong> {f.error}</span>

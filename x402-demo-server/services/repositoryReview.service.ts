@@ -1,6 +1,5 @@
 import crypto from "crypto";
 import axios from "axios";
-import algosdk from "algosdk";
 import RepositoryReview, {
   IRepositoryReview,
   IAggregateReview,
@@ -17,9 +16,9 @@ import { env } from "../config/env";
 import { logger } from "../utils/logger";
 
 /**
- * 1. Independent On-Chain Verification of User's $0.25 Payment for a Single File
+ * 1. Independent On-Chain Verification of User's $0.05 Sikho Payment for a Single File
  */
-export async function verifyOnChainFilePayment(
+export async function verifyOnChainSikhoPayment(
   txId: string,
   expectedReceiver: string,
   expectedAssetId: string,
@@ -28,15 +27,15 @@ export async function verifyOnChainFilePayment(
 ): Promise<{ confirmed: boolean; sender: string; amount: number }> {
   if (!txId || typeof txId !== "string" || txId.trim().length === 0) {
     throw new Error(
-      "Missing userPaymentTxId. A real Algorand on-chain transaction ID is required."
+      "Missing sikhoPaymentTxId. A real Algorand on-chain transaction ID is required."
     );
   }
 
   // Prevent replay attacks: ensure txId is not already consumed by another file review
   const existingCompleted = await RepositoryFileReview.findOne({
-    userPaymentTxId: txId,
+    sikhoPaymentTxId: txId,
     fileReviewId: { $ne: fileReviewId },
-    userPaymentStatus: "confirmed",
+    sikhoPaymentStatus: "confirmed",
   });
   if (existingCompleted) {
     throw new Error(
@@ -45,7 +44,7 @@ export async function verifyOnChainFilePayment(
   }
 
   logger.info(
-    `[File Payment] Verifying on-chain tx ${txId} for ${expectedMicroAmount} micro-USDC on Algorand MainNet...`
+    `[Sikho Payment] Verifying on-chain tx ${txId} for ${expectedMicroAmount} micro-USDC on Algorand MainNet...`
   );
 
   // Query Algorand MainNet Indexer (Algonode public API)
@@ -118,83 +117,13 @@ export async function verifyOnChainFilePayment(
   }
 
   logger.info(
-    `[File Payment] Verified tx ${txId}: ${amount} micro-USDC from ${sender} to ${receiver}`
+    `[Sikho Payment] Verified tx ${txId}: ${amount} micro-USDC from ${sender} to ${receiver}`
   );
   return { confirmed: true, sender, amount };
 }
 
 /**
- * 2. Real Provider Payment Signing for a single file to Prism ($0.20 USDC / 200,000 micro-USDC)
- */
-async function signAndBroadcastPrismPayment(
-  payTo: string,
-  amount: number,
-  assetId: string,
-  filePath: string,
-  challengeExtra?: any
-): Promise<{ providerPaymentTxId: string; paymentSignatureHeader: string }> {
-  const mnemonic =
-    process.env.AVM_MNEMONIC || process.env.PLATFORM_SIGNER_MNEMONIC;
-
-  if (!mnemonic || !mnemonic.trim()) {
-    throw new Error(
-      "Backend signing credential (AVM_MNEMONIC) is not configured in backend environment. Real provider payment cannot be signed."
-    );
-  }
-
-  const account = algosdk.mnemonicToSecretKey(mnemonic.trim());
-  const algodClient = new algosdk.Algodv2(
-    env.ALGORAND_API_KEY || "",
-    env.ALGORAND_SERVER || "https://mainnet-api.algonode.cloud",
-    ""
-  );
-
-  const params = await algodClient.getTransactionParams().do();
-  const enc = new TextEncoder();
-  const note = enc.encode(
-    JSON.stringify(
-      challengeExtra || {
-        service: "prism-code-review",
-        file: filePath,
-        timestamp: Date.now(),
-      }
-    )
-  );
-
-  const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-    sender: account.addr,
-    receiver: payTo,
-    amount,
-    assetIndex: parseInt(assetId, 10),
-    suggestedParams: params,
-    note,
-  } as any);
-
-  const signedTx = tx.signTxn(account.sk);
-  const sendRes: any = await algodClient.sendRawTransaction(signedTx).do();
-  const txId: string = sendRes.txId || sendRes.txid || (tx as any).txID();
-
-  logger.info(
-    `[Prism Payment] Provider payment broadcast on Algorand MainNet for ${filePath}: ${txId}`
-  );
-
-  // Wait for confirmation on Algorand
-  await algosdk.waitForConfirmation(algodClient, txId, 4);
-
-  const signaturePayload = {
-    txid: txId,
-    sender: account.addr,
-    network: "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
-  };
-  const paymentSignatureHeader = Buffer.from(
-    JSON.stringify(signaturePayload)
-  ).toString("base64");
-
-  return { providerPaymentTxId: txId, paymentSignatureHeader };
-}
-
-/**
- * 3. Discover Repository and Build Quotation
+ * 2. Discover Repository and Build Per-File Quotation
  */
 export async function discoverRepository(
   repoUrl: string,
@@ -248,12 +177,10 @@ export async function discoverRepository(
       size: file.size,
       sha: file.sha,
       status: "pending",
-      userPaymentAmount: 250000,
-      userPaymentStatus: "pending",
-      platformFeeAmount: 50000,
-      platformFeeStatus: "pending",
-      providerAmount: 200000,
-      providerPaymentStatus: "pending",
+      sikhoPaymentAmount: 50000,
+      sikhoPaymentStatus: "pending",
+      prismPaymentAmount: 200000,
+      prismPaymentStatus: "pending",
     }))
   );
 
@@ -264,12 +191,12 @@ export async function discoverRepository(
 }
 
 /**
- * 4. Execute a Single File Review with its Own Independent $0.25 User Payment
+ * 3. Step 1: Record & Verify Sikho $0.05 Payment for a Single File
  */
-export async function executeFileReviewWithPayment(
+export async function recordSikhoPaymentForFile(
   reviewId: string,
   fileId: string,
-  userPaymentTxId: string
+  sikhoPaymentTxId: string
 ): Promise<IRepositoryFileReview> {
   const review = await RepositoryReview.findOne({ reviewId });
   if (!review) {
@@ -284,47 +211,32 @@ export async function executeFileReviewWithPayment(
     throw new Error(`File review record "${fileId}" not found in review "${reviewId}".`);
   }
 
-  // Idempotency: If already completed, return immediately
-  if (fileDoc.status === "completed" && fileDoc.reviewResult) {
-    logger.info(`File ${fileDoc.filePath} is already completed. Returning cached result.`);
+  // If Sikho payment already confirmed, return current fileDoc (Idempotent)
+  if (fileDoc.sikhoPaymentStatus === "confirmed" && fileDoc.sikhoPaymentTxId) {
     return fileDoc;
   }
 
   const treasuryAddress =
     process.env.AVM_ADDRESS ||
     "2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY";
-  const prismEndpoint =
-    process.env.PRISM_ENDPOINT ||
-    "https://prism-99h2.onrender.com/code-review-accurate";
-  const prismPayTo =
-    process.env.PRISM_PAYTO ||
-    "FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE";
 
-  fileDoc.status = "processing";
-  fileDoc.startedAt = new Date();
+  // Verify User's On-Chain $0.05 USDC Transfer (50,000 micro-USDC)
+  await verifyOnChainSikhoPayment(
+    sikhoPaymentTxId,
+    treasuryAddress,
+    "31566704", // USDC ASA ID
+    50000, // $0.05 micro-USDC
+    fileDoc.fileReviewId
+  );
+
+  fileDoc.sikhoPaymentTxId = sikhoPaymentTxId;
+  fileDoc.sikhoPaymentStatus = "confirmed";
+  fileDoc.status = "sikho_paid";
   await fileDoc.save();
 
+  // Log Platform Fee Record
   try {
-    // ── STEP 1: Verify User's Real On-Chain Payment for THIS File ($0.25 = 250,000 micro-USDC) ──
-    const expectedFileMicroUSDC = 250000; // $0.25
-    await verifyOnChainFilePayment(
-      userPaymentTxId,
-      treasuryAddress,
-      "31566704", // USDC ASA ID
-      expectedFileMicroUSDC,
-      fileDoc.fileReviewId
-    );
-
-    fileDoc.userPaymentTxId = userPaymentTxId;
-    fileDoc.userPaymentStatus = "confirmed";
-    fileDoc.userPaymentAmount = expectedFileMicroUSDC;
-    await fileDoc.save();
-
-    // ── STEP 2: Call Sikho AI Platform Fee Endpoint ($0.05 = 50,000 micro-USDC) ──
-    fileDoc.status = "fee_pending";
-    await fileDoc.save();
-
-    const feeResult = await processPlatformFee({
+    await processPlatformFee({
       reviewId: review.reviewId,
       fileId: fileDoc.fileReviewId,
       filePath: fileDoc.filePath,
@@ -334,160 +246,292 @@ export async function executeFileReviewWithPayment(
       network: "Algorand MainNet",
       purpose: "github_code_review_platform_fee",
     });
+  } catch (feeErr: any) {
+    logger.warn(`Failed to record platform fee ledger for ${fileDoc.filePath}: ${feeErr.message}`);
+  }
 
-    fileDoc.platformFeeStatus = "completed";
-    fileDoc.platformFeeTransactionId = feeResult.platformFeeTransactionId;
-    fileDoc.status = "fee_completed";
-    await fileDoc.save();
+  return fileDoc;
+}
 
-    // ── STEP 3: Fetch Raw File Content from GitHub ──
-    const fileContent = await fetchRawGithubFileContent(
-      review.owner,
-      review.repository,
-      review.commitSha,
-      fileDoc.filePath
+/**
+ * 4. Step 2A: Fetch Prism 402 Challenge for a File
+ * Verifies Sikho fee is paid, reads file code, calls Prism, returns 402 challenge parameters
+ */
+export async function getPrismChallengeForFile(
+  reviewId: string,
+  fileId: string
+): Promise<{
+  fileReviewId: string;
+  filePath: string;
+  language: string;
+  payTo: string;
+  amountMicroUSDC: number;
+  assetId: string;
+  network: string;
+  paymentRequiredHeader?: string;
+}> {
+  const review = await RepositoryReview.findOne({ reviewId });
+  if (!review) {
+    throw new Error(`Repository review "${reviewId}" not found.`);
+  }
+
+  const fileDoc = await RepositoryFileReview.findOne({
+    repositoryReviewId: reviewId,
+    fileReviewId: fileId,
+  });
+  if (!fileDoc) {
+    throw new Error(`File review record "${fileId}" not found.`);
+  }
+
+  if (fileDoc.sikhoPaymentStatus !== "confirmed") {
+    throw new Error(
+      `Sikho AI platform fee ($0.05) has not been confirmed for ${fileDoc.filePath}. Complete Step 1 first.`
+    );
+  }
+
+  const prismEndpoint =
+    process.env.PRISM_ENDPOINT ||
+    "https://prism-99h2.onrender.com/code-review-accurate";
+  const defaultPrismPayTo =
+    process.env.PRISM_PAYTO ||
+    "FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE";
+
+  // Fetch Raw File Content from GitHub
+  const fileContent = await fetchRawGithubFileContent(
+    review.owner,
+    review.repository,
+    review.commitSha,
+    fileDoc.filePath
+  );
+
+  // Probe Prism to trigger HTTP 402 Challenge
+  let initialRes: any;
+  try {
+    initialRes = await axios.post(
+      prismEndpoint,
+      {
+        file_path: fileDoc.filePath,
+        code: fileContent,
+        language: fileDoc.language,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        validateStatus: (status) => status < 500,
+        timeout: 25000,
+      }
+    );
+  } catch (err: any) {
+    logger.warn(`Prism direct probe error: ${err.message}. Using standard challenge parameters.`);
+  }
+
+  let challengePayTo = defaultPrismPayTo;
+  let challengeAmount = 200000;
+  let challengeAsset = "31566704";
+  let challengeNetwork = "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
+  let paymentRequiredHeader = "";
+
+  if (initialRes && initialRes.status === 402) {
+    paymentRequiredHeader =
+      initialRes.headers["payment-required"] ||
+      initialRes.headers["Payment-Required"] ||
+      "";
+
+    if (paymentRequiredHeader) {
+      try {
+        const b64 = paymentRequiredHeader.includes(",")
+          ? paymentRequiredHeader.split(",")[1].trim()
+          : paymentRequiredHeader.trim();
+        const decoded = JSON.parse(
+          Buffer.from(b64, "base64").toString("utf-8")
+        );
+        const accepts = decoded.accepts?.[0] || decoded;
+        if (accepts.payTo) challengePayTo = accepts.payTo;
+        if (accepts.amount) challengeAmount = accepts.amount;
+        if (accepts.asset) challengeAsset = String(accepts.asset);
+        if (accepts.network) challengeNetwork = accepts.network;
+      } catch (_) {}
+    }
+  }
+
+  return {
+    fileReviewId: fileDoc.fileReviewId,
+    filePath: fileDoc.filePath,
+    language: fileDoc.language,
+    payTo: challengePayTo,
+    amountMicroUSDC: challengeAmount,
+    assetId: challengeAsset,
+    network: challengeNetwork,
+    paymentRequiredHeader,
+  };
+}
+
+/**
+ * 5. Step 2B: Submit User's Signed x402 Payment & Receive Real Prism Review
+ */
+export async function submitPrismReviewWithSignature(
+  reviewId: string,
+  fileId: string,
+  paymentSignature: string,
+  prismPaymentTxId?: string
+): Promise<IRepositoryFileReview> {
+  const review = await RepositoryReview.findOne({ reviewId });
+  if (!review) {
+    throw new Error(`Repository review "${reviewId}" not found.`);
+  }
+
+  const fileDoc = await RepositoryFileReview.findOne({
+    repositoryReviewId: reviewId,
+    fileReviewId: fileId,
+  });
+  if (!fileDoc) {
+    throw new Error(`File review record "${fileId}" not found.`);
+  }
+
+  // Idempotency: If already completed, return cached result
+  if (fileDoc.status === "completed" && fileDoc.reviewResult) {
+    return fileDoc;
+  }
+
+  if (fileDoc.sikhoPaymentStatus !== "confirmed") {
+    throw new Error(
+      `Sikho AI platform fee ($0.05) is not confirmed for ${fileDoc.filePath}.`
+    );
+  }
+
+  if (!paymentSignature || paymentSignature.trim().length === 0) {
+    throw new Error("Missing x402 Payment-Signature header signed by user wallet.");
+  }
+
+  const prismEndpoint =
+    process.env.PRISM_ENDPOINT ||
+    "https://prism-99h2.onrender.com/code-review-accurate";
+
+  // Fetch Raw File Content from GitHub
+  const fileContent = await fetchRawGithubFileContent(
+    review.owner,
+    review.repository,
+    review.commitSha,
+    fileDoc.filePath
+  );
+
+  fileDoc.status = "prism_pending";
+  await fileDoc.save();
+
+  try {
+    // Retry Prism with User's Real Payment-Signature
+    const paidRes = await axios.post(
+      prismEndpoint,
+      {
+        file_path: fileDoc.filePath,
+        code: fileContent,
+        language: fileDoc.language,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "Payment-Signature": paymentSignature,
+          "X-PAYMENT": paymentSignature,
+          "payment-signature": paymentSignature,
+        },
+        validateStatus: (status) => status < 500,
+        timeout: 45000,
+      }
     );
 
-    // ── STEP 4: Call Prism Code Review API ($0.20 = 200,000 micro-USDC via REAL x402) ──
-    fileDoc.status = "provider_payment_pending";
-    await fileDoc.save();
-
-    // Initial probe to trigger HTTP 402 challenge
-    let initialRes: any;
-    try {
-      initialRes = await axios.post(
-        prismEndpoint,
-        {
-          file_path: fileDoc.filePath,
-          code: fileContent,
-          language: fileDoc.language,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          validateStatus: (status) => status < 500,
-          timeout: 25000,
-        }
+    if (paidRes.status !== 200 || !paidRes.data) {
+      throw new Error(
+        `Prism review request failed with HTTP ${paidRes.status}: ${JSON.stringify(
+          paidRes.data
+        )}`
       );
-    } catch (err: any) {
-      throw new Error(`Failed to reach Prism endpoint: ${err.message}`);
     }
 
-    let reviewResult: any = null;
-    let providerTxId = fileDoc.providerPaymentTxId || "";
+    const paymentResponseHeader =
+      paidRes.headers["payment-response"] ||
+      paidRes.headers["Payment-Response"] ||
+      paidRes.headers["x-payment-response"] ||
+      "";
 
-    if (initialRes.status === 402) {
-      const prHeader =
-        initialRes.headers["payment-required"] ||
-        initialRes.headers["Payment-Required"] ||
-        "";
-
-      let challengeReq: any = null;
-      if (prHeader) {
-        try {
-          const b64 = prHeader.includes(",")
-            ? prHeader.split(",")[1].trim()
-            : prHeader.trim();
-          const decoded = JSON.parse(
-            Buffer.from(b64, "base64").toString("utf-8")
-          );
-          challengeReq = decoded.accepts?.[0] || decoded;
-        } catch (_) {}
-      }
-
-      let paymentSignatureHeader = "";
-      if (!providerTxId) {
-        const paymentRes = await signAndBroadcastPrismPayment(
-          challengeReq?.payTo || prismPayTo,
-          200000,
-          "31566704",
-          fileDoc.filePath,
-          challengeReq?.extra
+    // Extract real txid from paymentSignature or parameter
+    let extractedTxId = prismPaymentTxId || "";
+    if (!extractedTxId) {
+      try {
+        const decoded = JSON.parse(
+          Buffer.from(paymentSignature, "base64").toString("utf-8")
         );
-        providerTxId = paymentRes.providerPaymentTxId;
-        paymentSignatureHeader = paymentRes.paymentSignatureHeader;
-      } else {
-        const sigPayload = {
-          txid: providerTxId,
-          sender: env.AVM_ADDRESS,
-          network: "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
-        };
-        paymentSignatureHeader = Buffer.from(
-          JSON.stringify(sigPayload)
-        ).toString("base64");
-      }
-
-      fileDoc.providerPaymentTxId = providerTxId;
-      fileDoc.providerPaymentStatus = "confirmed";
-      fileDoc.status = "provider_payment_confirmed";
-      await fileDoc.save();
-
-      // Retry Prism with real Payment-Signature
-      const paidRes = await axios.post(
-        prismEndpoint,
-        {
-          file_path: fileDoc.filePath,
-          code: fileContent,
-          language: fileDoc.language,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            "Payment-Signature": paymentSignatureHeader,
-            "X-PAYMENT": paymentSignatureHeader,
-          },
-          validateStatus: (status) => status < 500,
-          timeout: 45000,
-        }
-      );
-
-      if (paidRes.status === 200 && paidRes.data) {
-        reviewResult = paidRes.data;
-      } else {
-        throw new Error(
-          `Prism review failed with status ${paidRes.status}: ${JSON.stringify(
-            paidRes.data
-          )}`
-        );
-      }
-    } else if (initialRes.status === 200 && initialRes.data) {
-      reviewResult = initialRes.data;
-    } else {
-      throw new Error(`Unexpected Prism response status ${initialRes.status}`);
+        extractedTxId = decoded.txid || decoded.txId || decoded.transactionId || "";
+      } catch (_) {}
     }
 
-    if (!reviewResult) {
-      throw new Error(`No review result received for file ${fileDoc.filePath}`);
-    }
-
-    // ── STEP 5: Mark File Completed ──
+    fileDoc.prismPaymentStatus = "confirmed";
+    fileDoc.prismPaymentTxId = extractedTxId;
+    fileDoc.prismPaymentResponse = paymentResponseHeader;
+    fileDoc.reviewResult = paidRes.data;
     fileDoc.status = "completed";
-    fileDoc.reviewResult = reviewResult;
     fileDoc.completedAt = new Date();
     fileDoc.error = undefined;
     await fileDoc.save();
 
-    // ── STEP 6: Update Repository Summary ──
+    // Re-calculate Repository Summary
     await aggregateRepositoryReview(review.reviewId);
 
     return fileDoc;
   } catch (err: any) {
-    logger.error(`[File Review] Error on ${fileDoc.filePath}: ${err.message}`);
+    logger.error(`[Prism Review] Error on ${fileDoc.filePath}: ${err.message}`);
     fileDoc.status = "failed";
-    fileDoc.error = err.message || "File review execution failed.";
+    fileDoc.error = err.message || "Prism x402 review failed.";
     await fileDoc.save();
     await aggregateRepositoryReview(review.reviewId);
     throw err;
   }
 }
 
+/**
+ * 6. Execute File Review with Payment (Unified Flow Handler)
+ */
+export async function executeFileReviewWithPayment(
+  reviewId: string,
+  fileId: string,
+  sikhoPaymentTxId?: string,
+  paymentSignature?: string,
+  prismPaymentTxId?: string
+): Promise<IRepositoryFileReview> {
+  const fileDoc = await RepositoryFileReview.findOne({
+    repositoryReviewId: reviewId,
+    fileReviewId: fileId,
+  });
+  if (!fileDoc) {
+    throw new Error(`File review record "${fileId}" not found.`);
+  }
+
+  let currentFile: IRepositoryFileReview = fileDoc;
+
+  // If Sikho payment provided and not yet confirmed, confirm it
+  if (sikhoPaymentTxId && currentFile.sikhoPaymentStatus !== "confirmed") {
+    currentFile = await recordSikhoPaymentForFile(reviewId, fileId, sikhoPaymentTxId);
+  }
+
+  // If paymentSignature provided, submit Prism review
+  if (paymentSignature) {
+    return submitPrismReviewWithSignature(
+      reviewId,
+      fileId,
+      paymentSignature,
+      prismPaymentTxId
+    );
+  }
+
+  return currentFile;
+}
+
 export const executeFileReview = executeFileReviewWithPayment;
 
 /**
- * 5. Aggregate Findings and Generate Repository-Level Summary
+ * 7. Aggregate Findings and Generate Repository-Level Summary
  */
 export async function aggregateRepositoryReview(
   reviewId: string
@@ -574,12 +618,14 @@ export async function aggregateRepositoryReview(
 }
 
 /**
- * 6. Retry a Single Failed File with user payment verification
+ * 8. Retry a Single Failed File (Idempotent: preserves Sikho payment if confirmed)
  */
 export async function retrySingleFileReview(
   reviewId: string,
   fileId: string,
-  userPaymentTxId?: string
+  sikhoPaymentTxId?: string,
+  paymentSignature?: string,
+  prismPaymentTxId?: string
 ): Promise<IRepositoryFileReview> {
   const fileDoc = await RepositoryFileReview.findOne({
     repositoryReviewId: reviewId,
@@ -590,10 +636,14 @@ export async function retrySingleFileReview(
     throw new Error(`File review "${fileId}" not found.`);
   }
 
-  const txIdToUse = userPaymentTxId || fileDoc.userPaymentTxId;
-  if (!txIdToUse) {
-    throw new Error("Missing userPaymentTxId for file review.");
-  }
+  fileDoc.retryCount = (fileDoc.retryCount || 0) + 1;
+  await fileDoc.save();
 
-  return executeFileReviewWithPayment(reviewId, fileId, txIdToUse);
+  return executeFileReviewWithPayment(
+    reviewId,
+    fileId,
+    sikhoPaymentTxId || fileDoc.sikhoPaymentTxId,
+    paymentSignature,
+    prismPaymentTxId || fileDoc.prismPaymentTxId
+  );
 }

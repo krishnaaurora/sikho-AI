@@ -10,30 +10,30 @@ export interface IRepositoryFileReview extends Document {
 
   status:
     | "pending"
-    | "processing"
-    | "fee_pending"
-    | "fee_completed"
-    | "provider_payment_pending"
-    | "provider_payment_confirmed"
+    | "sikho_paid"
+    | "prism_pending"
+    | "prism_paid"
     | "completed"
-    | "failed"
-    | "retry_required";
+    | "failed";
 
-  userPaymentAmount: number; // 250000 micro-USDC ($0.25)
-  userPaymentStatus: "pending" | "confirmed" | "failed";
-  userPaymentTxId?: string;
-
-  platformFeeAmount: number; // 50000 micro-USDC ($0.05)
-  platformFeeStatus: "pending" | "completed" | "failed";
+  // Sikho AI Platform Fee ($0.05 USDC / 50,000 micro-USDC)
+  sikhoPaymentAmount: number;
+  sikhoPaymentStatus: "pending" | "confirmed" | "failed";
+  sikhoPaymentTxId?: string;
+  platformFeeAmount?: number;
+  platformFeeStatus?: string;
   platformFeeTransactionId?: string;
 
-  providerAmount: number; // 200000 micro-USDC ($0.20)
-  providerPaymentStatus: "pending" | "confirmed" | "failed";
-  providerPaymentTxId?: string;
+  // Prism AI Code Review ($0.20 USDC / 200,000 micro-USDC via Real x402)
+  prismPaymentAmount: number;
+  prismPaymentStatus: "pending" | "confirmed" | "failed";
+  prismPaymentTxId?: string;
+  prismPaymentResponse?: string;
   prismRequestId?: string;
 
   reviewResult?: any;
   error?: string;
+  retryCount: number;
 
   startedAt?: Date;
   completedAt?: Date;
@@ -74,57 +74,45 @@ const RepositoryFileReviewSchema = new Schema<IRepositoryFileReview>(
       type: String,
       enum: [
         "pending",
-        "processing",
-        "fee_pending",
-        "fee_completed",
-        "provider_payment_pending",
-        "provider_payment_confirmed",
+        "sikho_paid",
+        "prism_pending",
+        "prism_paid",
         "completed",
         "failed",
-        "retry_required",
       ],
       default: "pending",
       index: true,
     },
-    userPaymentAmount: {
+    sikhoPaymentAmount: {
       type: Number,
-      default: 250000,
+      default: 50000,
     },
-    userPaymentStatus: {
+    sikhoPaymentStatus: {
       type: String,
       enum: ["pending", "confirmed", "failed"],
       default: "pending",
     },
-    userPaymentTxId: {
+    sikhoPaymentTxId: {
       type: String,
       sparse: true,
       index: true,
     },
-    platformFeeAmount: {
-      type: Number,
-      default: 50000,
-    },
-    platformFeeStatus: {
-      type: String,
-      enum: ["pending", "completed", "failed"],
-      default: "pending",
-    },
-    platformFeeTransactionId: {
-      type: String,
-      sparse: true,
-    },
-    providerAmount: {
+    prismPaymentAmount: {
       type: Number,
       default: 200000,
     },
-    providerPaymentStatus: {
+    prismPaymentStatus: {
       type: String,
       enum: ["pending", "confirmed", "failed"],
       default: "pending",
     },
-    providerPaymentTxId: {
+    prismPaymentTxId: {
       type: String,
       sparse: true,
+      index: true,
+    },
+    prismPaymentResponse: {
+      type: String,
     },
     prismRequestId: {
       type: String,
@@ -135,6 +123,10 @@ const RepositoryFileReviewSchema = new Schema<IRepositoryFileReview>(
     },
     error: {
       type: String,
+    },
+    retryCount: {
+      type: Number,
+      default: 0,
     },
     startedAt: {
       type: Date,
