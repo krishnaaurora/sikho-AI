@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Code2, ShieldAlert, Sparkles, Terminal, FileCode, CheckCircle2,
   AlertTriangle, ArrowLeft, Play, Copy, Check, ExternalLink,
-  Lock, RefreshCw, Cpu, Layers, Download, Bug, Zap, Eye, Github,
+  Lock, RefreshCw, Cpu, Layers, Download, Bug, Zap, Eye,
   DollarSign, CheckCheck
 } from 'lucide-react';
 import { servicesApi } from '../utils/api';
@@ -240,12 +240,14 @@ export const BuildStudio: React.FC = () => {
         assetIndex: 31566704, // Algorand MainNet USDC ASA ID
         suggestedParams: params,
         note: noteBytes,
-      });
+      } as any);
 
       const binaryTx = tx.toByte();
       const signedArray = await signTransactions([binaryTx]);
+      const signedRaw = signedArray.filter(Boolean) as Uint8Array[];
       
-      const { txId } = await client.sendRawTransaction(signedArray).do();
+      const sendRes: any = await client.sendRawTransaction(signedRaw).do();
+      const txId: string = sendRes.txId || sendRes.txid || (tx as any).txID();
       console.log(`[GitHub Review] User payment broadcast on Algorand MainNet with TxID: ${txId}`);
 
       // Wait for block confirmation on Algorand
@@ -678,8 +680,8 @@ export const BuildStudio: React.FC = () => {
                       <span className="text-emerald-300 font-bold truncate max-w-[160px]">{auditResult.receipts.providerPaymentTxId}</span>
                     </div>
                     <div className="flex justify-between border-t border-slate-800 pt-1 text-[10px]">
-                      <span>Prism (${auditResult.receipts.providerAmount.toFixed(2)}) + Platform Fee (${auditResult.receipts.platformFee.toFixed(2)})</span>
-                      <span className="text-white font-bold">${auditResult.receipts.userTotalAmount.toFixed(2)} USDC</span>
+                      <span>Prism (${(auditResult.receipts.providerAmount ?? 0.20).toFixed(2)}) + Platform Fee (${(auditResult.receipts.platformFee ?? 0.05).toFixed(2)})</span>
+                      <span className="text-white font-bold">${(auditResult.receipts.userTotalAmount ?? 0.25).toFixed(2)} USDC</span>
                     </div>
                   </div>
                 )}
