@@ -1,5 +1,5 @@
 import axios from "axios";
-import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
 import algosdk from "algosdk";
 import ServiceTransaction, {
   IServiceTransaction,
@@ -7,6 +7,8 @@ import ServiceTransaction, {
 import { getServiceById, IRegisteredService } from "./serviceRegistry";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
+
+const uuidv4 = () => crypto.randomUUID();
 
 export interface OrchestrationRequest {
   serviceId: string;
@@ -165,10 +167,11 @@ async function signAndBroadcastProviderPayment(
     assetIndex,
     suggestedParams: params,
     note,
-  });
+  } as any);
 
   const signedTx = tx.signTxn(account.sk);
-  const { txId } = await algodClient.sendRawTransaction(signedTx).do();
+  const sendRes: any = await algodClient.sendRawTransaction(signedTx).do();
+  const txId: string = sendRes.txId || sendRes.txid || (tx as any).txID();
   logger.info(`[Orchestrator] Provider payment broadcast to Prism on Algorand MainNet: ${txId}`);
 
   // Wait for confirmation on Algorand
@@ -356,8 +359,8 @@ export const executeServiceOrchestration = async (
       service,
       result: auditData,
       receipts: {
-        userPaymentTxId: transaction.userPaymentTxId,
-        providerPaymentTxId: transaction.providerPaymentTxId,
+        userPaymentTxId: transaction.userPaymentTxId || reqData.userPaymentTxId || "",
+        providerPaymentTxId: transaction.providerPaymentTxId || providerPaymentTxId || "",
         providerPayTo: service.payToAddress,
         providerAmount: service.providerPrice,
         platformFee: service.platformFee,

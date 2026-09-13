@@ -11,7 +11,7 @@ export const getRegistry = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const getServiceDetails = asyncHandler(async (req: Request, res: Response) => {
-  const { serviceId } = req.params;
+  const serviceId = String(req.params.serviceId || "");
   const service = getServiceById(serviceId);
   if (!service) {
     return res.status(404).json({ success: false, message: "Service not found" });
@@ -55,7 +55,7 @@ export const getTransactionHistory = asyncHandler(async (req: any, res: Response
 });
 
 export const getTransactionById = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = String(req.params.id || "");
   let query: any = { requestId: id };
   if (/^[0-9a-fA-F]{24}$/.test(id)) {
     query = { $or: [{ _id: id }, { requestId: id }] };

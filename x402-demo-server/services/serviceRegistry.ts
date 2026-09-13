@@ -12,6 +12,7 @@ export interface IRegisteredService {
   assetId: string;       // "31566704" (MainNet USDC ASA)
   payToAddress: string;  // Provider PayTo Address
   network: string;       // CAIP-2 Algorand MainNet identifier
+  platformTreasuryAddress?: string;
   enabled: boolean;
   supportedMethods: string[];
 }
@@ -30,6 +31,7 @@ export const SERVICE_REGISTRY: Record<string, IRegisteredService> = {
     currency: "USDC",
     assetId: "31566704",
     payToAddress: "FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE",
+    platformTreasuryAddress: "2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY",
     network: "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
     enabled: true,
     supportedMethods: ["GET", "POST"],
