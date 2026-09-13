@@ -378,10 +378,40 @@ export const githubReviewApi = {
     });
   },
 
-  async submitSikhoPayment(reviewId: string, fileId: string, sikhoPaymentTxId: string) {
+  async getSikhoChallenge(reviewId: string, fileId: string) {
+    return fetchAPI<ApiResponse<{
+      x402Version: number;
+      error: string;
+      resource: { url: string; description: string };
+      accepts: Array<{
+        scheme: string;
+        network: string;
+        payTo: string;
+        amount: string;
+        asset: string;
+        description: string;
+        extra: any;
+      }>;
+    }>>(API_ENDPOINTS.GITHUB_REVIEW_SIKHO_CHALLENGE(reviewId, fileId), {
+      method: 'POST',
+      body: JSON.stringify({ reviewId, fileId }),
+    });
+  },
+
+  async submitSikhoPayment(reviewId: string, fileId: string, paymentSignatureOrTxId: string, senderAddress?: string) {
     return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.GITHUB_REVIEW_SIKHO_PAYMENT(reviewId, fileId), {
       method: 'POST',
-      body: JSON.stringify({ reviewId, fileId, sikhoPaymentTxId }),
+      headers: {
+        'Payment-Signature': paymentSignatureOrTxId,
+        'X-PAYMENT': paymentSignatureOrTxId,
+      },
+      body: JSON.stringify({
+        reviewId,
+        fileId,
+        sikhoPaymentTxId: paymentSignatureOrTxId,
+        paymentSignature: paymentSignatureOrTxId,
+        sender: senderAddress,
+      }),
     });
   },
 

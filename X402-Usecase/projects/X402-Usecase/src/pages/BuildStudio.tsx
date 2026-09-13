@@ -204,7 +204,7 @@ export const BuildStudio: React.FC = () => {
     }
   };
 
-  // 2. Step 1: User pays $0.05 USDC to Sikho Treasury
+  // 2. Step 1: User pays $0.05 USDC to Sikho AI via Real x402 Protocol
   const handlePaySikhoFee = async (file: FileReviewItem): Promise<string | null> => {
     if (!activeAddress) {
       setError('Please connect your Algorand wallet in the top navigation bar to proceed with payment.');
@@ -219,9 +219,18 @@ export const BuildStudio: React.FC = () => {
     setError(null);
 
     try {
-      const treasuryAddress =
+      // 1. Fetch Sikho x402 Challenge (HTTP 402 Requirements)
+      const challengeRes = await githubReviewApi.getSikhoChallenge(activeReviewId, file.fileReviewId);
+      const challenge = challengeRes.data;
+      const accept = challenge?.accepts?.[0] || {};
+
+      const sikhoPayTo =
+        accept.payTo ||
         import.meta.env.VITE_AVM_ADDRESS ||
         '2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY';
+      const amountMicro = parseInt(accept.amount || '50000', 10);
+      const assetId = parseInt(accept.asset || '31566704', 10);
+      const network = accept.network || 'algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
 
       const client = new algosdk.Algodv2(
         import.meta.env.VITE_ALGOD_TOKEN || '',
@@ -232,12 +241,12 @@ export const BuildStudio: React.FC = () => {
       const params = await client.getTransactionParams().do();
       const enc = new TextEncoder();
 
-      // Exactly 50,000 micro-USDC ($0.05) to Sikho Treasury
+      // 2. User connected wallet signs REAL x402 payment ($0.05 USDC / 50,000 micro-USDC)
       const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
         sender: activeAddress,
-        receiver: treasuryAddress,
-        amount: 50000,
-        assetIndex: 31566704, // Algorand MainNet USDC ASA
+        receiver: sikhoPayTo,
+        amount: amountMicro,
+        assetIndex: assetId,
         suggestedParams: params,
         note: enc.encode(
           JSON.stringify({
@@ -253,20 +262,33 @@ export const BuildStudio: React.FC = () => {
       const signedArray = await signTransactions([tx.toByte()]);
       const signedRaw = signedArray.filter(Boolean) as Uint8Array[];
       if (!signedRaw.length) {
-        throw new Error('Sikho platform fee signing was cancelled by user.');
+        throw new Error('Sikho x402 payment signing was cancelled by user.');
       }
 
       await client.sendRawTransaction(signedRaw).do();
       const txId: string = (tx as any).txID();
-      console.log(`[Sikho Payment] User broadcast for ${file.filePath}: TxID=${txId}`);
+      console.log(`[Sikho x402] User payment broadcast for ${file.filePath}: TxID=${txId}`);
 
       // Wait for on-chain confirmation
       await algosdk.waitForConfirmation(client, txId, 4);
 
-      // Verify on backend
-      const res = await githubReviewApi.submitSikhoPayment(activeReviewId, file.fileReviewId, txId);
+      // 3. Construct standard x402 Payment-Signature header
+      const signaturePayload = {
+        txid: txId,
+        sender: activeAddress,
+        network,
+      };
+      const paymentSignatureHeader = btoa(JSON.stringify(signaturePayload));
+
+      // 4. Send Payment-Signature to Sikho x402 endpoint & receive HTTP 200
+      const res = await githubReviewApi.submitSikhoPayment(
+        activeReviewId,
+        file.fileReviewId,
+        paymentSignatureHeader,
+        activeAddress
+      );
       if (!res.success || !res.data) {
-        throw new Error(res.message || 'Failed to verify Sikho platform fee on backend.');
+        throw new Error(res.message || 'Failed to verify Sikho x402 payment on backend.');
       }
 
       const updatedFile = res.data.file;
@@ -276,10 +298,10 @@ export const BuildStudio: React.FC = () => {
 
       return txId;
     } catch (err: any) {
-      console.error(`Sikho payment error on ${file.filePath}:`, err);
-      let userMsg = err.message || 'Failed to authorize Sikho platform fee.';
+      console.error(`Sikho x402 payment error on ${file.filePath}:`, err);
+      let userMsg = err.message || 'Failed to authorize Sikho x402 fee.';
       if (typeof userMsg === 'string' && userMsg.includes('underflow on subtracting')) {
-        userMsg = `Insufficient USDC Balance: Paying Sikho platform fee requires $0.05 USDC. Please fund your Algorand wallet with USDC.`;
+        userMsg = `Insufficient USDC Balance: Paying Sikho fee requires $0.05 USDC. Please fund your Algorand wallet with USDC.`;
       }
       setError(userMsg);
       setFileReviews((prev) =>
@@ -306,7 +328,7 @@ export const BuildStudio: React.FC = () => {
       return false;
     }
 
-    // Ensure Step 1 (Sikho fee) is confirmed first
+    // Ensure Step 1 (Sikho x402 fee) is confirmed first
     let currentFile = fileReviews.find((f) => f.fileReviewId === file.fileReviewId) || file;
     if (currentFile.sikhoPaymentStatus !== 'confirmed') {
       const sikhoTxId = await handlePaySikhoFee(currentFile);
@@ -328,6 +350,7 @@ export const BuildStudio: React.FC = () => {
       const prismPayTo = challenge.payTo || 'FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE';
       const amountMicroUSDC = challenge.amountMicroUSDC || 200000;
       const assetId = parseInt(challenge.assetId || '31566704', 10);
+      const network = challenge.network || 'algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
 
       const client = new algosdk.Algodv2(
         import.meta.env.VITE_ALGOD_TOKEN || '',
@@ -373,7 +396,7 @@ export const BuildStudio: React.FC = () => {
       const signaturePayload = {
         txid: prismTxId,
         sender: activeAddress,
-        network: challenge.network || 'algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=',
+        network,
       };
       const paymentSignatureHeader = btoa(JSON.stringify(signaturePayload));
 
@@ -788,19 +811,19 @@ export const BuildStudio: React.FC = () => {
                             </div>
                           </td>
 
-                          {/* Step 1: Sikho Fee */}
+                          {/* Step 1: Sikho x402 Fee */}
                           <td className="py-3 px-4 text-[11px]">
                             {isSikhoPaid ? (
                               <div className="flex items-center gap-1 text-emerald-700 font-semibold">
                                 <Check size={12} />
-                                <span>Paid $0.05</span>
+                                <span>Paid $0.05 x402</span>
                                 {f.sikhoPaymentTxId && (
                                   <a
                                     href={`https://allo.info/tx/${f.sikhoPaymentTxId}`}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="text-violet-600 hover:underline flex items-center gap-0.5 text-[9px] font-mono ml-1"
-                                    title="View Sikho Fee Transaction On-Chain"
+                                    title="View Sikho x402 Fee Transaction On-Chain"
                                   >
                                     Tx <ExternalLink size={8} />
                                   </a>
@@ -808,7 +831,7 @@ export const BuildStudio: React.FC = () => {
                               </div>
                             ) : isCurrentProcessing && !isSikhoPaid ? (
                               <span className="text-blue-600 flex items-center gap-1 font-semibold">
-                                <RefreshCw size={10} className="animate-spin" /> Signing $0.05...
+                                <RefreshCw size={10} className="animate-spin" /> Signing $0.05 x402...
                               </span>
                             ) : (
                               <button
@@ -816,7 +839,7 @@ export const BuildStudio: React.FC = () => {
                                 disabled={isCurrentProcessing || isSequentialRunning}
                                 className="px-2.5 py-1 text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition cursor-pointer border border-slate-200"
                               >
-                                Pay $0.05
+                                Pay $0.05 x402
                               </button>
                             )}
                           </td>

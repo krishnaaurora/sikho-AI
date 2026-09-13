@@ -3,6 +3,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { sendSuccessResponse } from "../utils/response";
 import {
   discoverRepository,
+  getSikhoChallengeForFile,
   recordSikhoPaymentForFile,
   getPrismChallengeForFile,
   submitPrismReviewWithSignature,
@@ -65,9 +66,11 @@ export const discover = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * Step 1: User verifies & records $0.05 Sikho platform fee payment
+ * Step 1: Sikho AI x402 Protocol Endpoint ($0.05 USDC / 50,000 micro-USDC)
+ * - If called without Payment-Signature: Returns HTTP 402 + Payment-Required header
+ * - If called with Payment-Signature: Verifies payment on-chain, records fee, returns HTTP 200 + Payment-Response header
  */
-export const recordSikhoPayment = asyncHandler(async (req: Request, res: Response) => {
+export const handleSikhoX402Payment = asyncHandler(async (req: Request, res: Response) => {
   const reviewId: string =
     typeof req.params.reviewId === "string"
       ? req.params.reviewId
@@ -78,23 +81,97 @@ export const recordSikhoPayment = asyncHandler(async (req: Request, res: Respons
       ? req.params.fileId
       : req.body.fileId || "";
 
-  const { sikhoPaymentTxId } = req.body;
-
-  if (!reviewId || !fileId || !sikhoPaymentTxId) {
+  if (!reviewId || !fileId) {
     return res.status(400).json({
       success: false,
-      message: "reviewId, fileId, and sikhoPaymentTxId are required.",
+      message: "reviewId and fileId are required.",
     });
   }
 
-  const result = await recordSikhoPaymentForFile(reviewId, fileId, sikhoPaymentTxId);
+  const paymentSignature = (
+    req.headers["payment-signature"] ||
+    req.headers["x-payment"] ||
+    req.body?.paymentSignature ||
+    req.body?.sikhoPaymentTxId
+  ) as string | undefined;
+
+  const senderAddress = (
+    req.headers["x-payer"] ||
+    req.body?.sender ||
+    req.body?.senderAddress
+  ) as string | undefined;
+
+  // Case 1: No Payment-Signature Header -> Yield HTTP 402 Challenge
+  if (!paymentSignature || paymentSignature.trim().length === 0) {
+    const challenge = await getSikhoChallengeForFile(reviewId, fileId);
+    const encodedRequired = Buffer.from(JSON.stringify(challenge)).toString("base64");
+
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader(
+      "Access-Control-Expose-Headers",
+      "X-PAYMENT-RESPONSE, PAYMENT-REQUIRED, PAYMENT-RESPONSE"
+    );
+    res.setHeader("PAYMENT-REQUIRED", encodedRequired);
+    return res.status(402).json(challenge);
+  }
+
+  // Case 2: Payment-Signature Header Present -> Verify, Settle & Yield HTTP 200
+  const result = await recordSikhoPaymentForFile(
+    reviewId,
+    fileId,
+    paymentSignature,
+    senderAddress
+  );
+
+  res.setHeader(
+    "Access-Control-Expose-Headers",
+    "X-PAYMENT-RESPONSE, PAYMENT-RESPONSE, PAYMENT-REQUIRED"
+  );
+  res.setHeader("PAYMENT-RESPONSE", result.paymentResponseHeader);
+  res.setHeader("X-PAYMENT-RESPONSE", result.paymentResponseHeader);
 
   sendSuccessResponse(
     res,
-    { file: result },
-    "Sikho platform fee ($0.05) verified and recorded successfully",
+    {
+      file: result.file,
+      txId: result.txId,
+      paymentResponse: result.paymentResponseHeader,
+    },
+    "Sikho AI platform fee ($0.05) verified and settled via x402 protocol",
     200
   );
+});
+
+export const recordSikhoPayment = handleSikhoX402Payment;
+
+export const getSikhoChallenge = asyncHandler(async (req: Request, res: Response) => {
+  const reviewId: string =
+    typeof req.params.reviewId === "string"
+      ? req.params.reviewId
+      : req.body.reviewId || "";
+
+  const fileId: string =
+    typeof req.params.fileId === "string"
+      ? req.params.fileId
+      : req.body.fileId || "";
+
+  if (!reviewId || !fileId) {
+    return res.status(400).json({
+      success: false,
+      message: "reviewId and fileId are required.",
+    });
+  }
+
+  const challenge = await getSikhoChallengeForFile(reviewId, fileId);
+  const encodedRequired = Buffer.from(JSON.stringify(challenge)).toString("base64");
+
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader(
+    "Access-Control-Expose-Headers",
+    "X-PAYMENT-RESPONSE, PAYMENT-REQUIRED, PAYMENT-RESPONSE"
+  );
+  res.setHeader("PAYMENT-REQUIRED", encodedRequired);
+  return res.status(402).json(challenge);
 });
 
 /**

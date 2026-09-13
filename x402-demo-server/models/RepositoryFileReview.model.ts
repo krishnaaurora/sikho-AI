@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IRepositoryFileReview extends Document {
   fileReviewId: string;
+  fileId?: string;
   repositoryReviewId: string; // matches RepositoryReview.reviewId
   filePath: string;
   language: string;
@@ -15,11 +16,16 @@ export interface IRepositoryFileReview extends Document {
     | "prism_paid"
     | "completed"
     | "failed";
+  reviewStatus?: string;
 
-  // Sikho AI Platform Fee ($0.05 USDC / 50,000 micro-USDC)
+  // Sikho AI Platform Fee ($0.05 USDC / 50,000 micro-USDC via Real x402)
   sikhoPaymentAmount: number;
   sikhoPaymentStatus: "pending" | "confirmed" | "failed";
   sikhoPaymentTxId?: string;
+  sikhoPaymentResponse?: string;
+  sikhoX402Status?: string;
+  sikhoX402TxId?: string;
+  sikhoX402PaymentResponse?: string;
   platformFeeAmount?: number;
   platformFeeStatus?: string;
   platformFeeTransactionId?: string;
@@ -29,6 +35,9 @@ export interface IRepositoryFileReview extends Document {
   prismPaymentStatus: "pending" | "confirmed" | "failed";
   prismPaymentTxId?: string;
   prismPaymentResponse?: string;
+  prismX402Status?: string;
+  prismX402TxId?: string;
+  prismX402PaymentResponse?: string;
   prismRequestId?: string;
 
   reviewResult?: any;
@@ -70,6 +79,10 @@ const RepositoryFileReviewSchema = new Schema<IRepositoryFileReview>(
       type: String,
       default: "",
     },
+    fileId: {
+      type: String,
+      sparse: true,
+    },
     status: {
       type: String,
       enum: [
@@ -82,6 +95,9 @@ const RepositoryFileReviewSchema = new Schema<IRepositoryFileReview>(
       ],
       default: "pending",
       index: true,
+    },
+    reviewStatus: {
+      type: String,
     },
     sikhoPaymentAmount: {
       type: Number,
@@ -96,6 +112,18 @@ const RepositoryFileReviewSchema = new Schema<IRepositoryFileReview>(
       type: String,
       sparse: true,
       index: true,
+    },
+    sikhoPaymentResponse: {
+      type: String,
+    },
+    sikhoX402Status: {
+      type: String,
+    },
+    sikhoX402TxId: {
+      type: String,
+    },
+    sikhoX402PaymentResponse: {
+      type: String,
     },
     prismPaymentAmount: {
       type: Number,
@@ -112,6 +140,15 @@ const RepositoryFileReviewSchema = new Schema<IRepositoryFileReview>(
       index: true,
     },
     prismPaymentResponse: {
+      type: String,
+    },
+    prismX402Status: {
+      type: String,
+    },
+    prismX402TxId: {
+      type: String,
+    },
+    prismX402PaymentResponse: {
       type: String,
     },
     prismRequestId: {

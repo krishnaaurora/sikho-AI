@@ -130,62 +130,17 @@ async function verifyOnChainUserPayment(
 }
 
 /**
- * 2. Real Provider Payment Signing ($0.20 USDC to Prism)
- * Reads AVM_MNEMONIC from backend environment, signs real transaction, and broadcasts to MainNet.
+ * Provider Payment Handling:
+ * In the pure x402 architecture, all payments are signed directly by the user's connected wallet.
+ * The backend does not hold or use private keys/mnemonics.
  */
 async function signAndBroadcastProviderPayment(
-  service: IRegisteredService,
-  challengeReq: any
+  _service: IRegisteredService,
+  _challengeReq: any
 ): Promise<{ providerPaymentTxId: string; paymentSignatureHeader: string }> {
-  const mnemonic = process.env.AVM_MNEMONIC || process.env.PLATFORM_SIGNER_MNEMONIC;
-
-  if (!mnemonic || !mnemonic.trim()) {
-    throw new Error(
-      "Backend signing credential (AVM_MNEMONIC) is not configured in backend environment. Real provider payment cannot be signed."
-    );
-  }
-
-  const payTo = challengeReq?.payTo || service.payToAddress;
-  const amount = parseInt(challengeReq?.amount || "200000", 10);
-  const assetIndex = parseInt(challengeReq?.asset || service.assetId, 10);
-
-  const account = algosdk.mnemonicToSecretKey(mnemonic.trim());
-  const algodClient = new algosdk.Algodv2(
-    env.ALGORAND_API_KEY || "",
-    env.ALGORAND_SERVER || "https://mainnet-api.algonode.cloud",
-    ""
+  throw new Error(
+    "Server-side wallet signing is disabled. All x402 payments must be authorized and signed directly by the user's connected wallet."
   );
-
-  const params = await algodClient.getTransactionParams().do();
-  const enc = new TextEncoder();
-  const note = enc.encode(JSON.stringify(challengeReq?.extra || { service: "prism-code-review" }));
-
-  const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-    sender: account.addr,
-    receiver: payTo,
-    amount,
-    assetIndex,
-    suggestedParams: params,
-    note,
-  } as any);
-
-  const signedTx = tx.signTxn(account.sk);
-  const sendRes: any = await algodClient.sendRawTransaction(signedTx).do();
-  const txId: string = sendRes.txId || sendRes.txid || (tx as any).txID();
-  logger.info(`[Orchestrator] Provider payment broadcast to Prism on Algorand MainNet: ${txId}`);
-
-  // Wait for confirmation on Algorand
-  await algosdk.waitForConfirmation(algodClient, txId, 4);
-
-  // Encode standard x402 payment signature header
-  const signaturePayload = {
-    txid: txId,
-    sender: account.addr,
-    network: service.network,
-  };
-  const paymentSignatureHeader = Buffer.from(JSON.stringify(signaturePayload)).toString("base64");
-
-  return { providerPaymentTxId: txId, paymentSignatureHeader };
 }
 
 /**

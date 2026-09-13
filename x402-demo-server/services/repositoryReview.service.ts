@@ -191,13 +191,26 @@ export async function discoverRepository(
 }
 
 /**
- * 3. Step 1: Record & Verify Sikho $0.05 Payment for a Single File
+ * 3A. Fetch Sikho 402 Challenge for a Single File
  */
-export async function recordSikhoPaymentForFile(
+export async function getSikhoChallengeForFile(
   reviewId: string,
-  fileId: string,
-  sikhoPaymentTxId: string
-): Promise<IRepositoryFileReview> {
+  fileId: string
+): Promise<{
+  x402Version: number;
+  error: string;
+  resource: { url: string; description: string };
+  accepts: Array<{
+    scheme: string;
+    network: string;
+    payTo: string;
+    amount: string;
+    asset: string;
+    description: string;
+    extra: any;
+    maxTimeoutSeconds: number;
+  }>;
+}> {
   const review = await RepositoryReview.findOne({ reviewId });
   if (!review) {
     throw new Error(`Repository review "${reviewId}" not found.`);
@@ -211,27 +224,127 @@ export async function recordSikhoPaymentForFile(
     throw new Error(`File review record "${fileId}" not found in review "${reviewId}".`);
   }
 
-  // If Sikho payment already confirmed, return current fileDoc (Idempotent)
-  if (fileDoc.sikhoPaymentStatus === "confirmed" && fileDoc.sikhoPaymentTxId) {
-    return fileDoc;
+  const treasuryAddress =
+    process.env.AVM_ADDRESS ||
+    "2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY";
+  const amountMicro = 50000;
+  const assetId = "31566704";
+  const network = "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
+  const endpointUrl = `${env.PUBLIC_BACKEND_URL}/api/v1/services/github-review/${reviewId}/files/${fileId}/sikho-x402`;
+
+  return {
+    x402Version: 2,
+    error: "Payment Required",
+    resource: {
+      url: endpointUrl,
+      description: `Sikho AI platform fee ($0.05 USDC) for reviewing ${fileDoc.filePath}`,
+    },
+    accepts: [
+      {
+        scheme: "exact",
+        network,
+        payTo: treasuryAddress,
+        amount: String(amountMicro),
+        asset: assetId,
+        description: `Sikho AI platform fee ($0.05 USDC / 50,000 micro-USDC) for reviewing ${fileDoc.filePath}`,
+        extra: {
+          name: "USDC",
+          version: "1",
+          service: "sikho-platform-fee",
+          reviewId,
+          fileId,
+          filePath: fileDoc.filePath,
+        },
+        maxTimeoutSeconds: 300,
+      },
+    ],
+  };
+}
+
+/**
+ * 3B. Step 1: Record & Verify Sikho $0.05 Payment for a Single File (Real x402)
+ */
+export async function recordSikhoPaymentForFile(
+  reviewId: string,
+  fileId: string,
+  paymentSignatureOrTxId: string,
+  senderAddress?: string
+): Promise<{ file: IRepositoryFileReview; paymentResponseHeader: string; txId: string }> {
+  const review = await RepositoryReview.findOne({ reviewId });
+  if (!review) {
+    throw new Error(`Repository review "${reviewId}" not found.`);
+  }
+
+  const fileDoc = await RepositoryFileReview.findOne({
+    repositoryReviewId: reviewId,
+    fileReviewId: fileId,
+  });
+  if (!fileDoc) {
+    throw new Error(`File review record "${fileId}" not found in review "${reviewId}".`);
+  }
+
+  let txId = paymentSignatureOrTxId;
+  let sender = senderAddress || "";
+
+  // Try to decode paymentSignature if base64 encoded JSON
+  if (paymentSignatureOrTxId && !paymentSignatureOrTxId.startsWith("tx_") && paymentSignatureOrTxId.length > 30) {
+    try {
+      const decoded = JSON.parse(
+        Buffer.from(paymentSignatureOrTxId, "base64").toString("utf-8")
+      );
+      if (decoded.txid || decoded.txId || decoded.transactionId) {
+        txId = decoded.txid || decoded.txId || decoded.transactionId;
+      }
+      if (decoded.sender) {
+        sender = decoded.sender;
+      }
+    } catch (_) {
+      // Not base64 json, treat as raw txId
+    }
   }
 
   const treasuryAddress =
     process.env.AVM_ADDRESS ||
     "2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY";
 
+  // If Sikho payment already confirmed, return current fileDoc (Idempotent)
+  if (fileDoc.sikhoPaymentStatus === "confirmed" && fileDoc.sikhoPaymentTxId) {
+    const existingResp = fileDoc.sikhoPaymentResponse || Buffer.from(JSON.stringify({
+      success: true,
+      transaction: fileDoc.sikhoPaymentTxId,
+      payer: sender || treasuryAddress,
+      network: "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
+    })).toString("base64");
+    return { file: fileDoc, paymentResponseHeader: existingResp, txId: fileDoc.sikhoPaymentTxId };
+  }
+
   // Verify User's On-Chain $0.05 USDC Transfer (50,000 micro-USDC)
-  await verifyOnChainSikhoPayment(
-    sikhoPaymentTxId,
+  const verified = await verifyOnChainSikhoPayment(
+    txId,
     treasuryAddress,
     "31566704", // USDC ASA ID
     50000, // $0.05 micro-USDC
     fileDoc.fileReviewId
   );
 
-  fileDoc.sikhoPaymentTxId = sikhoPaymentTxId;
+  const paymentResponseObj = {
+    success: true,
+    transaction: txId,
+    payer: sender || verified.sender,
+    network: "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
+  };
+  const paymentResponseHeader = Buffer.from(JSON.stringify(paymentResponseObj)).toString("base64");
+
+  fileDoc.fileId = fileDoc.fileReviewId;
+  fileDoc.sikhoPaymentAmount = 50000;
+  fileDoc.sikhoPaymentTxId = txId;
   fileDoc.sikhoPaymentStatus = "confirmed";
+  fileDoc.sikhoPaymentResponse = paymentResponseHeader;
+  fileDoc.sikhoX402Status = "confirmed";
+  fileDoc.sikhoX402TxId = txId;
+  fileDoc.sikhoX402PaymentResponse = paymentResponseHeader;
   fileDoc.status = "sikho_paid";
+  fileDoc.reviewStatus = "sikho_paid";
   await fileDoc.save();
 
   // Log Platform Fee Record
@@ -250,7 +363,7 @@ export async function recordSikhoPaymentForFile(
     logger.warn(`Failed to record platform fee ledger for ${fileDoc.filePath}: ${feeErr.message}`);
   }
 
-  return fileDoc;
+  return { file: fileDoc, paymentResponseHeader, txId };
 }
 
 /**
@@ -467,11 +580,17 @@ export async function submitPrismReviewWithSignature(
       } catch (_) {}
     }
 
+    fileDoc.fileId = fileDoc.fileReviewId;
+    fileDoc.prismPaymentAmount = 200000;
     fileDoc.prismPaymentStatus = "confirmed";
     fileDoc.prismPaymentTxId = extractedTxId;
     fileDoc.prismPaymentResponse = paymentResponseHeader;
+    fileDoc.prismX402Status = "confirmed";
+    fileDoc.prismX402TxId = extractedTxId;
+    fileDoc.prismX402PaymentResponse = paymentResponseHeader;
     fileDoc.reviewResult = paidRes.data;
     fileDoc.status = "completed";
+    fileDoc.reviewStatus = "completed";
     fileDoc.completedAt = new Date();
     fileDoc.error = undefined;
     await fileDoc.save();
@@ -512,7 +631,8 @@ export async function executeFileReviewWithPayment(
 
   // If Sikho payment provided and not yet confirmed, confirm it
   if (sikhoPaymentTxId && currentFile.sikhoPaymentStatus !== "confirmed") {
-    currentFile = await recordSikhoPaymentForFile(reviewId, fileId, sikhoPaymentTxId);
+    const sikhoRes = await recordSikhoPaymentForFile(reviewId, fileId, sikhoPaymentTxId);
+    currentFile = sikhoRes.file;
   }
 
   // If paymentSignature provided, submit Prism review

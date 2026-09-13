@@ -2,7 +2,9 @@ import express from "express";
 import {
   discover,
   start,
+  handleSikhoX402Payment,
   recordSikhoPayment,
+  getSikhoChallenge,
   getPrismChallenge,
   submitPrismReview,
   reviewSingleFile,
@@ -17,8 +19,13 @@ const router = express.Router();
 router.post("/discover", discover);
 router.post("/start", start);
 
-// Step 1: User pays $0.05 Sikho platform fee
-router.post("/:reviewId/files/:fileId/sikho-payment", recordSikhoPayment);
+// Step 1: Real Sikho x402 Protocol Endpoint ($0.05 USDC)
+// - GET/POST without Payment-Signature yields HTTP 402 Payment Required
+// - POST with Payment-Signature settles payment and yields HTTP 200 OK
+router.all("/sikho-x402", handleSikhoX402Payment);
+router.all("/:reviewId/files/:fileId/sikho-x402", handleSikhoX402Payment);
+router.all("/:reviewId/files/:fileId/sikho-challenge", getSikhoChallenge);
+router.post("/:reviewId/files/:fileId/sikho-payment", handleSikhoX402Payment);
 
 // Step 2A: Fetch Prism 402 Challenge
 router.post("/:reviewId/files/:fileId/prism-challenge", getPrismChallenge);
