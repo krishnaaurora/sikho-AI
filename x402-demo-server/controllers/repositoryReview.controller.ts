@@ -10,7 +10,7 @@ import RepositoryReview from "../models/RepositoryReview.model";
 import RepositoryFileReview from "../models/RepositoryFileReview.model";
 
 export const discover = asyncHandler(async (req: Request, res: Response) => {
-  const { repoUrl } = req.body;
+  const { repoUrl, maxFiles } = req.body;
   const userId = (req as any).user?._id?.toString() || req.body.userId || "user_guest";
 
   if (!repoUrl) {
@@ -20,7 +20,11 @@ export const discover = asyncHandler(async (req: Request, res: Response) => {
     });
   }
 
-  const result = await discoverRepository(repoUrl, userId);
+  const result = await discoverRepository(
+    repoUrl,
+    userId,
+    maxFiles ? Number(maxFiles) : undefined
+  );
 
   sendSuccessResponse(
     res,

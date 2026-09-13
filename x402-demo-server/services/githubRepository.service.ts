@@ -137,9 +137,14 @@ export function parseAndValidateGithubUrl(rawUrl: string): {
  * Discovers repository file tree and filters reviewable source code files
  */
 export async function discoverGithubRepository(
-  rawUrl: string
+  rawUrl: string,
+  maxFilesLimit?: number
 ): Promise<DiscoveredRepo> {
   const { owner, repo, normalizedUrl } = parseAndValidateGithubUrl(rawUrl);
+  const effectiveMaxFiles = Math.min(
+    maxFilesLimit && maxFilesLimit > 0 ? maxFilesLimit : MAX_REVIEW_FILES,
+    MAX_REVIEW_FILES
+  );
 
   const headers: Record<string, string> = {
     Accept: "application/vnd.github.v3+json",
@@ -246,8 +251,8 @@ export async function discoverGithubRepository(
       sha: item.sha,
     });
 
-    if (reviewableFiles.length >= MAX_REVIEW_FILES) {
-      logger.info(`Reached maximum review file limit (${MAX_REVIEW_FILES} files).`);
+    if (reviewableFiles.length >= effectiveMaxFiles) {
+      logger.info(`Reached maximum review file limit (${effectiveMaxFiles} files).`);
       break;
     }
   }

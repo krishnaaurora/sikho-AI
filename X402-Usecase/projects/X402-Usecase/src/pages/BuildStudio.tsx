@@ -98,6 +98,8 @@ export const BuildStudio: React.FC = () => {
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [discoveryData, setDiscoveryData] = useState<DiscoveryData | null>(null);
   const [activeReviewId, setActiveReviewId] = useState<string | null>(null);
+  const [maxFilesLimit, setMaxFilesLimit] = useState<number>(3); // Default to 3 files ($0.75) for 1-click acceptance test
+  const [walletUsdcBalance, setWalletUsdcBalance] = useState<number | null>(null);
 
   const [isPaying, setIsPaying] = useState(false);
   const [reviewState, setReviewState] = useState<'idle' | 'discovered' | 'processing' | 'completed' | 'partial'>('idle');
@@ -117,9 +119,40 @@ export const BuildStudio: React.FC = () => {
     };
   }, []);
 
+  // Fetch connected wallet USDC balance (ASA 31566704)
+  useEffect(() => {
+    if (!activeAddress) {
+      setWalletUsdcBalance(null);
+      return;
+    }
+    const fetchBalance = async () => {
+      try {
+        const client = new algosdk.Algodv2(
+          import.meta.env.VITE_ALGOD_TOKEN || '',
+          import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud',
+          import.meta.env.VITE_ALGOD_PORT || ''
+        );
+        const acctInfo = await client.accountInformation(activeAddress).do();
+        const assets: any[] = acctInfo.assets || [];
+        const usdcAsset = assets.find(
+          (a: any) => a['asset-id'] === 31566704 || a.assetId === 31566704
+        );
+        if (usdcAsset) {
+          setWalletUsdcBalance(usdcAsset.amount / 1000000);
+        } else {
+          setWalletUsdcBalance(0);
+        }
+      } catch (e) {
+        console.warn('Could not fetch wallet USDC balance:', e);
+      }
+    };
+    fetchBalance();
+  }, [activeAddress]);
+
   // 1. Discover Repository
-  const handleDiscover = async (customUrl?: string) => {
+  const handleDiscover = async (customUrl?: string, customMaxFiles?: number) => {
     const targetUrl = customUrl || repoUrlInput;
+    const effectiveLimit = customMaxFiles || maxFilesLimit;
     if (!targetUrl.trim()) {
       setError('Please provide a valid GitHub repository URL.');
       return;
@@ -133,7 +166,7 @@ export const BuildStudio: React.FC = () => {
     setFileReviews([]);
 
     try {
-      const res = await githubReviewApi.discoverRepo(targetUrl.trim());
+      const res = await githubReviewApi.discover(targetUrl.trim(), effectiveLimit);
       if (res.success && res.data) {
         setDiscoveryData(res.data);
         setActiveReviewId(res.data.reviewId);
@@ -230,7 +263,16 @@ export const BuildStudio: React.FC = () => {
       startPolling(discoveryData.reviewId);
     } catch (err: any) {
       console.error('Payment / Start Review error:', err);
-      setError(err.message || 'Failed to authorize payment or start review.');
+      let userMsg = err.message || 'Failed to authorize payment or start review.';
+      if (typeof userMsg === 'string' && userMsg.includes('underflow on subtracting')) {
+        const match = userMsg.match(/subtracting\s+(\d+)\s+from\s+sender\s+amount\s+(\d+)/i);
+        if (match) {
+          const reqUsdc = (parseInt(match[1], 10) / 1000000).toFixed(2);
+          const balUsdc = (parseInt(match[2], 10) / 1000000).toFixed(2);
+          userMsg = `Insufficient USDC Balance: Your wallet has $${balUsdc} USDC, but this repository review requires $${reqUsdc} USDC (${discoveryData.reviewableFileCount} files × $0.25). Please select a 3-file limit ($0.75) or fund your wallet with USDC.`;
+        }
+      }
+      setError(userMsg);
     } finally {
       setIsPaying(false);
     }
@@ -360,14 +402,23 @@ export const BuildStudio: React.FC = () => {
 
             {/* Wallet Info Badge */}
             {activeAddress ? (
-              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3.5 py-2 rounded-xl flex items-center gap-2 shrink-0">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="font-mono font-bold">
-                  {activeAddress.substring(0, 6)}...{activeAddress.substring(activeAddress.length - 4)}
-                </span>
-                <span className="text-[10px] bg-emerald-200/60 text-emerald-900 px-1.5 py-0.5 rounded font-bold">
-                  MainNet
-                </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3.5 py-2 rounded-xl flex items-center gap-2 shrink-0">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="font-mono">
+                    {activeAddress.slice(0, 6)}...{activeAddress.slice(-4)}
+                  </span>
+                  <span className="text-[10px] bg-emerald-200/60 text-emerald-900 px-1.5 py-0.5 rounded font-bold">
+                    MainNet
+                  </span>
+                </div>
+                {walletUsdcBalance !== null && (
+                  <div className="bg-violet-50 border border-violet-200 text-violet-800 text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shrink-0 font-medium">
+                    <DollarSign size={13} className="text-violet-600" />
+                    <span>Balance:</span>
+                    <span className="font-bold font-mono text-violet-950">${walletUsdcBalance.toFixed(2)} USDC</span>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3.5 py-2 rounded-xl flex items-center gap-2 shrink-0">
@@ -409,6 +460,35 @@ export const BuildStudio: React.FC = () => {
                 </>
               )}
             </button>
+          </div>
+
+          {/* File Limit Selector */}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Review Limit:</span>
+            {[
+              { label: '3 Files ($0.75)', value: 3 },
+              { label: '5 Files ($1.25)', value: 5 },
+              { label: '10 Files ($2.50)', value: 10 },
+              { label: '50 Files ($12.50)', value: 50 },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  setMaxFilesLimit(opt.value);
+                  if (discoveryData) {
+                    handleDiscover(undefined, opt.value);
+                  }
+                }}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition cursor-pointer ${
+                  maxFilesLimit === opt.value
+                    ? 'bg-violet-600 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
 
           {/* Error Banner */}

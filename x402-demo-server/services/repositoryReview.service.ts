@@ -202,12 +202,13 @@ async function signAndBroadcastPrismPayment(
  */
 export async function discoverRepository(
   repoUrl: string,
-  userId: string = "user_guest"
+  userId: string = "user_guest",
+  maxFiles?: number
 ): Promise<{
   review: IRepositoryReview;
   files: IRepositoryFileReview[];
 }> {
-  const discovered = await discoverGithubRepository(repoUrl);
+  const discovered = await discoverGithubRepository(repoUrl, maxFiles);
 
   const reviewId = `repo_rev_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
   const fileCount = discovered.reviewableFiles.length;

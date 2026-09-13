@@ -338,7 +338,7 @@ export const servicesApi = {
 };
 
 export const githubReviewApi = {
-  async discoverRepo(repoUrl: string) {
+  async discover(repoUrl: string, maxFiles?: number) {
     return fetchAPI<ApiResponse<{
       reviewId: string;
       owner: string;
@@ -363,8 +363,12 @@ export const githubReviewApi = {
       }>;
     }>>(API_ENDPOINTS.GITHUB_REVIEW_DISCOVER, {
       method: 'POST',
-      body: JSON.stringify({ repoUrl }),
+      body: JSON.stringify({ repoUrl, maxFiles }),
     });
+  },
+
+  async discoverRepo(repoUrl: string, maxFiles?: number) {
+    return this.discover(repoUrl, maxFiles);
   },
 
   async startReview(reviewId: string, userPaymentTxId: string) {
