@@ -229,7 +229,7 @@ export async function getSikhoChallengeForFile(
     "2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY";
   const amountMicro = 50000;
   const assetId = "31566704";
-  const network = "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
+  const network = "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
   const endpointUrl = `${env.PUBLIC_BACKEND_URL}/api/v1/services/github-review/${reviewId}/files/${fileId}/sikho-x402`;
 
   return {
@@ -313,7 +313,7 @@ export async function recordSikhoPaymentForFile(
       success: true,
       transaction: fileDoc.sikhoPaymentTxId,
       payer: sender || treasuryAddress,
-      network: "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
+      network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
     })).toString("base64");
     return { file: fileDoc, paymentResponseHeader: existingResp, txId: fileDoc.sikhoPaymentTxId };
   }
@@ -331,7 +331,7 @@ export async function recordSikhoPaymentForFile(
     success: true,
     transaction: txId,
     payer: sender || verified.sender,
-    network: "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
+    network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
   };
   const paymentResponseHeader = Buffer.from(JSON.stringify(paymentResponseObj)).toString("base64");
 
@@ -443,7 +443,7 @@ export async function getPrismChallengeForFile(
   let challengePayTo = defaultPrismPayTo;
   let challengeAmount = 200000;
   let challengeAsset = "31566704";
-  let challengeNetwork = "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
+  let challengeNetwork = "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
   let paymentRequiredHeader = "";
 
   if (initialRes && initialRes.status === 402) {
@@ -535,12 +535,16 @@ export async function submitPrismReviewWithSignature(
 
   // Extract real txid from paymentSignature or parameter
   let extractedTxId = prismPaymentTxId || "";
+  let extractedSender = review.senderAddress || "FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE";
   if (!extractedTxId && paymentSignature) {
     try {
       const decoded = JSON.parse(
         Buffer.from(paymentSignature, "base64").toString("utf-8")
       );
-      extractedTxId = decoded.txid || decoded.txId || decoded.transactionId || "";
+      extractedTxId = decoded.txid || decoded.txId || decoded.transactionId || decoded.payload?.txid || "";
+      if (decoded.sender || decoded.payer || decoded.payload?.sender) {
+        extractedSender = decoded.sender || decoded.payer || decoded.payload?.sender;
+      }
     } catch (_) {
       if (!paymentSignature.includes("{") && paymentSignature.length > 20) {
         extractedTxId = paymentSignature;
@@ -551,50 +555,76 @@ export async function submitPrismReviewWithSignature(
   const sigVariants = Array.from(
     new Set([
       paymentSignature,
-      extractedTxId,
+      paymentSignature.startsWith("x402 ") ? paymentSignature : `x402 ${paymentSignature}`,
+      extractedTxId ? Buffer.from(JSON.stringify({
+        x402Version: 2,
+        scheme: "exact",
+        network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
+        payload: {
+          txid: extractedTxId,
+          sender: extractedSender,
+        },
+      })).toString("base64") : "",
+      extractedTxId ? Buffer.from(JSON.stringify({
+        txid: extractedTxId,
+        sender: extractedSender,
+        network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
+      })).toString("base64") : "",
       extractedTxId ? Buffer.from(JSON.stringify({ txid: extractedTxId })).toString("base64") : "",
-      extractedTxId ? Buffer.from(JSON.stringify({ txid: extractedTxId, sender: "wallet", network: "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=" })).toString("base64") : "",
+      extractedTxId,
     ])
   ).filter((s) => s && s.trim().length > 0);
 
   let paidRes: any = null;
 
-  for (const sig of sigVariants) {
-    try {
-      paidRes = await axios.post(
-        prismEndpoint,
-        {
-          file_path: fileDoc.filePath,
-          code: fileContent,
-          language: fileDoc.language,
-          txid: extractedTxId,
-          transactionId: extractedTxId,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            "Payment-Signature": sig,
-            "payment-signature": sig,
-            "X-PAYMENT": sig,
-            "x-payment": sig,
-            Authorization: sig.startsWith("x402 ") ? sig : `x402 ${sig}`,
+  // Retry loop up to 4 attempts (with 2 seconds delay) to account for Algorand indexer / GoPlausible facilitator indexing delay
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    for (const sig of sigVariants) {
+      try {
+        paidRes = await axios.post(
+          prismEndpoint,
+          {
+            file_path: fileDoc.filePath,
+            code: fileContent,
+            language: fileDoc.language,
+            txid: extractedTxId,
+            transactionId: extractedTxId,
           },
-          validateStatus: (status) => status < 500,
-          timeout: 45000,
-        }
-      );
-
-      if (paidRes.status === 200 && paidRes.data) {
-        logger.info(`[Prism x402] Succeeded with signature variant for ${fileDoc.filePath}`);
-        break;
-      } else {
-        logger.warn(
-          `[Prism x402] Variant returned HTTP ${paidRes.status} on ${fileDoc.filePath}: ${JSON.stringify(paidRes.data)}`
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              "Payment-Signature": sig,
+              "payment-signature": sig,
+              "X-PAYMENT": sig,
+              "x-payment": sig,
+              Authorization: sig.startsWith("x402 ") ? sig : `x402 ${sig}`,
+            },
+            validateStatus: (status) => status < 500,
+            timeout: 45000,
+          }
         );
+
+        if (paidRes.status === 200 && paidRes.data) {
+          logger.info(`[Prism x402] Succeeded on attempt ${attempt} with signature variant for ${fileDoc.filePath}`);
+          break;
+        } else {
+          logger.warn(
+            `[Prism x402] Attempt ${attempt} variant returned HTTP ${paidRes.status} on ${fileDoc.filePath}: ${JSON.stringify(paidRes.data)}`
+          );
+        }
+      } catch (variantErr: any) {
+        logger.warn(`[Prism x402] Variant request error: ${variantErr.message}`);
       }
-    } catch (variantErr: any) {
-      logger.warn(`[Prism x402] Variant request error: ${variantErr.message}`);
+    }
+
+    if (paidRes && paidRes.status === 200 && paidRes.data) {
+      break;
+    }
+
+    if (attempt < 4) {
+      logger.info(`[Prism x402] Waiting 2s for on-chain indexing before retry (attempt ${attempt + 1})...`);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
 

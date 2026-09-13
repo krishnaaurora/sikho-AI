@@ -32,7 +32,7 @@ export const SERVICE_REGISTRY: Record<string, IRegisteredService> = {
     assetId: "31566704",
     payToAddress: "FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE",
     platformTreasuryAddress: "2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY",
-    network: "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
+    network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
     enabled: true,
     supportedMethods: ["GET", "POST"],
   },

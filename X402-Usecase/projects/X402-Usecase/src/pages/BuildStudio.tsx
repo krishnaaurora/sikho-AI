@@ -230,7 +230,7 @@ export const BuildStudio: React.FC = () => {
         '2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY';
       const amountMicro = Number(accept.amount || 50000);
       const assetId = Number(accept.asset || 31566704);
-      const network = accept.network || 'algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
+      const network = accept.network || 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
 
       const client = new algosdk.Algodv2(
         import.meta.env.VITE_ALGOD_TOKEN || '',
@@ -352,7 +352,7 @@ export const BuildStudio: React.FC = () => {
       const rawAsset = challenge.assetId || (challenge as any).asset || (challenge as any).accepts?.[0]?.asset || 31566704;
       const amountMicroUSDC = typeof rawAmount === 'number' ? rawAmount : parseInt(String(rawAmount), 10) || 200000;
       const assetId = typeof rawAsset === 'number' ? rawAsset : parseInt(String(rawAsset), 10) || 31566704;
-      const network = challenge.network || (challenge as any).accepts?.[0]?.network || 'algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
+      const network = challenge.network || (challenge as any).accepts?.[0]?.network || 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
 
       const client = new algosdk.Algodv2(
         import.meta.env.VITE_ALGOD_TOKEN || '',
@@ -396,12 +396,18 @@ export const BuildStudio: React.FC = () => {
 
       // 3. Construct standard x402 Payment-Signature header
       const signaturePayload = {
+        x402Version: 2,
+        scheme: 'exact',
+        network: 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=',
+        payload: {
+          txid: prismTxId,
+          sender: activeAddress,
+        },
         txid: prismTxId,
         txId: prismTxId,
         transactionId: prismTxId,
         sender: activeAddress,
         payer: activeAddress,
-        network,
       };
       const paymentSignatureHeader = btoa(JSON.stringify(signaturePayload));
 

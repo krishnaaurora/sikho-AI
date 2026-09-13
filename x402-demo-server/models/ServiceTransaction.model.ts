@@ -49,7 +49,7 @@ const ServiceTransactionSchema: Schema = new Schema(
     currency: { type: String, default: "USDC" },
     network: {
       type: String,
-      default: "algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
+      default: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
     },
     status: {
       type: String,
