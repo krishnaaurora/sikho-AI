@@ -203,6 +203,15 @@ export const getPrismChallenge = asyncHandler(async (req: Request, res: Response
 
   const result = await getPrismChallengeForFile(reviewId, fileId);
 
+  res.setHeader(
+    "Access-Control-Expose-Headers",
+    "PAYMENT-REQUIRED, Payment-Required, PAYMENT-RESPONSE, Payment-Response, X-PAYMENT-RESPONSE, *"
+  );
+  if (result.paymentRequiredHeader) {
+    res.setHeader("PAYMENT-REQUIRED", result.paymentRequiredHeader);
+    res.setHeader("Payment-Required", result.paymentRequiredHeader);
+  }
+
   sendSuccessResponse(
     res,
     result,
@@ -240,6 +249,16 @@ export const submitPrismReview = asyncHandler(async (req: Request, res: Response
     paymentSignature,
     prismPaymentTxId
   );
+
+  res.setHeader(
+    "Access-Control-Expose-Headers",
+    "PAYMENT-RESPONSE, Payment-Response, X-PAYMENT-RESPONSE, *"
+  );
+  if (result.prismPaymentResponse) {
+    res.setHeader("PAYMENT-RESPONSE", result.prismPaymentResponse);
+    res.setHeader("Payment-Response", result.prismPaymentResponse);
+    res.setHeader("X-PAYMENT-RESPONSE", result.prismPaymentResponse);
+  }
 
   sendSuccessResponse(
     res,

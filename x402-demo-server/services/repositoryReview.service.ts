@@ -552,17 +552,35 @@ export async function submitPrismReviewWithSignature(
   fileDoc.status = "prism_pending";
   await fileDoc.save();
 
-  // Extract real txid from paymentSignature or parameter
+  // Extract real txid and sender from paymentSignature or parameter
   let extractedTxId = prismPaymentTxId || "";
   let extractedSender = review.senderAddress || "FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE";
-  if (!extractedTxId && paymentSignature) {
+  if (paymentSignature) {
     try {
       const decoded = JSON.parse(
         Buffer.from(paymentSignature, "base64").toString("utf-8")
       );
-      extractedTxId = decoded.txid || decoded.txId || decoded.transactionId || decoded.payload?.txid || "";
-      if (decoded.sender || decoded.payer || decoded.payload?.sender) {
-        extractedSender = decoded.sender || decoded.payer || decoded.payload?.sender;
+      const paymentGroup = decoded.payload?.paymentGroup || decoded.paymentGroup;
+      const paymentIndex = typeof decoded.payload?.paymentIndex === "number" ? decoded.payload.paymentIndex : (decoded.paymentIndex || 0);
+
+      if (Array.isArray(paymentGroup) && paymentGroup[paymentIndex]) {
+        try {
+          const stxnBytes = Buffer.from(paymentGroup[paymentIndex], "base64");
+          const stxn: any = algosdk.decodeSignedTransaction(stxnBytes);
+          if (stxn?.txn) {
+            extractedTxId = stxn.txn.txID();
+            extractedSender = algosdk.encodeAddress(stxn.txn.sender?.publicKey || stxn.txn.from?.publicKey);
+          }
+        } catch (e: any) {
+          logger.warn(`Could not decode signed txn from Prism paymentGroup: ${e.message}`);
+        }
+      }
+
+      if (!extractedTxId) {
+        extractedTxId = decoded.payload?.txid || decoded.txid || decoded.txId || decoded.transactionId || "";
+      }
+      if (!extractedSender) {
+        extractedSender = decoded.payload?.sender || decoded.sender || decoded.payer || "";
       }
     } catch (_) {
       if (!paymentSignature.includes("{") && paymentSignature.length > 20) {
@@ -571,78 +589,51 @@ export async function submitPrismReviewWithSignature(
     }
   }
 
-  const sigVariants = Array.from(
-    new Set([
-      paymentSignature,
-      paymentSignature.startsWith("x402 ") ? paymentSignature : `x402 ${paymentSignature}`,
-      extractedTxId ? Buffer.from(JSON.stringify({
-        x402Version: 2,
-        scheme: "exact",
-        network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
-        payload: {
-          txid: extractedTxId,
-          sender: extractedSender,
-        },
-      })).toString("base64") : "",
-      extractedTxId ? Buffer.from(JSON.stringify({
-        txid: extractedTxId,
-        sender: extractedSender,
-        network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
-      })).toString("base64") : "",
-      extractedTxId ? Buffer.from(JSON.stringify({ txid: extractedTxId })).toString("base64") : "",
-      extractedTxId,
-    ])
-  ).filter((s) => s && s.trim().length > 0);
+  // Exact request body matching Prism input schema (additionalProperties: false)
+  const prismRequestBody = {
+    file_path: fileDoc.filePath,
+    code: fileContent,
+    language: fileDoc.language,
+  };
 
   let paidRes: any = null;
 
-  // Retry loop up to 4 attempts (with 2 seconds delay) to account for Algorand indexer / GoPlausible facilitator indexing delay
+  // Retry loop up to 4 attempts (with 2 seconds delay) to account for Algorand indexing
   for (let attempt = 1; attempt <= 4; attempt++) {
-    for (const sig of sigVariants) {
-      try {
-        paidRes = await axios.post(
-          prismEndpoint,
-          {
-            file_path: fileDoc.filePath,
-            code: fileContent,
-            language: fileDoc.language,
-            txid: extractedTxId,
-            transactionId: extractedTxId,
+    try {
+      paidRes = await axios.post(
+        prismEndpoint,
+        prismRequestBody,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "Payment-Signature": paymentSignature,
+            "payment-signature": paymentSignature,
+            "X-PAYMENT": paymentSignature,
+            "x-payment": paymentSignature,
           },
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-              "Payment-Signature": sig,
-              "payment-signature": sig,
-              "X-PAYMENT": sig,
-              "x-payment": sig,
-              Authorization: sig.startsWith("x402 ") ? sig : `x402 ${sig}`,
-            },
-            validateStatus: (status) => status < 500,
-            timeout: 45000,
-          }
-        );
-
-        if (paidRes.status === 200 && paidRes.data) {
-          logger.info(`[Prism x402] Succeeded on attempt ${attempt} with signature variant for ${fileDoc.filePath}`);
-          break;
-        } else {
-          logger.warn(
-            `[Prism x402] Attempt ${attempt} variant returned HTTP ${paidRes.status} on ${fileDoc.filePath}: ${JSON.stringify(paidRes.data)}`
-          );
+          validateStatus: (status) => status < 500,
+          timeout: 45000,
         }
-      } catch (variantErr: any) {
-        logger.warn(`[Prism x402] Variant request error: ${variantErr.message}`);
-      }
-    }
+      );
 
-    if (paidRes && paidRes.status === 200 && paidRes.data) {
-      break;
+      logger.info(
+        `[Prism x402] Attempt ${attempt} returned HTTP ${paidRes.status} on ${fileDoc.filePath}. Header keys: ${JSON.stringify(
+          Object.keys(paidRes.headers)
+        )}`
+      );
+
+      if (paidRes.status === 200 && paidRes.data) {
+        logger.info(`[Prism x402] Succeeded on attempt ${attempt} for ${fileDoc.filePath}`);
+        break;
+      }
+    } catch (variantErr: any) {
+      logger.warn(`[Prism x402] Request error on attempt ${attempt}: ${variantErr.message}`);
     }
 
     if (attempt < 4) {
-      logger.info(`[Prism x402] Waiting 2s for on-chain indexing before retry (attempt ${attempt + 1})...`);
+      logger.info(`[Prism x402] Waiting 2s before retry (attempt ${attempt + 1})...`);
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }

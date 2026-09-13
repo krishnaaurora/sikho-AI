@@ -412,6 +412,18 @@ export const BuildStudio: React.FC = () => {
       const assetId = typeof rawAsset === 'number' ? rawAsset : parseInt(String(rawAsset), 10) || 31566704;
       const network = challenge.network || (challenge as any).accepts?.[0]?.network || 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
 
+      console.log('=== PRISM X402 CHALLENGE ===');
+      console.log('status:', 402);
+      console.log('header paymentRequiredHeader present:', !!challenge.paymentRequiredHeader);
+      console.log('decoded payment requirements:', {
+        x402Version: 2,
+        scheme: 'exact',
+        network,
+        amount: amountMicroUSDC,
+        asset: assetId,
+        payTo: prismPayTo,
+      });
+
       const client = new algosdk.Algodv2(
         import.meta.env.VITE_ALGOD_TOKEN || '',
         import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud',
@@ -438,7 +450,7 @@ export const BuildStudio: React.FC = () => {
         }
       }
 
-      // 2. Prompt user's connected wallet to sign REAL x402 payment directly to Prism PayTo ($0.20)
+      // 2. Prompt user's connected wallet to sign REAL x402 payment directly to Prism PayTo
       const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
         sender: activeAddress,
         receiver: prismPayTo,
@@ -461,14 +473,14 @@ export const BuildStudio: React.FC = () => {
       const txAmount = (tx as any).assetTransfer.amount.toString();
       const txAssetIndex = (tx as any).assetTransfer.assetIndex.toString();
 
-      console.log('=== [DIAGNOSTIC LOG: Prism x402 Payment] ===');
+      console.log('=== PRISM X402 PAYMENT ===');
       console.log('activeAddress:', activeAddress);
-      console.log('transaction.sender:', txSender);
-      console.log('transaction.receiver:', txReceiver);
-      console.log('transaction.assetIndex:', txAssetIndex);
-      console.log('transaction.amount:', txAmount);
-      console.log('challenge.payTo:', prismPayTo);
-      console.log('challenge.maxAmountRequired:', amountMicroUSDC);
+      console.log('transaction sender:', txSender);
+      console.log('transaction receiver:', txReceiver);
+      console.log('asset:', txAssetIndex);
+      console.log('amount:', txAmount);
+      console.log('paymentIndex:', 0);
+      console.log('paymentGroup length:', 1);
 
       if (txSender !== activeAddress) {
         throw new Error(
@@ -499,7 +511,7 @@ export const BuildStudio: React.FC = () => {
       const signaturePayload = {
         x402Version: 2,
         scheme: 'exact',
-        network: 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=',
+        network: network || 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=',
         payload: {
           paymentGroup: [base64SignedTx],
           paymentIndex: 0,
