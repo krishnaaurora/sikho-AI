@@ -221,8 +221,8 @@ export const BuildStudio: React.FC = () => {
     try {
       // 1. Fetch Sikho x402 Challenge (HTTP 402 Requirements)
       const challengeRes = await githubReviewApi.getSikhoChallenge(activeReviewId, file.fileReviewId);
-      const challenge = challengeRes.data;
-      const accept = challenge?.accepts?.[0] || {};
+      const challenge = (challengeRes && (challengeRes as any).data) ? (challengeRes as any).data : challengeRes;
+      const accept = challenge?.accepts?.[0] || challenge;
 
       const sikhoPayTo =
         accept.payTo ||

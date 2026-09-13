@@ -41,6 +41,19 @@ async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
+    if (response.status === 402) {
+      try {
+        const errorData = await response.json();
+        return {
+          success: true,
+          data: errorData,
+          ...errorData,
+        } as unknown as T;
+      } catch (_) {
+        // ignore JSON parsing errors
+      }
+    }
+
     let errorMessage = `API error: ${response.status}`;
     try {
       const errorData = await response.json();
