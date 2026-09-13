@@ -228,8 +228,8 @@ export const BuildStudio: React.FC = () => {
         accept.payTo ||
         import.meta.env.VITE_AVM_ADDRESS ||
         '2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY';
-      const amountMicro = parseInt(accept.amount || '50000', 10);
-      const assetId = parseInt(accept.asset || '31566704', 10);
+      const amountMicro = Number(accept.amount || 50000);
+      const assetId = Number(accept.asset || 31566704);
       const network = accept.network || 'algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
 
       const client = new algosdk.Algodv2(
@@ -245,8 +245,8 @@ export const BuildStudio: React.FC = () => {
       const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
         sender: activeAddress,
         receiver: sikhoPayTo,
-        amount: amountMicro,
-        assetIndex: assetId,
+        amount: Number(amountMicro),
+        assetIndex: Number(assetId),
         suggestedParams: params,
         note: enc.encode(
           JSON.stringify({
@@ -348,8 +348,8 @@ export const BuildStudio: React.FC = () => {
       const challenge = challengeRes.data;
 
       const prismPayTo = challenge.payTo || 'FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE';
-      const amountMicroUSDC = challenge.amountMicroUSDC || 200000;
-      const assetId = parseInt(challenge.assetId || '31566704', 10);
+      const amountMicroUSDC = Number(challenge.amountMicroUSDC || (challenge as any).amount || 200000);
+      const assetId = Number(challenge.assetId || (challenge as any).asset || 31566704);
       const network = challenge.network || 'algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
 
       const client = new algosdk.Algodv2(
@@ -365,8 +365,8 @@ export const BuildStudio: React.FC = () => {
       const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
         sender: activeAddress,
         receiver: prismPayTo,
-        amount: amountMicroUSDC,
-        assetIndex: assetId,
+        amount: Number(amountMicroUSDC),
+        assetIndex: Number(assetId),
         suggestedParams: params,
         note: enc.encode(
           JSON.stringify({
