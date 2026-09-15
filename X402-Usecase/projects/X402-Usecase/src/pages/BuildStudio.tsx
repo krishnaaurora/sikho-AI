@@ -449,17 +449,6 @@ export const BuildStudio: React.FC = () => {
             },
           ],
         };
-      } else if (paymentRequired.accepts && Array.isArray(paymentRequired.accepts)) {
-        // Strip feePayer from extra to ensure direct 1-transaction signing in Pera/Defly wallets
-        // (Prevents "Invalid signable data: group ID does not match" caused by foreign fee payer txns)
-        paymentRequired = {
-          ...paymentRequired,
-          accepts: paymentRequired.accepts.map((acc: any) => {
-            const extra = { ...(acc.extra || {}) };
-            delete extra.feePayer;
-            return { ...acc, extra };
-          }),
-        };
       }
 
       const reqAccepts = paymentRequired.accepts?.[0] || paymentRequired;
