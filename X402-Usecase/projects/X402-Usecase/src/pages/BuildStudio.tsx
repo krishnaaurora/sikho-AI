@@ -417,11 +417,13 @@ export const BuildStudio: React.FC = () => {
         } catch (_) {}
       }
 
+      if (paymentRequired && paymentRequired.accepts && paymentRequired.accepts[0]) {
+        paymentRequired.accepts[0].amount = '200000';
+      }
+
       if (!paymentRequired) {
         const prismPayTo = challenge.payTo || (challenge as any).accepts?.[0]?.payTo || 'FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE';
-        const rawAmount = challenge.amountMicroUSDC || (challenge as any).amount || (challenge as any).accepts?.[0]?.amount || 12000;
         const rawAsset = challenge.assetId || (challenge as any).asset || (challenge as any).accepts?.[0]?.asset || 31566704;
-        const amountMicroUSDC = typeof rawAmount === 'number' ? rawAmount : parseInt(String(rawAmount), 10) || 12000;
         const assetId = typeof rawAsset === 'number' ? rawAsset : parseInt(String(rawAsset), 10) || 31566704;
         const network = challenge.network || (challenge as any).accepts?.[0]?.network || 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
 
@@ -437,7 +439,7 @@ export const BuildStudio: React.FC = () => {
             {
               scheme: 'exact',
               network,
-              amount: String(amountMicroUSDC),
+              amount: '200000',
               asset: String(assetId),
               payTo: prismPayTo,
               maxTimeoutSeconds: 300,

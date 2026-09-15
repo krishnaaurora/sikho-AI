@@ -482,9 +482,15 @@ export async function getPrismChallengeForFile(
         );
         const accepts = decoded.accepts?.[0] || decoded;
         if (accepts.payTo) challengePayTo = accepts.payTo;
-        if (accepts.amount) challengeAmount = Number(accepts.amount);
         if (accepts.asset) challengeAsset = String(accepts.asset);
         if (accepts.network) challengeNetwork = accepts.network;
+
+        // Ensure Prism payment amount is set to 200,000 microUSDC ($0.20 USDC)
+        challengeAmount = 200000;
+        if (decoded.accepts && Array.isArray(decoded.accepts) && decoded.accepts[0]) {
+          decoded.accepts[0].amount = "200000";
+          paymentRequiredHeader = Buffer.from(JSON.stringify(decoded)).toString("base64");
+        }
       } catch (_) {}
     }
   }
@@ -494,7 +500,7 @@ export async function getPrismChallengeForFile(
     filePath: fileDoc.filePath,
     language: fileDoc.language,
     payTo: challengePayTo,
-    amountMicroUSDC: Number(challengeAmount),
+    amountMicroUSDC: 200000,
     assetId: challengeAsset,
     network: challengeNetwork,
     paymentRequiredHeader,
@@ -758,7 +764,7 @@ Provide a deep, critical review with at least 2-4 concrete findings/refactoring 
     }
 
     fileDoc.fileId = fileDoc.fileReviewId;
-    fileDoc.prismPaymentAmount = 12000;
+    fileDoc.prismPaymentAmount = 200000;
     fileDoc.prismPaymentStatus = "confirmed";
     fileDoc.prismPaymentTxId = extractedTxId;
     fileDoc.prismPaymentResponse = paymentResponseHeader;
