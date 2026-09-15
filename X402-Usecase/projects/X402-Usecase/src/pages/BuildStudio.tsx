@@ -457,35 +457,22 @@ export const BuildStudio: React.FC = () => {
 
       const reqAccepts = paymentRequired.accepts?.[0] || paymentRequired;
       const targetNetwork = reqAccepts.network || 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
-      const targetAmount = '200000';
+      const targetAmount = reqAccepts.amount || '200000';
       const targetAsset = reqAccepts.asset || '31566704';
       const targetPayTo = reqAccepts.payTo;
 
-      console.log('=== PRISM X402 CHALLENGE ===');
-      console.log('status:', 402);
-      console.log('header paymentRequiredHeader present:', !!challenge.paymentRequiredHeader);
-      console.log('decoded payment requirements:', {
-        x402Version: 2,
-        scheme: reqAccepts.scheme || 'exact',
-        network: targetNetwork,
-        amount: targetAmount,
-        asset: targetAsset,
-        payTo: targetPayTo,
-      });
+      // Safe debug logs
+      console.log('Payment requirements received:', paymentRequired);
+      console.log('Payment amount:', targetAmount);
+      console.log('Payment asset:', targetAsset);
+      console.log('Payment network:', targetNetwork);
+      console.log('Payment recipient:', targetPayTo);
 
       // 2. Build AVM Signer for ExactAvmScheme using connected wallet
       const avmSigner = {
         address: activeAddress,
         signTransactions: async (txns: Uint8Array[], indexesToSign?: number[]) => {
-          console.log('=== PRISM X402 PAYMENT ===');
-          console.log('activeAddress:', activeAddress);
-          console.log('transaction sender:', activeAddress);
-          console.log('transaction receiver:', targetPayTo);
-          console.log('asset:', targetAsset);
-          console.log('amount:', targetAmount);
-          console.log('indexesToSign:', indexesToSign);
-          console.log('paymentGroup length:', txns.length);
-
+          console.log('[x402 Signer] Signing requested for indexes:', indexesToSign, 'Total txns:', txns.length);
           const signed = await signTransactions(txns, indexesToSign);
           if (!signed || !signed.length) {
             throw new Error('Prism transaction signing was cancelled by user.');
@@ -538,9 +525,13 @@ export const BuildStudio: React.FC = () => {
       x402Cl.register(targetNetwork as any, scheme as any);
 
       let paymentSignatureHeader = '';
+      let paymentPayload: any = null;
       try {
-        const paymentPayload = await x402Cl.createPaymentPayload(paymentRequired);
+        paymentPayload = await x402Cl.createPaymentPayload(paymentRequired);
         paymentSignatureHeader = btoa(JSON.stringify(paymentPayload));
+        console.log('Signed transaction count:', paymentPayload?.payload?.paymentGroup?.length || 1);
+        console.log('Payment payload created:', paymentPayload);
+        console.log('Payment header created:', paymentSignatureHeader.slice(0, 30) + '...');
       } catch (x402Err: any) {
         console.warn('ExactAvmScheme createPaymentPayload warning:', x402Err.message, 'Falling back to direct single-tx signing...');
 
@@ -573,7 +564,7 @@ export const BuildStudio: React.FC = () => {
             .join('')
         );
 
-        const directPayload = {
+        paymentPayload = {
           x402Version: 2,
           scheme: 'exact',
           network: targetNetwork,
@@ -584,8 +575,13 @@ export const BuildStudio: React.FC = () => {
             sender: activeAddress,
           },
         };
-        paymentSignatureHeader = btoa(JSON.stringify(directPayload));
+        paymentSignatureHeader = btoa(JSON.stringify(paymentPayload));
+        console.log('Signed transaction count:', 1);
+        console.log('Payment payload created:', paymentPayload);
+        console.log('Payment header created:', paymentSignatureHeader.slice(0, 30) + '...');
       }
+
+      console.log('Retry request URL:', 'https://prism-99h2.onrender.com/code-review-accurate');
 
       // 3. Submit Payment-Signature to Prism & retrieve code review
       const submitRes = await githubReviewApi.submitPrismReview(
@@ -593,6 +589,7 @@ export const BuildStudio: React.FC = () => {
         file.fileReviewId,
         paymentSignatureHeader
       );
+      console.log('Retry request status:', submitRes.success ? 200 : 'failed');
       if (!submitRes.success || !submitRes.data) {
         throw new Error(submitRes.message || 'Prism code review verification failed.');
       }

@@ -608,6 +608,9 @@ export async function submitPrismReviewWithSignature(
 
   let paidRes: any = null;
 
+  logger.info(`[Prism x402 Debug] Retry request URL: ${prismEndpoint}`);
+  logger.info(`[Prism x402 Debug] Payment header created: ${paymentSignature.slice(0, 30)}...`);
+
   // Retry loop up to 3 attempts (with 2 seconds delay)
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -631,7 +634,7 @@ export async function submitPrismReviewWithSignature(
       );
 
       logger.info(
-        `[Prism x402] Attempt ${attempt} returned HTTP ${paidRes.status} on ${fileDoc.filePath}.`
+        `[Prism x402 Debug] Retry request status: ${paidRes.status} (Attempt ${attempt} on ${fileDoc.filePath})`
       );
 
       if (paidRes.status === 200 && paidRes.data) {
@@ -639,7 +642,7 @@ export async function submitPrismReviewWithSignature(
         break;
       }
     } catch (variantErr: any) {
-      logger.warn(`[Prism x402] Request error on attempt ${attempt}: ${variantErr.message}`);
+      logger.warn(`[Prism x402 Debug] Request error on attempt ${attempt}: ${variantErr.message}`);
     }
 
     if (attempt < 3) {
