@@ -544,27 +544,43 @@ export async function getPrismChallengeForFile(
     fileDoc.filePath
   );
 
-  // Probe Prism to trigger HTTP 402 Challenge
+  // Probe Prism to trigger HTTP 402 Challenge (try GET as in spec, then POST)
   let initialRes: any;
+  const rawGithubUrl = `https://raw.githubusercontent.com/${review.owner}/${review.repository}/${review.commitSha}/${fileDoc.filePath}`;
   try {
-    initialRes = await axios.post(
-      prismEndpoint,
-      {
+    initialRes = await axios.get(prismEndpoint, {
+      params: {
         file_path: fileDoc.filePath,
-        code: fileContent,
-        language: fileDoc.language,
+        raw_url: rawGithubUrl,
       },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
+      headers: {
+        Accept: "application/json",
+      },
+      validateStatus: (status) => status < 500,
+      timeout: 25000,
+    });
+  } catch (_) {
+    try {
+      initialRes = await axios.post(
+        prismEndpoint,
+        {
+          file_path: fileDoc.filePath,
+          code: fileContent,
+          language: fileDoc.language,
+          raw_url: rawGithubUrl,
         },
-        validateStatus: (status) => status < 500,
-        timeout: 25000,
-      }
-    );
-  } catch (err: any) {
-    logger.warn(`Prism direct probe error: ${err.message}. Using standard challenge parameters.`);
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          validateStatus: (status) => status < 500,
+          timeout: 25000,
+        }
+      );
+    } catch (err: any) {
+      logger.warn(`Prism direct probe error: ${err.message}. Using standard challenge parameters.`);
+    }
   }
 
   let challengePayTo = defaultPrismPayTo;
@@ -740,30 +756,48 @@ export async function submitPrismReviewWithSignature(
   // Retry loop up to 3 attempts (with 2 seconds delay)
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      paidRes = await axios.post(
-        prismEndpoint,
-        prismRequestBody,
-        {
+      // 1. Try GET as specified in official Prism endpoint documentation
+      try {
+        paidRes = await axios.get(prismEndpoint, {
+          params: {
+            file_path: fileDoc.filePath,
+            raw_url: rawGithubUrl,
+          },
           headers: {
-            "Content-Type": "application/json",
             Accept: "application/json",
             "Payment-Signature": paymentSignature,
             "payment-signature": paymentSignature,
-            "PAYMENT-SIGNATURE": paymentSignature,
-            "X-PAYMENT": paymentSignature,
-            "x-payment": paymentSignature,
-            Authorization: `x402 ${paymentSignature}`,
           },
           validateStatus: (status) => status < 500,
           timeout: 25000,
-        }
-      );
+        });
+      } catch (getErr: any) {
+        logger.warn(`[Prism x402 Debug] GET request error on attempt ${attempt}: ${getErr.message}`);
+      }
+
+      // 2. If GET did not return 200, try POST with JSON body
+      if (!paidRes || paidRes.status !== 200) {
+        paidRes = await axios.post(
+          prismEndpoint,
+          prismRequestBody,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              "Payment-Signature": paymentSignature,
+              "payment-signature": paymentSignature,
+            },
+            validateStatus: (status) => status < 500,
+            timeout: 25000,
+          }
+        );
+      }
 
       logger.info(
-        `[Prism x402 Debug] Retry request status: ${paidRes.status} (Attempt ${attempt} on ${fileDoc.filePath})`
+        `[Prism x402 Debug] Retry request status: ${paidRes?.status} (Attempt ${attempt} on ${fileDoc.filePath})`
       );
 
-      if (paidRes.status === 200 && paidRes.data) {
+      if (paidRes && paidRes.status === 200 && paidRes.data) {
         logger.info(`[Prism x402] Succeeded on attempt ${attempt} for ${fileDoc.filePath}`);
         break;
       }

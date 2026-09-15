@@ -362,7 +362,18 @@ export const submitPrismReview = asyncHandler(async (req: Request, res: Response
       ? req.params.fileId
       : req.body.fileId || "";
 
-  const { paymentSignature, prismPaymentTxId } = req.body;
+  const paymentSignature = (
+    req.headers["payment-signature"] ||
+    req.headers["Payment-Signature"] ||
+    req.headers["PAYMENT-SIGNATURE"] ||
+    req.headers["x-payment"] ||
+    req.body?.paymentSignature
+  ) as string | undefined;
+
+  const prismPaymentTxId = (
+    req.body?.prismPaymentTxId ||
+    req.headers["x-txid"]
+  ) as string | undefined;
 
   if (!reviewId || !fileId || !paymentSignature) {
     return res.status(400).json({

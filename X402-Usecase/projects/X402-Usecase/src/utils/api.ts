@@ -43,15 +43,34 @@ async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
   if (!response.ok) {
     if (response.status === 402) {
       let errorData: any = {};
-      try {
-        errorData = await response.json();
-      } catch (_) {
-        errorData = { success: true, message: "Payment Required" };
+      const paymentRequiredHeader =
+        response.headers.get('payment-required') ||
+        response.headers.get('Payment-Required') ||
+        response.headers.get('PAYMENT-REQUIRED') ||
+        '';
+
+      if (paymentRequiredHeader) {
+        try {
+          const b64 = paymentRequiredHeader.includes(',')
+            ? paymentRequiredHeader.split(',')[1].trim()
+            : paymentRequiredHeader.trim();
+          errorData = JSON.parse(atob(b64));
+        } catch (_) {}
       }
+
+      if (!errorData || Object.keys(errorData).length === 0) {
+        try {
+          errorData = await response.json();
+        } catch (_) {
+          errorData = { success: true, message: 'Payment Required' };
+        }
+      }
+
       return {
         success: true,
         data: errorData,
-        ...(typeof errorData === "object" ? errorData : {}),
+        paymentRequiredHeader,
+        ...(typeof errorData === 'object' ? errorData : {}),
       } as unknown as T;
     }
 
@@ -448,6 +467,10 @@ export const githubReviewApi = {
   async submitPrismReview(reviewId: string, fileId: string, paymentSignature: string, prismPaymentTxId?: string) {
     return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.GITHUB_REVIEW_PRISM_SUBMIT(reviewId, fileId), {
       method: 'POST',
+      headers: {
+        'Payment-Signature': paymentSignature,
+        'payment-signature': paymentSignature,
+      },
       body: JSON.stringify({ reviewId, fileId, paymentSignature, prismPaymentTxId }),
     });
   },
