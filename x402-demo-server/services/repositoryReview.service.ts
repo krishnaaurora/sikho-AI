@@ -1023,10 +1023,10 @@ Provide a deep, critical review with at least 2-4 concrete findings/refactoring 
 
     fileDoc.fileId = fileDoc.fileReviewId;
     fileDoc.prismPaymentAmount = 200000;
-    fileDoc.prismPaymentStatus = isSettled ? "confirmed" : "unsettled";
+    fileDoc.prismPaymentStatus = isSettled ? "confirmed" : "failed";
     fileDoc.prismPaymentTxId = isSettled ? onChainSettledTxId : "";
     fileDoc.prismPaymentResponse = paymentResponseHeader;
-    fileDoc.prismX402Status = isSettled ? "confirmed" : "unsettled";
+    fileDoc.prismX402Status = isSettled ? "confirmed" : "failed";
     fileDoc.prismX402TxId = isSettled ? onChainSettledTxId : "";
     fileDoc.prismX402PaymentResponse = paymentResponseHeader;
     fileDoc.reviewResult = reviewData;
