@@ -417,8 +417,10 @@ export const BuildStudio: React.FC = () => {
         } catch (_) {}
       }
 
-      if (paymentRequired && paymentRequired.accepts && paymentRequired.accepts[0]) {
-        paymentRequired.accepts[0].amount = '200000';
+      if (paymentRequired && paymentRequired.accepts && Array.isArray(paymentRequired.accepts)) {
+        paymentRequired.accepts.forEach((acc: any) => {
+          acc.amount = '200000';
+        });
       }
 
       if (!paymentRequired) {
@@ -455,8 +457,8 @@ export const BuildStudio: React.FC = () => {
 
       const reqAccepts = paymentRequired.accepts?.[0] || paymentRequired;
       const targetNetwork = reqAccepts.network || 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
-      const targetAmount = reqAccepts.amount;
-      const targetAsset = reqAccepts.asset;
+      const targetAmount = '200000';
+      const targetAsset = reqAccepts.asset || '31566704';
       const targetPayTo = reqAccepts.payTo;
 
       console.log('=== PRISM X402 CHALLENGE ===');
