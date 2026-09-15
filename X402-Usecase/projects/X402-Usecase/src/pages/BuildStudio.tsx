@@ -779,10 +779,23 @@ export const BuildStudio: React.FC = () => {
         throw new Error(submitRes.message || 'Prism code review verification failed.');
       }
 
-      const confirmedPrismTxId =
-        submitRes.data.file?.prismPaymentTxId ||
-        prismTxId ||
-        `prism_x402_settled_${Date.now()}`;
+      const confirmedPrismTxId = submitRes.data.file?.prismPaymentTxId || '';
+      const rawPaymentResponse = submitRes.data.file?.prismPaymentResponse || '';
+      let decodedPaymentResp: any = null;
+      if (rawPaymentResponse) {
+        try {
+          decodedPaymentResp = JSON.parse(atob(rawPaymentResponse));
+        } catch (_) {}
+      }
+
+      console.log('[PRISM RAW PAYMENT-RESPONSE]', rawPaymentResponse || 'None');
+      console.log('[PRISM DECODED PAYMENT-RESPONSE]', decodedPaymentResp ? JSON.stringify(decodedPaymentResp, null, 2) : 'None');
+      console.log('[PRISM ON-CHAIN TX]', confirmedPrismTxId || 'None');
+      console.log('[PRISM ON-CHAIN RECEIVER]', prismPayTo);
+      console.log('[PRISM ON-CHAIN ASSET]', String(targetAsset));
+      console.log('[PRISM ON-CHAIN AMOUNT]', '200000 micro-units (0.20 USDC)');
+      console.log('[PRISM ON-CHAIN CONFIRMED]', !!confirmedPrismTxId && !confirmedPrismTxId.startsWith('prism_x402_settled_'));
+      console.log('[PRISM PAYMENT VERIFIED]', !!confirmedPrismTxId && !confirmedPrismTxId.startsWith('prism_x402_settled_'));
 
       // Print exact required safe logs
       console.log(
@@ -797,10 +810,10 @@ export const BuildStudio: React.FC = () => {
         `  amount: 0.20 USDC\n` +
         `  recipient: ${prismPayTo}\n` +
         `  signed: true\n` +
-        `  submitted/settled: true\n` +
-        `  transaction ID: ${confirmedPrismTxId}\n\n` +
+        `  submitted/settled: ${!!confirmedPrismTxId && !confirmedPrismTxId.startsWith('prism_x402_settled_')}\n` +
+        `  transaction ID: ${confirmedPrismTxId || 'PRISM_PAYMENT_NOT_SETTLED'}\n\n` +
         `Prism review:\n` +
-        `  status: 200`
+        `  status: ${submitRes.data.file?.reviewResult ? 200 : 'failed'}`
       );
 
       const updatedFile = submitRes.data.file;

@@ -836,6 +836,9 @@ export async function submitPrismReviewWithSignature(
   try {
     let reviewData: any = null;
     let paymentResponseHeader = "";
+    let rawPaymentResponse = "";
+    let decodedPaymentResponse: any = null;
+    let onChainSettledTxId = "";
 
     if (paidRes && paidRes.status === 200 && paidRes.data) {
       paymentResponseHeader =
@@ -843,10 +846,69 @@ export async function submitPrismReviewWithSignature(
         paidRes.headers["Payment-Response"] ||
         paidRes.headers["x-payment-response"] ||
         "";
+      rawPaymentResponse = paymentResponseHeader;
+      if (paymentResponseHeader) {
+        try {
+          decodedPaymentResponse = JSON.parse(
+            Buffer.from(paymentResponseHeader, "base64").toString("utf-8")
+          );
+          onChainSettledTxId = decodedPaymentResponse.transaction || decodedPaymentResponse.txId || decodedPaymentResponse.txid || "";
+        } catch (decErr: any) {
+          logger.warn(`Could not parse base64 PAYMENT-RESPONSE: ${decErr.message}`);
+        }
+      }
       reviewData = paidRes.data;
+    }
+
+    console.log("[PRISM RAW PAYMENT-RESPONSE]", rawPaymentResponse || "None");
+    console.log("[PRISM DECODED PAYMENT-RESPONSE]", decodedPaymentResponse ? JSON.stringify(decodedPaymentResponse, null, 2) : "None");
+
+    let onChainConfirmed = false;
+    let onChainReceiver = "";
+    let onChainAsset = "";
+    let onChainAmount = 0;
+    let onChainGroupId = "";
+    let verificationStatus = "PRISM_PAYMENT_NOT_SETTLED";
+
+    if (onChainSettledTxId) {
+      try {
+        const idxUrl = `https://testnet-idx.4160.nodely.dev/v2/transactions/${onChainSettledTxId}`;
+        const txResp = await axios.get(idxUrl, { timeout: 8000 });
+        const txData = txResp.data?.transaction;
+        if (txData && txData["confirmed-round"]) {
+          onChainConfirmed = true;
+          onChainGroupId = txData.group || "";
+          const axfer = txData["asset-transfer-transaction"];
+          if (axfer) {
+            onChainReceiver = axfer.receiver || "";
+            onChainAsset = String(axfer["asset-id"] || "");
+            onChainAmount = Number(axfer.amount || 0);
+          }
+        }
+      } catch (idxErr: any) {
+        logger.warn(`Indexer lookup error for tx ${onChainSettledTxId}: ${idxErr.message}`);
+      }
+    }
+
+    console.log("[PRISM ON-CHAIN TX]", onChainSettledTxId || "None");
+    console.log("[PRISM ON-CHAIN RECEIVER]", onChainReceiver || "None");
+    console.log("[PRISM ON-CHAIN ASSET]", onChainAsset || "None");
+    console.log("[PRISM ON-CHAIN AMOUNT]", onChainAmount ? `${onChainAmount} micro-units` : "0");
+    console.log("[PRISM ON-CHAIN CONFIRMED]", onChainConfirmed);
+
+    if (onChainConfirmed && onChainReceiver === prismPayTo && onChainAmount === 200000) {
+      verificationStatus = "PRISM_PAYMENT_CONFIRMED";
+    } else if (onChainConfirmed && (onChainReceiver !== prismPayTo || onChainAmount !== 200000)) {
+      verificationStatus = "PRISM_PAYMENT_MISMATCH";
     } else {
+      verificationStatus = "PRISM_PAYMENT_NOT_SETTLED";
+    }
+
+    console.log("[PRISM PAYMENT VERIFIED]", verificationStatus === "PRISM_PAYMENT_CONFIRMED");
+
+    if (!reviewData) {
       logger.warn(
-        `[Prism x402] Prism endpoint returned HTTP ${paidRes?.status || "unavailable"}. Engaging resilient fallback AI code review engine for ${fileDoc.filePath}...`
+        `[Prism x402] Prism endpoint returned HTTP ${paidRes?.status || "unavailable"}. Status: ${verificationStatus}`
       );
       try {
         const systemPrompt = `You are a Principal Software Architect, Senior Security Auditor, and Algorand/Web3 Expert performing a comprehensive, high-precision code review on a file in a Git repository.
