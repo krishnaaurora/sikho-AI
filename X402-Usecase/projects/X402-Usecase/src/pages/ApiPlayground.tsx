@@ -8,6 +8,10 @@ import {
 import { useWallet } from '@txnlab/use-wallet-react';
 // @ts-ignore
 import { encodePaymentSignatureHeader } from "@x402/core/http";
+// @ts-ignore
+import { ExactAvmScheme, ClientAvmSigner } from '@x402-avm/avm';
+// @ts-ignore
+import { x402Client } from '@x402-avm/fetch';
 
 interface EndpointInfo {
   path: string;
@@ -259,43 +263,70 @@ const ApiPlayground: React.FC = () => {
         return;
       }
 
-      const algosdk = (window as any).algosdk;
-      if (!algosdk) {
-        alert("algosdk library not loaded on window context.");
-        return;
+      // 1. Build AVM Signer for ExactAvmScheme using connected wallet
+      const avmSigner: ClientAvmSigner = {
+        address: activeAddress,
+        signTransactions: async (txns: Uint8Array[], indexesToSign?: number[]) => {
+          const targetIndexes = indexesToSign && indexesToSign.length > 0 ? indexesToSign : txns.map((_, i) => i);
+          const walletResult = await signTransactions(txns, targetIndexes);
+          if (!walletResult || !walletResult.length) {
+            throw new Error('Payment signing was cancelled by user.');
+          }
+
+          const signedList = walletResult.filter(Boolean) as (Uint8Array | string)[];
+          let sIdx = 0;
+          return txns.map((_, i) => {
+            if (!targetIndexes.includes(i)) return null;
+            const item = walletResult.length === txns.length ? walletResult[i] : signedList[sIdx++];
+            if (!item) return null;
+            if (item instanceof Uint8Array && item.length > 0) return item;
+            if (typeof item === 'string' && item.length > 0) {
+              const binaryString = atob(item);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let j = 0; j < binaryString.length; j++) {
+                bytes[j] = binaryString.charCodeAt(j);
+              }
+              return bytes;
+            }
+            return null;
+          });
+        },
+      };
+
+      const scheme = new ExactAvmScheme(avmSigner, {
+        algodUrl: import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud',
+      });
+
+      const x402Cl = new x402Client();
+      x402Cl.register('algorand:*', scheme as any);
+      if (requirement.network) {
+        x402Cl.register(requirement.network as any, scheme as any);
       }
 
-      // Build mainnet/testnet atomic transfer transaction block
-      const client = new algosdk.Algodv2(
-        import.meta.env.VITE_ALGOD_TOKEN || "",
-        import.meta.env.VITE_ALGOD_SERVER || "https://mainnet-api.algonode.cloud",
-        import.meta.env.VITE_ALGOD_PORT || ""
-      );
+      const paymentPayload = await x402Cl.createPaymentPayload(paymentRequiredPayload);
+      const signedPaymentHeader = btoa(JSON.stringify(paymentPayload));
 
-      const params = await client.getTransactionParams().do();
-      const enc = new TextEncoder();
-
-      // Build exact token payment transfer
-      const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-        sender: activeAddress,
-        receiver: requirement.payTo,
-        amount: parseInt(requirement.amount),
-        assetIndex: parseInt(requirement.asset),
-        suggestedParams: params,
-        note: enc.encode(JSON.stringify(requirement.extra || {}))
-      });
-
-      const binaryTx = tx.toByte();
-      const signedArray = await signTransactions([binaryTx]);
-      const { txId } = await client.sendRawTransaction(signedArray).do();
-      setPaymentTxHash(txId);
-
-      // Construct verified signed payment header token format matching @x402 standard
-      const signedPaymentHeader = JSON.stringify({
-        txid: txId,
-        sender: activeAddress,
-        network: requirement.network
-      });
+      // Extract transaction ID if present
+      try {
+        const payloadData = (paymentPayload as any)?.payload;
+        const pGroup = Array.isArray(payloadData?.paymentGroup) ? payloadData.paymentGroup : [];
+        const pIdx: number = typeof payloadData?.paymentIndex === 'number' ? payloadData.paymentIndex : 1;
+        if (pGroup[pIdx]) {
+          const rawStxn = pGroup[pIdx];
+          const stxnBytes = new Uint8Array(
+            (typeof rawStxn === 'string' ? atob(rawStxn) : '')
+              .split('')
+              .map((c) => c.charCodeAt(0))
+          );
+          const algosdk = (window as any).algosdk;
+          if (algosdk) {
+            const decodedStxn: any = algosdk.decodeSignedTransaction(stxnBytes);
+            if (decodedStxn?.txn) {
+              setPaymentTxHash(decodedStxn.txn.txID());
+            }
+          }
+        }
+      } catch (_) {}
 
       // Resubmit to backend with payment confirmation header
       await executeRequest(signedPaymentHeader);
