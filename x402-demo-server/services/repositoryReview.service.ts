@@ -610,6 +610,7 @@ export async function submitPrismReviewWithSignature(
             Accept: "application/json",
             "Payment-Signature": paymentSignature,
             "payment-signature": paymentSignature,
+            "PAYMENT-SIGNATURE": paymentSignature,
             "X-PAYMENT": paymentSignature,
             "x-payment": paymentSignature,
           },
