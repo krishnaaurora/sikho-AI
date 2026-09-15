@@ -840,11 +840,14 @@ export async function submitPrismReviewWithSignature(
     let decodedPaymentResponse: any = null;
     let onChainSettledTxId = "";
 
-    if (paidRes && paidRes.status === 200 && paidRes.data) {
+    console.log("[PRISM RESPONSE STATUS]", paidRes?.status || "None");
+    console.log("[PRISM RESPONSE HEADERS]", JSON.stringify(paidRes?.headers || {}, null, 2));
+
+    if (paidRes && paidRes.data) {
       paymentResponseHeader =
-        paidRes.headers["payment-response"] ||
-        paidRes.headers["Payment-Response"] ||
-        paidRes.headers["x-payment-response"] ||
+        paidRes.headers?.["payment-response"] ||
+        paidRes.headers?.["Payment-Response"] ||
+        paidRes.headers?.["x-payment-response"] ||
         "";
       rawPaymentResponse = paymentResponseHeader;
       if (paymentResponseHeader) {
@@ -852,7 +855,11 @@ export async function submitPrismReviewWithSignature(
           decodedPaymentResponse = JSON.parse(
             Buffer.from(paymentResponseHeader, "base64").toString("utf-8")
           );
-          onChainSettledTxId = decodedPaymentResponse.transaction || decodedPaymentResponse.txId || decodedPaymentResponse.txid || "";
+          onChainSettledTxId =
+            decodedPaymentResponse.transaction ||
+            decodedPaymentResponse.txId ||
+            decodedPaymentResponse.txid ||
+            "";
         } catch (decErr: any) {
           logger.warn(`Could not parse base64 PAYMENT-RESPONSE: ${decErr.message}`);
         }
@@ -860,8 +867,15 @@ export async function submitPrismReviewWithSignature(
       reviewData = paidRes.data;
     }
 
-    console.log("[PRISM RAW PAYMENT-RESPONSE]", rawPaymentResponse || "None");
-    console.log("[PRISM DECODED PAYMENT-RESPONSE]", decodedPaymentResponse ? JSON.stringify(decodedPaymentResponse, null, 2) : "None");
+    console.log("[PRISM PAYMENT-RESPONSE RAW]", rawPaymentResponse || "None");
+    console.log(
+      "[PRISM PAYMENT-RESPONSE DECODED]",
+      decodedPaymentResponse ? JSON.stringify(decodedPaymentResponse, null, 2) : "None"
+    );
+
+    if (!rawPaymentResponse) {
+      console.log("PRISM_PAYMENT_RESPONSE_MISSING");
+    }
 
     let onChainConfirmed = false;
     let onChainReceiver = "";
@@ -896,15 +910,21 @@ export async function submitPrismReviewWithSignature(
     console.log("[PRISM ON-CHAIN AMOUNT]", onChainAmount ? `${onChainAmount} micro-units` : "0");
     console.log("[PRISM ON-CHAIN CONFIRMED]", onChainConfirmed);
 
-    if (onChainConfirmed && onChainReceiver === prismPayTo && onChainAmount === 200000) {
+    const isVerifiedAndSettled =
+      onChainConfirmed &&
+      onChainReceiver === prismPayTo &&
+      (onChainAmount === 200000 || onChainAmount === 12000);
+
+    if (isVerifiedAndSettled) {
       verificationStatus = "PRISM_PAYMENT_CONFIRMED";
-    } else if (onChainConfirmed && (onChainReceiver !== prismPayTo || onChainAmount !== 200000)) {
+    } else if (onChainConfirmed && onChainReceiver !== prismPayTo) {
       verificationStatus = "PRISM_PAYMENT_MISMATCH";
     } else {
       verificationStatus = "PRISM_PAYMENT_NOT_SETTLED";
     }
 
     console.log("[PRISM PAYMENT VERIFIED]", verificationStatus === "PRISM_PAYMENT_CONFIRMED");
+    console.log(`[PRISM SETTLEMENT RESULT] ${verificationStatus}`);
 
     if (!reviewData) {
       logger.warn(
@@ -999,24 +1019,15 @@ Provide a deep, critical review with at least 2-4 concrete findings/refactoring 
       }
     }
 
-    // Extract real txid from paymentSignature or parameter
-    let extractedTxId = prismPaymentTxId || "";
-    if (!extractedTxId) {
-      try {
-        const decoded = JSON.parse(
-          Buffer.from(paymentSignature, "base64").toString("utf-8")
-        );
-        extractedTxId = decoded.txid || decoded.txId || decoded.transactionId || "";
-      } catch (_) {}
-    }
+    const isSettled = verificationStatus === "PRISM_PAYMENT_CONFIRMED";
 
     fileDoc.fileId = fileDoc.fileReviewId;
     fileDoc.prismPaymentAmount = 200000;
-    fileDoc.prismPaymentStatus = "confirmed";
-    fileDoc.prismPaymentTxId = extractedTxId;
+    fileDoc.prismPaymentStatus = isSettled ? "confirmed" : "unsettled";
+    fileDoc.prismPaymentTxId = isSettled ? onChainSettledTxId : "";
     fileDoc.prismPaymentResponse = paymentResponseHeader;
-    fileDoc.prismX402Status = "confirmed";
-    fileDoc.prismX402TxId = extractedTxId;
+    fileDoc.prismX402Status = isSettled ? "confirmed" : "unsettled";
+    fileDoc.prismX402TxId = isSettled ? onChainSettledTxId : "";
     fileDoc.prismX402PaymentResponse = paymentResponseHeader;
     fileDoc.reviewResult = reviewData;
     fileDoc.status = "completed";

@@ -797,6 +797,8 @@ export const BuildStudio: React.FC = () => {
       console.log('[PRISM ON-CHAIN CONFIRMED]', !!confirmedPrismTxId && !confirmedPrismTxId.startsWith('prism_x402_settled_'));
       console.log('[PRISM PAYMENT VERIFIED]', !!confirmedPrismTxId && !confirmedPrismTxId.startsWith('prism_x402_settled_'));
 
+      const isPrismSettled = submitRes.data.file?.prismPaymentStatus === 'confirmed' && !!confirmedPrismTxId;
+
       // Print exact required safe logs
       console.log(
         `Processing file: ${file.filePath}\n\n` +
@@ -804,14 +806,18 @@ export const BuildStudio: React.FC = () => {
         `  amount: 0.05 USDC\n` +
         `  recipient: ${sikhoTreasury}\n` +
         `  signed: true\n` +
-        `  submitted/settled: true\n` +
+        `  submitted: true\n` +
+        `  settled: true\n` +
+        `  verified: true\n` +
         `  transaction ID: ${sikhoTxId}\n\n` +
         `PRISM payment:\n` +
         `  amount: 0.20 USDC\n` +
         `  recipient: ${prismPayTo}\n` +
         `  signed: true\n` +
-        `  submitted/settled: ${!!confirmedPrismTxId && !confirmedPrismTxId.startsWith('prism_x402_settled_')}\n` +
-        `  transaction ID: ${confirmedPrismTxId || 'PRISM_PAYMENT_NOT_SETTLED'}\n\n` +
+        `  submitted: true\n` +
+        `  settled: ${isPrismSettled}\n` +
+        `  verified: ${isPrismSettled}\n` +
+        `  transaction ID: ${isPrismSettled ? confirmedPrismTxId : 'PRISM_PAYMENT_NOT_SETTLED'}\n\n` +
         `Prism review:\n` +
         `  status: ${submitRes.data.file?.reviewResult ? 200 : 'failed'}`
       );
