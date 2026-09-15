@@ -74,19 +74,6 @@ const LoginPage: React.FC = () => {
         <Link to="/" className="absolute top-8 left-8 flex items-center gap-2.5 z-20 group">
           <img src="/logo.png" alt="Logo" className="h-14 w-auto object-contain rounded-xl group-hover:scale-105 transition-transform" />
         </Link>
-
-        {/* Bottom Text Overlay */}
-        <div className="absolute bottom-16 left-12 right-12 z-20 text-white pointer-events-none select-none">
-          <span className="px-3 py-1 bg-primary/20 text-primary border border-primary/30 text-xs font-semibold rounded-full uppercase tracking-wider">
-            Web3 Educational Platform
-          </span>
-          <h3 className="text-4xl font-extrabold tracking-tight mt-4 leading-tight">
-            AI-Generated & Blockchain-Secured Credentials
-          </h3>
-          <p className="mt-4 text-base text-slate-350 max-w-lg leading-relaxed">
-            Construct specialized lessons dynamically tailored by artificial intelligence and secure your academic achievements natively on the Algorand blockchain.
-          </p>
-        </div>
       </div>
 
       {/* Right side: Login form */}

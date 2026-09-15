@@ -385,7 +385,7 @@ const RegisterPage: React.FC = () => {
             className="w-full min-h-screen bg-slate-50 dark:bg-slate-950 flex fixed inset-0 z-50 overflow-y-auto"
           >
             {/* Left side: Hero banner with Interactive Dots */}
-            <div className="hidden lg:relative lg:flex lg:w-1/2 bg-slate-950 overflow-hidden flex-col justify-between p-12">
+            <div className="hidden lg:relative lg:flex lg:w-1/2 bg-slate-950 overflow-hidden">
               <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_80%,transparent_100%)] opacity-70" />
               <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px] animate-pulse" />
               <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-accent/10 rounded-full blur-[100px]" />
@@ -395,21 +395,9 @@ const RegisterPage: React.FC = () => {
               {/* Floating interactive course & feature nodes with one-line hover descriptions */}
               <AuthFeatureNodes />
 
-              <Link to="/" className="relative z-20 flex items-center gap-2.5 group w-fit">
+              <Link to="/" className="absolute top-8 left-8 z-20 flex items-center gap-2.5 group w-fit">
                 <img src="/logo.png" alt="Logo" className="h-14 w-auto object-contain rounded-xl group-hover:scale-105 transition-transform" />
               </Link>
-
-              <div className="relative z-20 text-white max-w-lg mb-8 pointer-events-none select-none">
-                <span className="px-3 py-1 bg-primary/20 text-primary border border-primary/30 text-xs font-semibold rounded-full uppercase tracking-wider">
-                  AI-Powered Learning Platform
-                </span>
-                <h3 className="text-4xl font-extrabold tracking-tight mt-4 leading-tight">
-                  Start Your Personalized Learning Journey
-                </h3>
-                <p className="mt-4 text-base text-slate-300 leading-relaxed">
-                  Join thousands of learners building future-proof skills with AI-curated roadmaps and blockchain-backed achievement credentials.
-                </p>
-              </div>
             </div>
 
             {/* Right side: Registration Form */}
