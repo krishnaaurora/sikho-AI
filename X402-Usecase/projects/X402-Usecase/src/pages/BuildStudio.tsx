@@ -474,30 +474,56 @@ export const BuildStudio: React.FC = () => {
       const avmSigner = {
         address: activeAddress,
         signTransactions: async (txns: Uint8Array[], indexesToSign?: number[]) => {
-          const indices = indexesToSign || txns.map((_, i) => i);
-          const txnsToSign = indices.map((i) => txns[i]);
-
           console.log('=== PRISM X402 PAYMENT ===');
           console.log('activeAddress:', activeAddress);
           console.log('transaction sender:', activeAddress);
           console.log('transaction receiver:', targetPayTo);
           console.log('asset:', targetAsset);
           console.log('amount:', targetAmount);
-          console.log('paymentIndex:', indices[0] ?? 0);
+          console.log('indexesToSign:', indexesToSign);
           console.log('paymentGroup length:', txns.length);
 
-          const signed = await signTransactions(txnsToSign);
-          const signedList = signed.filter(Boolean) as Uint8Array[];
-          if (!signedList.length) {
+          // Pass the FULL txns array along with indexesToSign to prevent Group ID mismatch errors in wallets (e.g. Pera / Defly)
+          const signed = await signTransactions(txns, indexesToSign);
+          if (!signed || !signed.length) {
             throw new Error('Prism transaction signing was cancelled by user.');
           }
 
+          if (signed.length === txns.length) {
+            return signed.map((item: any, i: number) => {
+              if (indexesToSign && !indexesToSign.includes(i)) {
+                return null;
+              }
+              if (item instanceof Uint8Array) return item;
+              if (typeof item === 'string') {
+                const binaryString = atob(item);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let j = 0; j < binaryString.length; j++) {
+                  bytes[j] = binaryString.charCodeAt(j);
+                }
+                return bytes;
+              }
+              return null;
+            });
+          }
+
+          const signedList = signed.filter(Boolean) as (Uint8Array | string)[];
           let sIdx = 0;
-          return txns.map((txn, i) => {
+          return txns.map((_, i) => {
             if (indexesToSign && !indexesToSign.includes(i)) {
               return null;
             }
-            return signedList[sIdx++] || null;
+            const item = signedList[sIdx++];
+            if (item instanceof Uint8Array) return item;
+            if (typeof item === 'string') {
+              const binaryString = atob(item);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let j = 0; j < binaryString.length; j++) {
+                bytes[j] = binaryString.charCodeAt(j);
+              }
+              return bytes;
+            }
+            return null;
           });
         },
       };
