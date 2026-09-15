@@ -440,10 +440,35 @@ export const BuildStudio: React.FC = () => {
         } catch (_) {}
       }
 
-      if (paymentRequired && paymentRequired.accepts && Array.isArray(paymentRequired.accepts)) {
-        paymentRequired.accepts.forEach((acc: any) => {
-          acc.amount = '200000';
-        });
+      if (paymentRequired) {
+        if (!paymentRequired.accepts || !Array.isArray(paymentRequired.accepts) || paymentRequired.accepts.length === 0) {
+          paymentRequired.accepts = [
+            {
+              scheme: 'exact',
+              network: targetNetwork,
+              amount: '200000',
+              asset: String(targetAsset),
+              payTo: prismPayTo,
+              maxTimeoutSeconds: 300,
+              extra: {
+                asset: targetAsset,
+                tag: 'x402-global-challenge',
+                decimals: 6,
+                feePayer: 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
+              },
+            },
+          ];
+        } else {
+          paymentRequired.accepts.forEach((acc: any) => {
+            acc.amount = '200000';
+            acc.asset = String(targetAsset);
+            acc.network = acc.network || targetNetwork;
+            acc.payTo = acc.payTo || prismPayTo;
+            if (!acc.extra) acc.extra = {};
+            acc.extra.feePayer = acc.extra.feePayer || 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA';
+            acc.extra.decimals = 6;
+          });
+        }
       }
 
       if (!paymentRequired) {
@@ -490,6 +515,68 @@ export const BuildStudio: React.FC = () => {
         address: activeAddress,
         signTransactions: async (txns: Uint8Array[], indexesToSign?: number[]) => {
           const targetIndexes = indexesToSign && indexesToSign.length > 0 ? indexesToSign : txns.map((_, i) => i);
+          
+          // SAFE LOG: Detailed breakdown of the raw transaction group before signing
+          console.log('=== [Prism x402 Payment Group Details Before Signing] ===');
+          console.log('Number of transactions in group:', txns.length);
+          console.log('FeePayer address:', targetAccept.extra?.feePayer || 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA');
+          
+          txns.forEach((txnBytes, idx) => {
+            try {
+              const dTxn: any = algosdk.decodeUnsignedTransaction(txnBytes);
+              const txnSender = dTxn.sender ? algosdk.encodeAddress(dTxn.sender.publicKey) : 'unknown';
+              const txnType = dTxn.type || (dTxn.assetTransfer ? 'axfer' : (dTxn.payment ? 'pay' : 'unknown'));
+              const txnFee = dTxn.fee !== undefined ? dTxn.fee.toString() : '0';
+              const groupId = dTxn.group ? btoa(String.fromCharCode(...dTxn.group)) : 'none';
+
+              if (txnType === 'pay') {
+                const receiver = dTxn.payment?.receiver
+                  ? algosdk.encodeAddress(dTxn.payment.receiver.publicKey)
+                  : dTxn.receiver
+                  ? algosdk.encodeAddress(dTxn.receiver.publicKey)
+                  : 'unknown';
+                const amount = dTxn.payment?.amount !== undefined ? dTxn.payment.amount.toString() : (dTxn.amount !== undefined ? dTxn.amount.toString() : '0');
+                console.log(`Transaction ${idx} (Fee Payer Txn):`, {
+                  type: 'pay',
+                  sender: txnSender,
+                  receiver,
+                  amount: `${amount} micro-ALGO (0 ALGO)`,
+                  fee: `${txnFee} micro-ALGO (covers group fee)`,
+                  groupId,
+                });
+              } else if (txnType === 'axfer') {
+                const receiver = dTxn.assetTransfer?.receiver
+                  ? algosdk.encodeAddress(dTxn.assetTransfer.receiver.publicKey)
+                  : dTxn.assetReceiver
+                  ? algosdk.encodeAddress(dTxn.assetReceiver.publicKey)
+                  : 'unknown';
+                const amount = dTxn.assetTransfer?.amount !== undefined
+                  ? dTxn.assetTransfer.amount.toString()
+                  : dTxn.assetAmount !== undefined
+                  ? dTxn.assetAmount.toString()
+                  : '0';
+                const assetId = dTxn.assetTransfer?.assetId !== undefined
+                  ? dTxn.assetTransfer.assetId.toString()
+                  : dTxn.assetIndex !== undefined
+                  ? dTxn.assetIndex.toString()
+                  : 'unknown';
+                console.log(`Transaction ${idx} (User Payment Txn):`, {
+                  type: 'axfer',
+                  sender: txnSender,
+                  receiver,
+                  asset: assetId,
+                  amount: `${amount} micro-USDC (0.20 USDC)`,
+                  fee: `${txnFee} micro-ALGO (0 fee paid by user)`,
+                  groupId,
+                });
+              } else {
+                console.log(`Transaction ${idx}:`, { type: txnType, sender: txnSender, fee: txnFee, groupId });
+              }
+            } catch (e: any) {
+              console.warn(`Could not decode transaction ${idx} for debug log:`, e.message);
+            }
+          });
+
           console.log('[x402 Signer] Signing requested for indexes:', targetIndexes, 'Total txns in group:', txns.length);
           
           const walletResult = await signTransactions(txns, targetIndexes);

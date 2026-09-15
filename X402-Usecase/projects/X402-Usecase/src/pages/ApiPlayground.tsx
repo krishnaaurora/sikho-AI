@@ -263,11 +263,44 @@ const ApiPlayground: React.FC = () => {
         return;
       }
 
+      // Ensure feePayer is present in paymentRequiredPayload
+      if (!requirement.extra) requirement.extra = {};
+      if (!requirement.extra.feePayer) {
+        requirement.extra.feePayer = 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA';
+      }
+      if (paymentRequiredPayload.accepts && Array.isArray(paymentRequiredPayload.accepts)) {
+        paymentRequiredPayload.accepts.forEach((acc: any) => {
+          if (!acc.extra) acc.extra = {};
+          if (!acc.extra.feePayer) {
+            acc.extra.feePayer = 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA';
+          }
+        });
+      }
+
       // 1. Build AVM Signer for ExactAvmScheme using connected wallet
       const avmSigner: ClientAvmSigner = {
         address: activeAddress,
         signTransactions: async (txns: Uint8Array[], indexesToSign?: number[]) => {
           const targetIndexes = indexesToSign && indexesToSign.length > 0 ? indexesToSign : txns.map((_, i) => i);
+          
+          console.log('=== [x402 Payment Group Details Before Signing] ===');
+          console.log('Number of transactions in group:', txns.length);
+          console.log('FeePayer address:', requirement.extra?.feePayer || 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA');
+
+          const algosdk = (window as any).algosdk;
+          if (algosdk) {
+            txns.forEach((txnBytes, idx) => {
+              try {
+                const dTxn: any = algosdk.decodeUnsignedTransaction(txnBytes);
+                const txnSender = dTxn.sender ? algosdk.encodeAddress(dTxn.sender.publicKey) : 'unknown';
+                const txnType = dTxn.type || (dTxn.assetTransfer ? 'axfer' : (dTxn.payment ? 'pay' : 'unknown'));
+                const txnFee = dTxn.fee !== undefined ? dTxn.fee.toString() : '0';
+                const groupId = dTxn.group ? btoa(String.fromCharCode(...dTxn.group)) : 'none';
+                console.log(`Transaction ${idx}: type=${txnType}, sender=${txnSender}, fee=${txnFee} micro-ALGO, groupId=${groupId}`);
+              } catch (_) {}
+            });
+          }
+
           const walletResult = await signTransactions(txns, targetIndexes);
           if (!walletResult || !walletResult.length) {
             throw new Error('Payment signing was cancelled by user.');
