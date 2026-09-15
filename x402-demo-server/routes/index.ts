@@ -34,5 +34,6 @@ router.use("/services", servicesRoutes);
 router.use("/services/github-review", repositoryReviewRoutes);
 router.use("/repository-review", repositoryReviewRoutes);
 router.use("/git-repo-analyser", repositoryReviewRoutes);
+router.use("/code-review", repositoryReviewRoutes);
 
 export default router;

@@ -12,7 +12,7 @@ const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 // ─── 1. INTERVIEW QUESTIONS ($0.03 USDC) ────────────────────────────────────
-router.get(
+router.all(
   "/interview-questions",
   enforceWorkspacePayment({
     priceUsd: 0.03,
@@ -31,7 +31,7 @@ router.get(
 );
 
 // ─── 2. LEARNING PATH 3-MODULE BATCH ($0.09 USDC) ───────────────────────────
-router.get(
+router.all(
   "/learning-path",
   enforceWorkspacePayment({
     priceUsd: 0.09,
@@ -50,7 +50,7 @@ router.get(
 );
 
 // ─── 3. STUDY RESOURCES ($0.03 USDC) ────────────────────────────────────────
-router.get(
+router.all(
   "/study-resources",
   enforceWorkspacePayment({
     priceUsd: 0.03,

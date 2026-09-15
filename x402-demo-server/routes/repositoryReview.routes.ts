@@ -16,10 +16,10 @@ import {
 
 const router = express.Router();
 
-// Git Repo Analyser - Standalone x402 Merchant Endpoint (GET & POST)
-router.get("/git-repo-analyser", handleGitRepoAnalyserEndpoint);
-router.post("/git-repo-analyser", handleGitRepoAnalyserEndpoint);
+// Git Repo Analyser & Code Review - Standalone x402 Merchant Endpoints (GET & POST)
 router.all("/git-repo-analyser", handleGitRepoAnalyserEndpoint);
+router.all("/code-review", handleGitRepoAnalyserEndpoint);
+router.all("/code-review-accurate", handleGitRepoAnalyserEndpoint);
 
 // Repository Review Endpoints
 router.post("/discover", discover);
