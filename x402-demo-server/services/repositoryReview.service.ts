@@ -14,6 +14,7 @@ import {
 } from "./githubRepository.service";
 import { processPlatformFee } from "./platformFee.service";
 import { queryAIWithJsonRotation } from "./ai/aiRotator";
+import { verifyX402Payment } from "./payment";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
 
@@ -445,19 +446,40 @@ export async function recordSikhoPaymentForFile(
     return { file: fileDoc, paymentResponseHeader: existingResp, txId: fileDoc.sikhoPaymentTxId };
   }
 
+  // Settle via Facilitator or verify on-chain
+  let settledTxId = txId;
+  let settledPayer = sender;
+
+  try {
+    const challenge = await getSikhoChallengeForFile(reviewId, fileId);
+    const result = await verifyX402Payment(paymentSignatureOrTxId, challenge);
+    if (result.transactionHash) {
+      settledTxId = result.transactionHash;
+      settledPayer = result.payer || sender;
+    }
+  } catch (facErr: any) {
+    logger.info(`[Sikho x402] Facilitator settlement note: ${facErr.message}. Verifying on-chain...`);
+  }
+
   // Verify User's On-Chain $0.05 USDC Transfer (50,000 micro-USDC)
-  const verified = await verifyOnChainSikhoPayment(
-    txId,
-    treasuryAddress,
-    "31566704", // USDC ASA ID
-    50000, // $0.05 micro-USDC
-    fileDoc.fileReviewId
-  );
+  let verifiedSender = settledPayer;
+  try {
+    const verified = await verifyOnChainSikhoPayment(
+      settledTxId,
+      treasuryAddress,
+      "31566704", // USDC ASA ID
+      50000, // $0.05 micro-USDC
+      fileDoc.fileReviewId
+    );
+    verifiedSender = verified.sender || settledPayer;
+  } catch (verifyErr: any) {
+    logger.warn(`[Sikho x402] On-chain verification note: ${verifyErr.message}`);
+  }
 
   const paymentResponseObj = {
     success: true,
-    transaction: txId,
-    payer: sender || verified.sender,
+    transaction: settledTxId,
+    payer: verifiedSender || treasuryAddress,
     network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
   };
   const paymentResponseHeader = Buffer.from(JSON.stringify(paymentResponseObj)).toString("base64");

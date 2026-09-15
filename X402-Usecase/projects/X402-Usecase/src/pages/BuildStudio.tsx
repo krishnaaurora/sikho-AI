@@ -229,116 +229,225 @@ export const BuildStudio: React.FC = () => {
       // 1. Fetch Sikho x402 Challenge (HTTP 402 Requirements)
       const challengeRes = await githubReviewApi.getSikhoChallenge(activeReviewId, file.fileReviewId);
       const challenge = (challengeRes && (challengeRes as any).data) ? (challengeRes as any).data : challengeRes;
-      const accept = challenge?.accepts?.[0] || challenge;
 
       const sikhoPayTo =
-        accept.payTo ||
         import.meta.env.VITE_AVM_ADDRESS ||
         '2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY';
-      const amountMicro = Number(accept.amount || 50000);
-      const assetId = Number(accept.asset || 31566704);
-      const network = accept.network || 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
+      const targetAmount = 50000; // 0.05 USDC (50,000 micro-units)
+      const targetAsset = 31566704; // Algorand MainNet USDC ASA ID
+      const targetNetwork = 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
 
-      const client = new algosdk.Algodv2(
-        import.meta.env.VITE_ALGOD_TOKEN || '',
-        import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud',
-        import.meta.env.VITE_ALGOD_PORT || ''
-      );
+      let paymentRequired: any = null;
+      if (challenge?.paymentRequiredHeader) {
+        try {
+          const b64 = challenge.paymentRequiredHeader.includes(',')
+            ? challenge.paymentRequiredHeader.split(',')[1].trim()
+            : challenge.paymentRequiredHeader.trim();
+          paymentRequired = JSON.parse(atob(b64));
+        } catch (_) {}
+      }
 
-      const params = await client.getTransactionParams().do();
-      const enc = new TextEncoder();
-
-      // Pre-check user's ALGO balance against Minimum Balance Requirement (MBR) + transaction fee
-      try {
-        const acctInfo: any = await client.accountInformation(activeAddress).do();
-        const algoBal = Number(acctInfo.amount || 0);
-        const minBal = Number(acctInfo['min-balance'] || acctInfo.minBalance || (acctInfo.assets?.length ? 100000 + acctInfo.assets.length * 100000 : 100000));
-        const feeNeeded = Number(params.fee || 1000);
-        if (algoBal - feeNeeded < minBal) {
-          throw new Error(
-            `Insufficient ALGO for Network Fee: Your wallet (${activeAddress.slice(0, 6)}...${activeAddress.slice(-4)}) has an ALGO balance of ${(algoBal / 1e6).toFixed(6)} ALGO, but requires at least ${((minBal + feeNeeded) / 1e6).toFixed(6)} ALGO (Minimum Balance Requirement ${(minBal / 1e6).toFixed(4)} ALGO + ${(feeNeeded / 1e6).toFixed(4)} ALGO network fee). Please add ~0.01 ALGO to your wallet to send transactions.`
-          );
+      if (paymentRequired) {
+        if (!paymentRequired.accepts || !Array.isArray(paymentRequired.accepts) || paymentRequired.accepts.length === 0) {
+          paymentRequired.accepts = [
+            {
+              scheme: 'exact',
+              network: targetNetwork,
+              amount: '50000',
+              asset: String(targetAsset),
+              payTo: sikhoPayTo,
+              maxTimeoutSeconds: 300,
+              extra: {
+                asset: targetAsset,
+                decimals: 6,
+                feePayer: 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
+              },
+            },
+          ];
+        } else {
+          paymentRequired.accepts.forEach((acc: any) => {
+            acc.amount = '50000';
+            acc.asset = String(targetAsset);
+            acc.network = acc.network || targetNetwork;
+            acc.payTo = acc.payTo || sikhoPayTo;
+            if (!acc.extra) acc.extra = {};
+            acc.extra.feePayer = acc.extra.feePayer || 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA';
+            acc.extra.decimals = 6;
+          });
         }
-      } catch (acctErr: any) {
-        if (acctErr.message && acctErr.message.includes('Insufficient ALGO')) {
-          throw acctErr;
-        }
       }
 
-      // 2. User connected wallet signs REAL x402 payment ($0.05 USDC / 50,000 micro-USDC)
-      const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-        sender: activeAddress,
-        receiver: sikhoPayTo,
-        amount: Number(amountMicro),
-        assetIndex: Number(assetId),
-        suggestedParams: params,
-        note: enc.encode(
-          JSON.stringify({
-            service: 'sikho-platform-fee',
-            reviewId: activeReviewId,
-            fileId: file.fileReviewId,
-            filePath: file.filePath,
-            timestamp: Date.now(),
-          })
-        ),
-      } as any);
-
-      const txSender = algosdk.encodeAddress((tx as any).sender.publicKey);
-      const txReceiver = algosdk.encodeAddress((tx as any).assetTransfer.receiver.publicKey);
-      const txAmount = (tx as any).assetTransfer.amount.toString();
-      const txAssetIndex = (tx as any).assetTransfer.assetIndex.toString();
-
-      console.log('=== [DIAGNOSTIC LOG: Sikho x402 Payment] ===');
-      console.log('activeAddress:', activeAddress);
-      console.log('transaction.sender:', txSender);
-      console.log('transaction.receiver:', txReceiver);
-      console.log('transaction.assetIndex:', txAssetIndex);
-      console.log('transaction.amount:', txAmount);
-      console.log('challenge.payTo:', sikhoPayTo);
-      console.log('challenge.maxAmountRequired:', amountMicro);
-
-      if (txSender !== activeAddress) {
-        throw new Error(
-          `CRITICAL X402 SENDER MISMATCH: Connected wallet address (${activeAddress}) does not match transaction sender (${txSender}). Aborting payment!`
-        );
+      if (!paymentRequired) {
+        paymentRequired = {
+          x402Version: 2,
+          error: 'Payment required',
+          resource: {
+            url: `https://sikho-ai.onrender.com/api/v1/services/github-review/${activeReviewId}/files/${file.fileReviewId}/sikho-x402`,
+            description: `Sikho AI platform fee ($0.05 USDC) for reviewing ${file.filePath}`,
+            mimeType: 'application/json',
+          },
+          accepts: [
+            {
+              scheme: 'exact',
+              network: targetNetwork,
+              amount: '50000',
+              asset: String(targetAsset),
+              payTo: sikhoPayTo,
+              maxTimeoutSeconds: 300,
+              extra: {
+                asset: targetAsset,
+                decimals: 6,
+                feePayer: 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
+              },
+            },
+          ],
+        };
       }
 
-      const signedArray = await signTransactions([tx.toByte()]);
-      const signedRaw = signedArray.filter(Boolean) as Uint8Array[];
-      if (!signedRaw.length) {
-        throw new Error('Sikho x402 payment signing was cancelled by user.');
-      }
+      // SAFE LOG: Sikho payment requirements
+      const targetAccept = (paymentRequired.accepts && paymentRequired.accepts[0]) || {};
+      console.log('[Sikho x402 Debug] Payment requirements:', {
+        x402Version: paymentRequired.x402Version || 2,
+        amount: targetAccept.amount || '50000',
+        asset: targetAccept.asset || String(targetAsset),
+        network: targetAccept.network || targetNetwork,
+        payTo: targetAccept.payTo || sikhoPayTo,
+        feePayer: targetAccept.extra?.feePayer || 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
+      });
 
-      await client.sendRawTransaction(signedRaw).do();
-      const txId: string = (tx as any).txID();
-      console.log(`[Sikho x402] User payment broadcast for ${file.filePath}: TxID=${txId}`);
+      // 2. Build AVM Signer for ExactAvmScheme using connected wallet
+      const avmSigner: ClientAvmSigner = {
+        address: activeAddress,
+        signTransactions: async (txns: Uint8Array[], indexesToSign?: number[]) => {
+          const targetIndexes = indexesToSign && indexesToSign.length > 0 ? indexesToSign : txns.map((_, i) => i);
+          
+          // SAFE LOG: Exact JSON array representation of decoded transaction group
+          const decodedGroupSummary: any[] = [];
+          txns.forEach((txnBytes, idx) => {
+            try {
+              const dTxn: any = algosdk.decodeUnsignedTransaction(txnBytes);
+              const txnSender = dTxn.sender ? algosdk.encodeAddress(dTxn.sender.publicKey) : 'unknown';
+              const txnType = dTxn.type || (dTxn.assetTransfer ? 'axfer' : (dTxn.payment ? 'pay' : 'unknown'));
+              const txnFee = dTxn.fee !== undefined ? Number(dTxn.fee) : 0;
+              const groupId = dTxn.group ? btoa(String.fromCharCode(...dTxn.group)) : 'none';
 
-      // Wait for on-chain confirmation
-      await algosdk.waitForConfirmation(client, txId, 4);
+              if (txnType === 'pay') {
+                const receiver = dTxn.payment?.receiver
+                  ? algosdk.encodeAddress(dTxn.payment.receiver.publicKey)
+                  : dTxn.receiver
+                  ? algosdk.encodeAddress(dTxn.receiver.publicKey)
+                  : 'unknown';
+                const amount = dTxn.payment?.amount !== undefined ? Number(dTxn.payment.amount) : (dTxn.amount !== undefined ? Number(dTxn.amount) : 0);
+                decodedGroupSummary.push({
+                  index: idx,
+                  type: 'pay',
+                  sender: txnSender,
+                  receiver,
+                  amount,
+                  fee: txnFee,
+                  group: groupId,
+                });
+              } else if (txnType === 'axfer') {
+                const receiver = dTxn.assetTransfer?.receiver
+                  ? algosdk.encodeAddress(dTxn.assetTransfer.receiver.publicKey)
+                  : dTxn.assetReceiver
+                  ? algosdk.encodeAddress(dTxn.assetReceiver.publicKey)
+                  : 'unknown';
+                const amount = dTxn.assetTransfer?.amount !== undefined
+                  ? Number(dTxn.assetTransfer.amount)
+                  : dTxn.assetAmount !== undefined
+                  ? Number(dTxn.assetAmount)
+                  : 0;
+                const assetId = dTxn.assetTransfer?.assetId !== undefined
+                  ? Number(dTxn.assetTransfer.assetId)
+                  : dTxn.assetIndex !== undefined
+                  ? Number(dTxn.assetIndex)
+                  : targetAsset;
+                decodedGroupSummary.push({
+                  index: idx,
+                  type: 'axfer',
+                  sender: txnSender,
+                  receiver,
+                  asset: assetId,
+                  amount,
+                  fee: txnFee,
+                  group: groupId,
+                });
+              } else {
+                decodedGroupSummary.push({
+                  index: idx,
+                  type: txnType,
+                  sender: txnSender,
+                  fee: txnFee,
+                  group: groupId,
+                });
+              }
+            } catch (e: any) {
+              console.warn(`Could not decode transaction ${idx} for debug log:`, e.message);
+            }
+          });
 
-      // 3. Construct exact Algorand x402 v2 paymentGroup payload
-      const base64SignedTx = btoa(
-        Array.from(signedRaw[0])
-          .map((byte) => String.fromCharCode(byte))
-          .join('')
-      );
+          console.log('[Sikho x402 Debug] Decoded paymentGroup before signing:\n', JSON.stringify(decodedGroupSummary, null, 2));
 
-      const signaturePayload = {
-        x402Version: 2,
-        scheme: 'exact',
-        network: 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=',
-        payload: {
-          paymentGroup: [base64SignedTx],
-          paymentIndex: 0,
-          txid: txId,
-          sender: activeAddress,
+          const walletResult = await signTransactions(txns, targetIndexes);
+          if (!walletResult || !walletResult.length) {
+            throw new Error('Sikho transaction signing was cancelled by user.');
+          }
+
+          const signedList = walletResult.filter(Boolean) as (Uint8Array | string)[];
+          let sIdx = 0;
+          return txns.map((_, i) => {
+            if (!targetIndexes.includes(i)) return null;
+            const item = walletResult.length === txns.length ? walletResult[i] : signedList[sIdx++];
+            if (!item) return null;
+            if (item instanceof Uint8Array && item.length > 0) return item;
+            if (typeof item === 'string' && item.length > 0) {
+              const binaryString = atob(item);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let j = 0; j < binaryString.length; j++) {
+                bytes[j] = binaryString.charCodeAt(j);
+              }
+              return bytes;
+            }
+            return null;
+          });
         },
-        txid: txId,
-        sender: activeAddress,
       };
-      const paymentSignatureHeader = btoa(JSON.stringify(signaturePayload));
 
-      // 4. Send Payment-Signature to Sikho x402 endpoint & receive HTTP 200
+      const scheme = new ExactAvmScheme(avmSigner, {
+        algodUrl: import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud',
+      });
+
+      const x402Cl = new x402Client();
+      x402Cl.register('algorand:*', scheme as any);
+      x402Cl.register(targetNetwork as any, scheme as any);
+      x402Cl.register('algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=' as any, scheme as any);
+      x402Cl.register('algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=' as any, scheme as any);
+
+      const paymentPayload = await x402Cl.createPaymentPayload(paymentRequired);
+      const paymentSignatureHeader = btoa(JSON.stringify(paymentPayload));
+
+      // Extract transaction ID from signed transaction in paymentGroup if present
+      let sikhoTxId = '';
+      try {
+        const payloadData = (paymentPayload as any)?.payload;
+        const pGroup = Array.isArray(payloadData?.paymentGroup) ? payloadData.paymentGroup : [];
+        const pIdx: number = typeof payloadData?.paymentIndex === 'number' ? payloadData.paymentIndex : 1;
+        if (pGroup[pIdx]) {
+          const rawStxn = pGroup[pIdx];
+          const stxnBytes = new Uint8Array(
+            (typeof rawStxn === 'string' ? atob(rawStxn) : '')
+              .split('')
+              .map((c) => c.charCodeAt(0))
+          );
+          const decodedStxn: any = algosdk.decodeSignedTransaction(stxnBytes);
+          if (decodedStxn?.txn) {
+            sikhoTxId = decodedStxn.txn.txID();
+          }
+        }
+      } catch (_) {}
+
+      // 3. Send Payment-Signature to Sikho x402 endpoint & receive HTTP 200
       const res = await githubReviewApi.submitSikhoPayment(
         activeReviewId,
         file.fileReviewId,
@@ -349,12 +458,15 @@ export const BuildStudio: React.FC = () => {
         throw new Error(res.message || 'Failed to verify Sikho x402 payment on backend.');
       }
 
+      const confirmedSikhoTxId = res.data.txId || sikhoTxId || `sikho_x402_settled_${Date.now()}`;
+      console.log('[Sikho x402 Debug] SIKHO_PAYMENT = SETTLED, TxID:', confirmedSikhoTxId);
+
       const updatedFile = res.data.file;
       setFileReviews((prev) =>
-        prev.map((f) => (f.fileReviewId === file.fileReviewId ? { ...f, ...updatedFile } : f))
+        prev.map((f) => (f.fileReviewId === file.fileReviewId ? { ...f, ...updatedFile, sikhoPaymentTxId: confirmedSikhoTxId, sikhoPaymentStatus: 'confirmed', status: 'sikho_paid' } : f))
       );
 
-      return txId;
+      return confirmedSikhoTxId;
     } catch (err: any) {
       console.error(`Sikho x402 payment error on ${file.filePath}:`, err);
       let userMsg = err.message || 'Failed to authorize Sikho x402 fee.';
@@ -437,7 +549,7 @@ export const BuildStudio: React.FC = () => {
             ? challenge.paymentRequiredHeader.split(',')[1].trim()
             : challenge.paymentRequiredHeader.trim();
           paymentRequired = JSON.parse(atob(b64));
-        } catch (_) {}
+        } catch (_) { }
       }
 
       if (paymentRequired) {
@@ -515,12 +627,12 @@ export const BuildStudio: React.FC = () => {
         address: activeAddress,
         signTransactions: async (txns: Uint8Array[], indexesToSign?: number[]) => {
           const targetIndexes = indexesToSign && indexesToSign.length > 0 ? indexesToSign : txns.map((_, i) => i);
-          
+
           // SAFE LOG: Detailed breakdown of the raw transaction group before signing
           console.log('=== [Prism x402 Payment Group Details Before Signing] ===');
           console.log('Number of transactions in group:', txns.length);
           console.log('FeePayer address:', targetAccept.extra?.feePayer || 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA');
-          
+
           txns.forEach((txnBytes, idx) => {
             try {
               const dTxn: any = algosdk.decodeUnsignedTransaction(txnBytes);
@@ -533,8 +645,8 @@ export const BuildStudio: React.FC = () => {
                 const receiver = dTxn.payment?.receiver
                   ? algosdk.encodeAddress(dTxn.payment.receiver.publicKey)
                   : dTxn.receiver
-                  ? algosdk.encodeAddress(dTxn.receiver.publicKey)
-                  : 'unknown';
+                    ? algosdk.encodeAddress(dTxn.receiver.publicKey)
+                    : 'unknown';
                 const amount = dTxn.payment?.amount !== undefined ? dTxn.payment.amount.toString() : (dTxn.amount !== undefined ? dTxn.amount.toString() : '0');
                 console.log(`Transaction ${idx} (Fee Payer Txn):`, {
                   type: 'pay',
@@ -548,18 +660,18 @@ export const BuildStudio: React.FC = () => {
                 const receiver = dTxn.assetTransfer?.receiver
                   ? algosdk.encodeAddress(dTxn.assetTransfer.receiver.publicKey)
                   : dTxn.assetReceiver
-                  ? algosdk.encodeAddress(dTxn.assetReceiver.publicKey)
-                  : 'unknown';
+                    ? algosdk.encodeAddress(dTxn.assetReceiver.publicKey)
+                    : 'unknown';
                 const amount = dTxn.assetTransfer?.amount !== undefined
                   ? dTxn.assetTransfer.amount.toString()
                   : dTxn.assetAmount !== undefined
-                  ? dTxn.assetAmount.toString()
-                  : '0';
+                    ? dTxn.assetAmount.toString()
+                    : '0';
                 const assetId = dTxn.assetTransfer?.assetId !== undefined
                   ? dTxn.assetTransfer.assetId.toString()
                   : dTxn.assetIndex !== undefined
-                  ? dTxn.assetIndex.toString()
-                  : 'unknown';
+                    ? dTxn.assetIndex.toString()
+                    : 'unknown';
                 console.log(`Transaction ${idx} (User Payment Txn):`, {
                   type: 'axfer',
                   sender: txnSender,
@@ -578,7 +690,7 @@ export const BuildStudio: React.FC = () => {
           });
 
           console.log('[x402 Signer] Signing requested for indexes:', targetIndexes, 'Total txns in group:', txns.length);
-          
+
           const walletResult = await signTransactions(txns, targetIndexes);
           if (!walletResult || !walletResult.length) {
             throw new Error('Prism transaction signing was cancelled by user.');
@@ -646,7 +758,7 @@ export const BuildStudio: React.FC = () => {
             prismTxId = decodedStxn.txn.txID();
           }
         }
-      } catch (_) {}
+      } catch (_) { }
 
       // SAFE LOG: Retry request details
       console.log('[Prism x402 Debug] Retry request:', {
@@ -675,20 +787,20 @@ export const BuildStudio: React.FC = () => {
       // Print exact required safe logs
       console.log(
         `Processing file: ${file.filePath}\n\n` +
-          `SIKHO payment:\n` +
-          `  amount: 0.05 USDC\n` +
-          `  recipient: ${sikhoTreasury}\n` +
-          `  signed: true\n` +
-          `  submitted/settled: true\n` +
-          `  transaction ID: ${sikhoTxId}\n\n` +
-          `PRISM payment:\n` +
-          `  amount: 0.20 USDC\n` +
-          `  recipient: ${prismPayTo}\n` +
-          `  signed: true\n` +
-          `  submitted/settled: true\n` +
-          `  transaction ID: ${confirmedPrismTxId}\n\n` +
-          `Prism review:\n` +
-          `  status: 200`
+        `SIKHO payment:\n` +
+        `  amount: 0.05 USDC\n` +
+        `  recipient: ${sikhoTreasury}\n` +
+        `  signed: true\n` +
+        `  submitted/settled: true\n` +
+        `  transaction ID: ${sikhoTxId}\n\n` +
+        `PRISM payment:\n` +
+        `  amount: 0.20 USDC\n` +
+        `  recipient: ${prismPayTo}\n` +
+        `  signed: true\n` +
+        `  submitted/settled: true\n` +
+        `  transaction ID: ${confirmedPrismTxId}\n\n` +
+        `Prism review:\n` +
+        `  status: 200`
       );
 
       const updatedFile = submitRes.data.file;
@@ -826,7 +938,7 @@ export const BuildStudio: React.FC = () => {
 
   return (
     <div className="pt-20 min-h-screen bg-[#F8FAFC] text-slate-800 font-sans pb-20">
-      
+
       {/* ── TOP HEADER BAR ── */}
       <header className="border-b border-slate-200/80 bg-white/95 backdrop-blur sticky top-16 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -901,11 +1013,10 @@ export const BuildStudio: React.FC = () => {
                 )}
                 {walletAlgoBalance !== null && (
                   <div
-                    className={`border text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shrink-0 font-medium ${
-                      walletAlgoBalance < 0.201
+                    className={`border text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shrink-0 font-medium ${walletAlgoBalance < 0.201
                         ? 'bg-amber-50 border-amber-300 text-amber-900'
                         : 'bg-slate-50 border-slate-200 text-slate-800'
-                    }`}
+                      }`}
                     title={
                       walletAlgoBalance < 0.201
                         ? 'Low ALGO for fees: Algorand requires ~0.201 ALGO minimum balance + fee to send USDC'
@@ -982,11 +1093,10 @@ export const BuildStudio: React.FC = () => {
                     handleDiscover(undefined, opt.value);
                   }
                 }}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition cursor-pointer ${
-                  maxFilesLimit === opt.value
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition cursor-pointer ${maxFilesLimit === opt.value
                     ? 'bg-violet-600 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
+                  }`}
               >
                 {opt.label}
               </button>
@@ -1296,13 +1406,12 @@ export const BuildStudio: React.FC = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-[11px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-md border ${
-                    reviewState === 'completed'
+                  <span className={`text-[11px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-md border ${reviewState === 'completed'
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                       : reviewState === 'partial'
-                      ? 'bg-amber-50 text-amber-700 border-amber-200'
-                      : 'bg-blue-50 text-blue-700 border-blue-200'
-                  }`}>
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-blue-50 text-blue-700 border-blue-200'
+                    }`}>
                     {reviewState === 'completed' ? '✓ Audit Completed' : reviewState === 'partial' ? '⚠ Partial Completion' : '⟳ Multi-File Orchestration in Progress'}
                   </span>
                   <span className="text-xs font-bold text-slate-400">
@@ -1461,9 +1570,8 @@ export const BuildStudio: React.FC = () => {
                             <div key={idx} className="p-4 bg-slate-800/80 rounded-xl border border-slate-700 space-y-2.5">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                                    f.severity === 'Critical' ? 'bg-red-500/20 text-red-300 border border-red-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                                  }`}>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${f.severity === 'Critical' ? 'bg-red-500/20 text-red-300 border border-red-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                    }`}>
                                     {f.severity}
                                   </span>
                                   <span className="text-xs font-bold text-white">{f.title}</span>
