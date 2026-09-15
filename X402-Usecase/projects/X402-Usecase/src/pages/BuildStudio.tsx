@@ -388,168 +388,91 @@ export const BuildStudio: React.FC = () => {
       return false;
     }
 
-    // Ensure Step 1 (Sikho x402 fee) is confirmed first
+    // Ensure Step 1 (Sikho x402 fee: 0.05 USDC) is confirmed first
     let currentFile = fileReviews.find((f) => f.fileReviewId === file.fileReviewId) || file;
-    if (currentFile.sikhoPaymentStatus !== 'confirmed') {
-      const sikhoTxId = await handlePaySikhoFee(currentFile);
-      if (!sikhoTxId) return false;
-      currentFile = { ...currentFile, sikhoPaymentStatus: 'confirmed', sikhoPaymentTxId: sikhoTxId, status: 'sikho_paid' };
+    let sikhoTxId = currentFile.sikhoPaymentTxId;
+    if (currentFile.sikhoPaymentStatus !== 'confirmed' || !sikhoTxId) {
+      const paidSikhoTxId = await handlePaySikhoFee(currentFile);
+      if (!paidSikhoTxId) return false;
+      sikhoTxId = paidSikhoTxId;
+      currentFile = {
+        ...currentFile,
+        sikhoPaymentStatus: 'confirmed',
+        sikhoPaymentTxId: paidSikhoTxId,
+        status: 'sikho_paid',
+      };
+    }
+
+    // Idempotency: If review already completed, skip duplicate charges
+    if (currentFile.status === 'completed' && currentFile.reviewResult) {
+      return true;
     }
 
     setIsProcessingFileId(file.fileReviewId);
     setError(null);
 
+    const sikhoTreasury =
+      import.meta.env.VITE_AVM_ADDRESS ||
+      '2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY';
+    const prismPayTo =
+      import.meta.env.VITE_PRISM_PAYTO ||
+      'FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE';
+    const targetAmount = 200000; // 0.20 USDC (200,000 micro-units)
+    const targetAsset = 31566704; // Algorand MainNet USDC ASA ID
+    const targetNetwork = 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
+
     try {
-      // 1. Fetch 402 challenge parameters from Prism via backend
-      const challengeRes = await githubReviewApi.getPrismChallenge(activeReviewId, file.fileReviewId);
-      if (!challengeRes.success || !challengeRes.data) {
-        throw new Error(challengeRes.message || 'Failed to retrieve Prism x402 payment challenge.');
-      }
-      const challenge = challengeRes.data;
+      const client = new algosdk.Algodv2(
+        import.meta.env.VITE_ALGOD_TOKEN || '',
+        import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud',
+        import.meta.env.VITE_ALGOD_PORT || ''
+      );
 
-      let paymentRequired: any = null;
-      if (challenge.paymentRequiredHeader) {
-        try {
-          const b64 = challenge.paymentRequiredHeader.includes(',')
-            ? challenge.paymentRequiredHeader.split(',')[1].trim()
-            : challenge.paymentRequiredHeader.trim();
-          paymentRequired = JSON.parse(atob(b64));
-        } catch (_) {}
-      }
+      const params = await client.getTransactionParams().do();
+      const enc = new TextEncoder();
 
-      if (paymentRequired && paymentRequired.accepts && Array.isArray(paymentRequired.accepts)) {
-        paymentRequired.accepts.forEach((acc: any) => {
-          acc.amount = '200000';
-        });
-      }
-
-      if (!paymentRequired) {
-        const prismPayTo = challenge.payTo || (challenge as any).accepts?.[0]?.payTo || 'FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE';
-        const rawAsset = challenge.assetId || (challenge as any).asset || (challenge as any).accepts?.[0]?.asset || 31566704;
-        const assetId = typeof rawAsset === 'number' ? rawAsset : parseInt(String(rawAsset), 10) || 31566704;
-        const network = challenge.network || (challenge as any).accepts?.[0]?.network || 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
-
-        paymentRequired = {
-          x402Version: 2,
-          error: 'Payment required',
-          resource: {
-            url: 'https://prism-99h2.onrender.com/code-review-accurate',
-            description: 'Performs comprehensive senior-engineer code review and security auditing on a single code file using high-precision LLM reasoning.',
-            mimeType: 'application/json',
-          },
-          accepts: [
-            {
-              scheme: 'exact',
-              network,
-              amount: '200000',
-              asset: String(assetId),
-              payTo: prismPayTo,
-              maxTimeoutSeconds: 300,
-              extra: {
-                asset: Number(assetId),
-                tag: 'x402-global-challenge',
-                decimals: 6,
-              },
-            },
-          ],
-        };
-      }
-
-      const reqAccepts = paymentRequired.accepts?.[0] || paymentRequired;
-      const targetNetwork = reqAccepts.network || 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
-      const targetAmount = reqAccepts.amount || '200000';
-      const targetAsset = reqAccepts.asset || '31566704';
-      const targetPayTo = reqAccepts.payTo;
-
-      // Safe debug logs
-      console.log('Payment requirements received:', paymentRequired);
-      console.log('Payment amount:', targetAmount);
-      console.log('Payment asset:', targetAsset);
-      console.log('Payment network:', targetNetwork);
-      console.log('Payment recipient:', targetPayTo);
-
-      // 2. Build AVM Signer for ExactAvmScheme using connected wallet
-      const avmSigner = {
-        address: activeAddress,
-        signTransactions: async (txns: Uint8Array[], indexesToSign?: number[]) => {
-          console.log('[x402 Signer] Signing requested for indexes:', indexesToSign, 'Total txns:', txns.length);
-          const signed = await signTransactions(txns, indexesToSign);
-          if (!signed || !signed.length) {
-            throw new Error('Prism transaction signing was cancelled by user.');
-          }
-
-          if (signed.length === txns.length) {
-            return signed.map((item: any, i: number) => {
-              if (indexesToSign && !indexesToSign.includes(i)) {
-                return null;
-              }
-              if (item instanceof Uint8Array && item.length > 0) return item;
-              if (typeof item === 'string' && item.length > 0) {
-                const binaryString = atob(item);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let j = 0; j < binaryString.length; j++) {
-                  bytes[j] = binaryString.charCodeAt(j);
-                }
-                return bytes;
-              }
-              return null;
-            });
-          }
-
-          const signedList = signed.filter(Boolean) as (Uint8Array | string)[];
-          let sIdx = 0;
-          return txns.map((_, i) => {
-            if (indexesToSign && !indexesToSign.includes(i)) {
-              return null;
-            }
-            const item = signedList[sIdx++];
-            if (item instanceof Uint8Array && item.length > 0) return item;
-            if (typeof item === 'string' && item.length > 0) {
-              const binaryString = atob(item);
-              const bytes = new Uint8Array(binaryString.length);
-              for (let j = 0; j < binaryString.length; j++) {
-                bytes[j] = binaryString.charCodeAt(j);
-              }
-              return bytes;
-            }
-            return null;
-          });
-        },
-      };
-
-      const scheme = new ExactAvmScheme(avmSigner, {
-        algodUrl: import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud',
-      });
-
-      const x402Cl = new x402Client();
-      x402Cl.register(targetNetwork as any, scheme as any);
-
-      let paymentSignatureHeader = '';
-      let paymentPayload: any = null;
+      // Pre-check user's ALGO balance against MBR + fee
       try {
-        paymentPayload = await x402Cl.createPaymentPayload(paymentRequired);
-        paymentSignatureHeader = btoa(JSON.stringify(paymentPayload));
-        console.log('Signed transaction count:', paymentPayload?.payload?.paymentGroup?.length || 1);
-        console.log('Payment payload created:', paymentPayload);
-        console.log('Payment header created:', paymentSignatureHeader.slice(0, 30) + '...');
-      } catch (x402Err: any) {
-        console.warn('ExactAvmScheme createPaymentPayload warning:', x402Err.message, 'Falling back to direct single-tx signing...');
-
-        // Fallback: build standard single-tx x402 payment directly with algosdk
-        const client = new algosdk.Algodv2(
-          import.meta.env.VITE_ALGOD_TOKEN || '',
-          import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud',
-          import.meta.env.VITE_ALGOD_PORT || ''
+        const acctInfo: any = await client.accountInformation(activeAddress).do();
+        const algoBal = Number(acctInfo.amount || 0);
+        const minBal = Number(
+          acctInfo['min-balance'] ||
+            acctInfo.minBalance ||
+            (acctInfo.assets?.length ? 100000 + acctInfo.assets.length * 100000 : 100000)
         );
-        const params = await client.getTransactionParams().do();
-        const enc = new TextEncoder();
+        const feeNeeded = Number(params.fee || 1000);
+        if (algoBal - feeNeeded < minBal) {
+          throw new Error(
+            `Insufficient ALGO for Network Fee: Your wallet (${activeAddress.slice(0, 6)}...${activeAddress.slice(-4)}) has an ALGO balance of ${(algoBal / 1e6).toFixed(6)} ALGO, but requires at least ${((minBal + feeNeeded) / 1e6).toFixed(6)} ALGO. Please add ~0.01 ALGO to your wallet.`
+          );
+        }
+      } catch (acctErr: any) {
+        if (acctErr.message && acctErr.message.includes('Insufficient ALGO')) {
+          throw acctErr;
+        }
+      }
+
+      // Check if Prism payment was already submitted on-chain for this file
+      let prismTxId = currentFile.prismPaymentTxId || '';
+      let base64SignedTx = '';
+
+      if (!prismTxId) {
+        // Build 0.20 USDC Asset Transfer Transaction for PRISM
         const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
           sender: activeAddress,
-          receiver: targetPayTo,
-          amount: Number(targetAmount),
-          assetIndex: Number(targetAsset),
+          receiver: prismPayTo,
+          amount: targetAmount,
+          assetIndex: targetAsset,
           suggestedParams: params,
-          note: enc.encode(`x402-payment-v2-${Date.now()}`),
+          note: enc.encode(
+            JSON.stringify({
+              service: 'prism-code-review',
+              reviewId: activeReviewId,
+              fileId: file.fileReviewId,
+              filePath: file.filePath,
+              timestamp: Date.now(),
+            })
+          ),
         } as any);
 
         const signedArray = await signTransactions([tx.toByte()]);
@@ -558,52 +481,80 @@ export const BuildStudio: React.FC = () => {
           throw new Error('Prism transaction signing was cancelled by user.');
         }
 
-        const base64SignedTx = btoa(
+        // Broadcast to Algorand MainNet
+        await client.sendRawTransaction(signedRaw).do();
+        prismTxId = (tx as any).txID();
+
+        // Await on-chain confirmation
+        await algosdk.waitForConfirmation(client, prismTxId, 4);
+
+        base64SignedTx = btoa(
           Array.from(signedRaw[0])
             .map((byte) => String.fromCharCode(byte))
             .join('')
         );
-
-        paymentPayload = {
-          x402Version: 2,
-          scheme: 'exact',
-          network: targetNetwork,
-          payload: {
-            paymentGroup: [base64SignedTx],
-            paymentIndex: 0,
-            txid: (tx as any).txID(),
-            sender: activeAddress,
-          },
-        };
-        paymentSignatureHeader = btoa(JSON.stringify(paymentPayload));
-        console.log('Signed transaction count:', 1);
-        console.log('Payment payload created:', paymentPayload);
-        console.log('Payment header created:', paymentSignatureHeader.slice(0, 30) + '...');
       }
 
-      console.log('Retry request URL:', 'https://prism-99h2.onrender.com/code-review-accurate');
+      // Construct standard x402 payment proof payload
+      const signaturePayload = {
+        x402Version: 2,
+        scheme: 'exact',
+        network: targetNetwork,
+        payload: {
+          paymentGroup: base64SignedTx ? [base64SignedTx] : [],
+          paymentIndex: 0,
+          txid: prismTxId,
+          sender: activeAddress,
+        },
+        txid: prismTxId,
+        sender: activeAddress,
+      };
+      const paymentSignatureHeader = btoa(JSON.stringify(signaturePayload));
 
-      // 3. Submit Payment-Signature to Prism & retrieve code review
+      // Submit payment signature & retrieve Prism code review result
       const submitRes = await githubReviewApi.submitPrismReview(
         activeReviewId,
         file.fileReviewId,
-        paymentSignatureHeader
+        paymentSignatureHeader,
+        prismTxId
       );
-      console.log('Retry request status:', submitRes.success ? 200 : 'failed');
+
       if (!submitRes.success || !submitRes.data) {
         throw new Error(submitRes.message || 'Prism code review verification failed.');
       }
+
+      // Print exact required safe logs
+      console.log(
+        `Processing file: ${file.filePath}\n\n` +
+          `SIKHO payment:\n` +
+          `  amount: 0.05 USDC\n` +
+          `  recipient: ${sikhoTreasury}\n` +
+          `  signed: true\n` +
+          `  submitted/settled: true\n` +
+          `  transaction ID: ${sikhoTxId}\n\n` +
+          `PRISM payment:\n` +
+          `  amount: 0.20 USDC\n` +
+          `  recipient: ${prismPayTo}\n` +
+          `  signed: true\n` +
+          `  submitted/settled: true\n` +
+          `  transaction ID: ${prismTxId}\n\n` +
+          `Prism review:\n` +
+          `  status: 200`
+      );
 
       const updatedFile = submitRes.data.file;
       setFileReviews((prev) =>
         prev.map((f) => (f.fileReviewId === file.fileReviewId ? { ...f, ...updatedFile } : f))
       );
 
-      // Refresh aggregated repository status
+      // Refresh aggregated repository review status
       const statusRes = await githubReviewApi.getReviewStatus(activeReviewId);
       if (statusRes.success && statusRes.data) {
         setReviewSummary(statusRes.data.review);
-        if (statusRes.data.review.status === 'completed' || statusRes.data.review.status === 'partial') {
+        if (
+          statusRes.data.review.status === 'completed' ||
+          statusRes.data.review.status === 'partial'
+        ) {
           setReviewState(statusRes.data.review.status);
         }
       }
@@ -615,15 +566,16 @@ export const BuildStudio: React.FC = () => {
       if (typeof userMsg === 'string' && userMsg.includes('underflow on subtracting')) {
         userMsg = `Insufficient USDC Balance: Paying Prism requires $0.20 USDC. Please fund your Algorand wallet with USDC.`;
       }
-      if (typeof userMsg === 'string' && (userMsg.includes('below min') || userMsg.includes('TransactionPool.Remember'))) {
+      if (
+        typeof userMsg === 'string' &&
+        (userMsg.includes('below min') || userMsg.includes('TransactionPool.Remember'))
+      ) {
         userMsg = `Insufficient ALGO for Network Fee: Your connected wallet (${activeAddress.slice(0, 6)}...${activeAddress.slice(-4)}) has USDC, but requires ~0.001 ALGO to pay the Algorand transaction fee (current ALGO balance is below minimum account requirement). Please add a small amount of ALGO (~0.01 ALGO) to your wallet.`;
       }
       setError(userMsg);
       setFileReviews((prev) =>
         prev.map((f) =>
-          f.fileReviewId === file.fileReviewId
-            ? { ...f, status: 'failed', error: userMsg }
-            : f
+          f.fileReviewId === file.fileReviewId ? { ...f, status: 'failed', error: userMsg } : f
         )
       );
       return false;

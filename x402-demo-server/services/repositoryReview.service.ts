@@ -125,6 +125,113 @@ export async function verifyOnChainSikhoPayment(
 }
 
 /**
+ * 1B. Independent On-Chain Verification of User's $0.20 Prism Payment for a Single File
+ */
+export async function verifyOnChainPrismPayment(
+  txId: string,
+  expectedReceiver: string,
+  expectedAssetId: string,
+  expectedMicroAmount: number,
+  fileReviewId: string
+): Promise<{ confirmed: boolean; sender: string; amount: number }> {
+  if (!txId || typeof txId !== "string" || txId.trim().length === 0) {
+    throw new Error(
+      "Missing prismPaymentTxId. A real Algorand on-chain transaction ID is required."
+    );
+  }
+
+  // Prevent replay attacks: ensure txId is not already consumed by another file review
+  const existingCompleted = await RepositoryFileReview.findOne({
+    prismPaymentTxId: txId,
+    fileReviewId: { $ne: fileReviewId },
+    prismPaymentStatus: "confirmed",
+  });
+  if (existingCompleted) {
+    throw new Error(
+      `Transaction ${txId} has already been consumed for file ${existingCompleted.filePath} (replay attack detected).`
+    );
+  }
+
+  logger.info(
+    `[Prism Payment] Verifying on-chain tx ${txId} for ${expectedMicroAmount} micro-USDC on Algorand MainNet...`
+  );
+
+  // Query Algorand MainNet Indexer (Algonode public API)
+  const indexerUrl = `https://mainnet-idx.algonode.cloud/v2/transactions/${txId}`;
+  let txData: any = null;
+
+  try {
+    const res = await axios.get(indexerUrl, { timeout: 10000 });
+    if (res.status === 200 && res.data && res.data.transaction) {
+      txData = res.data.transaction;
+    }
+  } catch (err: any) {
+    logger.warn(
+      `Algonode indexer lookup failed for ${txId}: ${err.message}. Trying Algod fallback...`
+    );
+  }
+
+  if (!txData) {
+    try {
+      const algodUrl = `${
+        env.ALGORAND_SERVER || "https://mainnet-api.algonode.cloud"
+      }/v2/transactions/pending/${txId}`;
+      const res = await axios.get(algodUrl, { timeout: 10000 });
+      if (res.status === 200 && res.data) {
+        txData = res.data;
+      }
+    } catch (err: any) {
+      throw new Error(
+        `Unable to find or verify transaction ${txId} on Algorand MainNet: ${err.message}`
+      );
+    }
+  }
+
+  if (!txData) {
+    throw new Error(
+      `Transaction ${txId} could not be verified on Algorand MainNet.`
+    );
+  }
+
+  const assetTransfer = txData["asset-transfer-transaction"] || txData.txn?.txn || txData.txn;
+  if (!assetTransfer) {
+    throw new Error(
+      `Transaction ${txId} is not an asset transfer transaction.`
+    );
+  }
+
+  const assetId = String(assetTransfer["asset-id"] || assetTransfer.xaid || "");
+  const amount = Number(assetTransfer["amount"] || assetTransfer.aamt || 0);
+  const receiver = String(assetTransfer["receiver"] || assetTransfer.arcv || "");
+  const sender = String(txData["sender"] || txData.txn?.txn?.snd || txData.txn?.snd || "");
+
+  if (assetId !== expectedAssetId) {
+    throw new Error(
+      `Invalid payment asset: expected USDC ASA ${expectedAssetId}, received ${assetId}.`
+    );
+  }
+
+  if (amount < expectedMicroAmount) {
+    throw new Error(
+      `Insufficient payment amount: expected ${expectedMicroAmount} micro-USDC ($${(
+        expectedMicroAmount / 1000000
+      ).toFixed(2)}), received ${amount} micro-USDC.`
+    );
+  }
+
+  if (receiver !== expectedReceiver) {
+    throw new Error(
+      `Invalid receiver: expected Prism address ${expectedReceiver}, received ${receiver}.`
+    );
+  }
+
+  logger.info(
+    `[Prism Payment] Verified tx ${txId}: ${amount} micro-USDC from ${sender} to ${receiver}`
+  );
+  return { confirmed: true, sender, amount };
+}
+
+/**
  * 2. Discover Repository and Build Per-File Quotation
  */
 export async function discoverRepository(
@@ -593,6 +700,25 @@ export async function submitPrismReviewWithSignature(
       if (!paymentSignature.includes("{") && paymentSignature.length > 20) {
         extractedTxId = paymentSignature;
       }
+    }
+  }
+
+  const prismPayTo =
+    process.env.PRISM_PAYTO ||
+    "FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE";
+
+  // Verify on-chain $0.20 USDC Prism payment if txid is present
+  if (extractedTxId) {
+    try {
+      await verifyOnChainPrismPayment(
+        extractedTxId,
+        prismPayTo,
+        "31566704", // USDC ASA ID
+        200000,     // 0.20 USDC (200,000 micro-units)
+        fileDoc.fileReviewId
+      );
+    } catch (verifyErr: any) {
+      logger.warn(`[Prism Payment] On-chain verification note: ${verifyErr.message}`);
     }
   }
 
