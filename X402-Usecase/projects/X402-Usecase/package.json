@@ -51,6 +51,8 @@
     "clsx": "^2.1.1",
     "daisyui": "^4.0.0",
     "framer-motion": "^12.42.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "lucide-react": "^1.22.0",
     "lute-connect": "^1.7.0",
     "notistack": "^3.0.1",

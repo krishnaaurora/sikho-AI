@@ -474,37 +474,35 @@ export const BuildStudio: React.FC = () => {
         };
       }
 
+      // SAFE LOG: Payment requirements
+      const targetAccept = (paymentRequired.accepts && paymentRequired.accepts[0]) || {};
+      console.log('[Prism x402 Debug] Payment requirements:', {
+        x402Version: paymentRequired.x402Version || 2,
+        amount: targetAccept.amount || '200000',
+        asset: targetAccept.asset || String(targetAsset),
+        network: targetAccept.network || targetNetwork,
+        payTo: targetAccept.payTo || prismPayTo,
+        feePayer: targetAccept.extra?.feePayer || 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
+      });
+
       // 2. Build AVM Signer for ExactAvmScheme using connected wallet
       const avmSigner: ClientAvmSigner = {
         address: activeAddress,
         signTransactions: async (txns: Uint8Array[], indexesToSign?: number[]) => {
-          console.log('[x402 Signer] Signing requested for indexes:', indexesToSign, 'Total txns:', txns.length);
-          const walletResult = await signTransactions(txns, indexesToSign);
+          const targetIndexes = indexesToSign && indexesToSign.length > 0 ? indexesToSign : txns.map((_, i) => i);
+          console.log('[x402 Signer] Signing requested for indexes:', targetIndexes, 'Total txns in group:', txns.length);
+          
+          const walletResult = await signTransactions(txns, targetIndexes);
           if (!walletResult || !walletResult.length) {
             throw new Error('Prism transaction signing was cancelled by user.');
-          }
-
-          if (walletResult.length === txns.length) {
-            return walletResult.map((item: any, i: number) => {
-              if (indexesToSign && !indexesToSign.includes(i)) return null;
-              if (item instanceof Uint8Array && item.length > 0) return item;
-              if (typeof item === 'string' && item.length > 0) {
-                const binaryString = atob(item);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let j = 0; j < binaryString.length; j++) {
-                  bytes[j] = binaryString.charCodeAt(j);
-                }
-                return bytes;
-              }
-              return null;
-            });
           }
 
           const signedList = walletResult.filter(Boolean) as (Uint8Array | string)[];
           let sIdx = 0;
           return txns.map((_, i) => {
-            if (indexesToSign && !indexesToSign.includes(i)) return null;
-            const item = signedList[sIdx++];
+            if (!targetIndexes.includes(i)) return null;
+            const item = walletResult.length === txns.length ? walletResult[i] : signedList[sIdx++];
+            if (!item) return null;
             if (item instanceof Uint8Array && item.length > 0) return item;
             if (typeof item === 'string' && item.length > 0) {
               const binaryString = atob(item);
@@ -524,64 +522,51 @@ export const BuildStudio: React.FC = () => {
       });
 
       const x402Cl = new x402Client();
+      x402Cl.register('algorand:*', scheme as any);
       x402Cl.register(targetNetwork as any, scheme as any);
+      x402Cl.register('algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=' as any, scheme as any);
+      x402Cl.register('algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=' as any, scheme as any);
 
-      let paymentSignatureHeader = '';
-      let paymentPayload: any = null;
+      // SAFE LOG: Payment construction
+      console.log('[Prism x402 Debug] Payment construction:', {
+        transactionType: 'ExactAvmScheme (Atomic 2-Txn Group)',
+        sender: activeAddress,
+        receiver: prismPayTo,
+        asset: targetAsset,
+        amount: '200000 micro-units (0.20 USDC)',
+        feeConfiguration: '0 ALGO for user (Network fee sponsored by feePayer: ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA)',
+        groupInformation: '2 transactions (Index 0: feePayer 2mA, Index 1: user 0.20 USDC)',
+      });
+
+      const paymentPayload = await x402Cl.createPaymentPayload(paymentRequired);
+      const paymentSignatureHeader = btoa(JSON.stringify(paymentPayload));
+
+      // Extract transaction ID from signed transaction in paymentGroup if present
       let prismTxId = currentFile.prismPaymentTxId || '';
-
       try {
-        paymentPayload = await x402Cl.createPaymentPayload(paymentRequired);
-        paymentSignatureHeader = btoa(JSON.stringify(paymentPayload));
-      } catch (x402Err: any) {
-        console.warn('ExactAvmScheme createPaymentPayload fallback:', x402Err.message);
-
-        // Fallback: build standard single-tx x402 payment with note x402-payment-v2-<timestamp>
-        const client = new algosdk.Algodv2(
-          import.meta.env.VITE_ALGOD_TOKEN || '',
-          import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud',
-          import.meta.env.VITE_ALGOD_PORT || ''
-        );
-        const params = await client.getTransactionParams().do();
-        const enc = new TextEncoder();
-        const tx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-          sender: activeAddress,
-          receiver: prismPayTo,
-          amount: targetAmount,
-          assetIndex: targetAsset,
-          suggestedParams: params,
-          note: enc.encode(`x402-payment-v2-${Date.now()}`),
-        } as any);
-
-        const signedArray = await signTransactions([tx.toByte()]);
-        const signedRaw = signedArray.filter(Boolean) as Uint8Array[];
-        if (!signedRaw.length) {
-          throw new Error('Prism transaction signing was cancelled by user.');
+        const payloadData = (paymentPayload as any)?.payload;
+        const pGroup = Array.isArray(payloadData?.paymentGroup) ? payloadData.paymentGroup : [];
+        const pIdx: number = typeof payloadData?.paymentIndex === 'number' ? payloadData.paymentIndex : 1;
+        if (pGroup[pIdx]) {
+          const rawStxn = pGroup[pIdx];
+          const stxnBytes = new Uint8Array(
+            (typeof rawStxn === 'string' ? atob(rawStxn) : '')
+              .split('')
+              .map((c) => c.charCodeAt(0))
+          );
+          const decodedStxn: any = algosdk.decodeSignedTransaction(stxnBytes);
+          if (decodedStxn?.txn) {
+            prismTxId = decodedStxn.txn.txID();
+          }
         }
+      } catch (_) {}
 
-        const base64SignedTx = btoa(
-          Array.from(signedRaw[0])
-            .map((byte) => String.fromCharCode(byte))
-            .join('')
-        );
-
-        prismTxId = (tx as any).txID();
-
-        paymentPayload = {
-          x402Version: 2,
-          scheme: 'exact',
-          network: targetNetwork,
-          payload: {
-            paymentGroup: [base64SignedTx],
-            paymentIndex: 0,
-            txid: prismTxId,
-            sender: activeAddress,
-          },
-          txid: prismTxId,
-          sender: activeAddress,
-        };
-        paymentSignatureHeader = btoa(JSON.stringify(paymentPayload));
-      }
+      // SAFE LOG: Retry request details
+      console.log('[Prism x402 Debug] Retry request:', {
+        url: 'https://prism-99h2.onrender.com/code-review-accurate',
+        method: 'POST / GET',
+        presenceOfPaymentSignature: !!paymentSignatureHeader,
+      });
 
       // 3. Submit Payment-Signature to Prism & retrieve code review
       const submitRes = await githubReviewApi.submitPrismReview(
