@@ -144,6 +144,13 @@ const ENDPOINTS: EndpointInfo[] = [
     price: "$0.060", 
     icon: <HelpCircle size={16} />, 
     placeholderInput: JSON.stringify({ topic: "System Design & Modern Backend Architecture", gaps: ["Distributed Systems", "SQL Indexing"] }, null, 2) 
+  },
+  { 
+    path: "/api/v1/x402/visual-explainer", 
+    name: "25. AI Visual Concept Explainer ($0.06)", 
+    price: "$0.060", 
+    icon: <Sparkles size={16} />, 
+    placeholderInput: JSON.stringify({ concept: "Load Balancing", difficulty: "beginner" }, null, 2) 
   }
 ];
 

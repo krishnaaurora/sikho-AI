@@ -14,6 +14,10 @@ import { TokenStreamingVisual } from '../components/visual-explainer/TokenStream
 import { StepControls } from '../components/visual-explainer/StepControls';
 import { QuizCard } from '../components/visual-explainer/QuizCard';
 
+import { useWallet } from '@txnlab/use-wallet-react';
+import { createX402Fetch } from '../utils/x402';
+import { ellipseAddress } from '../utils/ellipseAddress';
+
 interface VisualStep {
   id: number;
   stepNumber: number;
@@ -60,12 +64,21 @@ export default function VisualExplainerPage() {
   const navigate = useNavigate();
   const queryParam = searchParams.get('q') || "Explain Load Balancing";
 
+  const { activeAddress, signTransactions } = useWallet();
+
   const [inputTopic, setInputTopic] = useState(queryParam);
   const [loading, setLoading] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [visualData, setVisualData] = useState<VisualData | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
+
+  // Transactions ledger state
+  const [showTxModal, setShowTxModal] = useState(false);
+  const [txHistory, setTxHistory] = useState<any[]>([]);
+  const [loadingTx, setLoadingTx] = useState(false);
 
   // Ask about this step drawer state
   const [askQuestion, setAskQuestion] = useState("");
@@ -90,7 +103,7 @@ export default function VisualExplainerPage() {
     setAskAnswer(null);
     try {
       const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
-      const response = await fetch('/api/v1/ai/visual-explain', {
+      const response = await fetch('/api/v1/x402/visual-explainer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -112,6 +125,52 @@ export default function VisualExplainerPage() {
       console.error("Failed to load visual explanation:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePayX402 = async () => {
+    if (!activeAddress) {
+      alert("Please connect your Algorand wallet first to unlock via x402.");
+      return;
+    }
+    setPaying(true);
+    try {
+      const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+      const res = await x402Fetch('/api/v1/x402/visual-explainer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ concept: inputTopic, difficulty: "intermediate" })
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setVisualData(data.data);
+        setPaymentSuccess(true);
+        setTimeout(() => setPaymentSuccess(false), 5000);
+      }
+    } catch (err: any) {
+      console.error("x402 payment error:", err);
+      alert(err.message || "Payment challenge failed. Please try again.");
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const loadTxHistory = async () => {
+    setLoadingTx(true);
+    try {
+      const res = await fetch('/api/v1/x402/transactions?serviceId=visual_explainer');
+      const data = await res.json();
+      if (data.success && data.data) {
+        setTxHistory(data.data);
+      }
+    } catch (e) {
+      console.error("Failed to load txs:", e);
+    } finally {
+      setLoadingTx(false);
     }
   };
 
@@ -218,11 +277,54 @@ export default function VisualExplainerPage() {
           </Button>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setShowTxModal(true);
+                loadTxHistory();
+              }}
+              className="px-3 py-1 rounded-full bg-slate-900 border border-slate-700 hover:border-cyan-500/50 text-[11px] font-mono text-slate-300 hover:text-cyan-300 transition-all flex items-center gap-1.5"
+            >
+              <Zap size={12} className="text-amber-400" />
+              <span>x402 Ledger</span>
+            </button>
+
             <span className="px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-[11px] font-mono text-cyan-300">
-              ⚡ SIKHO AI Visual Engine
+              🔒 $0.06 USDC Pass
             </span>
           </div>
         </div>
+
+        {/* Permanent Endpoint Info Ribbon */}
+        <div className="flex items-center justify-between px-4 py-2 rounded-2xl bg-slate-950/80 border border-slate-800 text-[11px] font-mono mb-4 text-slate-400">
+          <div className="flex items-center gap-2">
+            <span className="text-cyan-400 font-bold">PERMANENT ENDPOINT:</span>
+            <code className="text-slate-200">/api/v1/x402/visual-explainer</code>
+          </div>
+          <div className="flex items-center gap-3">
+            <span>Rate: <strong className="text-amber-400">$0.06 USDC</strong></span>
+            {activeAddress ? (
+              <button
+                onClick={handlePayX402}
+                disabled={paying}
+                className="px-2.5 py-0.5 rounded-lg bg-cyan-500/20 border border-cyan-500 text-cyan-200 hover:bg-cyan-500 hover:text-black font-bold transition-all text-[10px]"
+              >
+                {paying ? "Signing..." : "Test x402 Payment"}
+              </button>
+            ) : (
+              <span className="text-slate-500 text-[10px]">(Connect Wallet to Sign)</span>
+            )}
+          </div>
+        </div>
+
+        {paymentSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-3 mb-4 rounded-2xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs font-mono text-center"
+          >
+            ✓ x402 Micropayment of $0.06 USDC settled on Algorand MainNet! Logged in endpoint transaction ledger.
+          </motion.div>
+        )}
 
         {/* Search Bar & Prompt Selection */}
         <div className="p-4 rounded-3xl bg-slate-900/60 border border-slate-800 shadow-2xl backdrop-blur-md mb-6">
@@ -423,6 +525,73 @@ export default function VisualExplainerPage() {
         )}
 
       </div>
+
+      {/* x402 Transactions Ledger Modal */}
+      {showTxModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="relative bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-2xl w-full shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+                  <Zap size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">Endpoint Transaction History</h3>
+                  <p className="text-[10px] font-mono text-cyan-400">/api/v1/x402/visual-explainer</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowTxModal(false)}
+                className="text-slate-400 hover:text-white text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="py-4 max-h-80 overflow-y-auto space-y-2">
+              {loadingTx ? (
+                <div className="py-8 text-center text-xs text-slate-500 font-mono flex items-center justify-center gap-2">
+                  <Loader2 size={14} className="animate-spin text-cyan-400" />
+                  <span>Loading ledger from MongoDB...</span>
+                </div>
+              ) : txHistory.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-500 font-mono">
+                  No recorded transactions yet for this endpoint.
+                </div>
+              ) : (
+                txHistory.map((tx, idx) => (
+                  <div key={idx} className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs font-mono flex items-center justify-between">
+                    <div>
+                      <div className="text-white font-bold">{tx.serviceId || 'visual_explainer'}</div>
+                      <div className="text-[10px] text-slate-500">Wallet: {ellipseAddress(tx.walletAddress)}</div>
+                      <div className="text-[10px] text-slate-600">Tx: {tx.txHash ? tx.txHash.substring(0, 16) + '...' : 'N/A'}</div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-emerald-400 font-bold">${tx.amount} {tx.currency || 'USDC'}</span>
+                      <div className="text-[10px] text-slate-500">{new Date(tx.timestamp || tx.createdAt).toLocaleTimeString()}</div>
+                      <span className="inline-block px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-500/40 text-[9px] text-emerald-300">
+                        {tx.status}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-800 flex justify-between items-center text-[10px] font-mono text-slate-500">
+              <span>Total Transactions: {txHistory.length}</span>
+              <a
+                href="https://facilitator.goplausible.xyz/dashboard/merchants/c2e058960979f0f2"
+                target="_blank"
+                rel="noreferrer"
+                className="text-cyan-400 hover:underline"
+              >
+                View on GoPlausible Facilitator →
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

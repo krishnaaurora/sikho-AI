@@ -46,7 +46,9 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
 
     // Derive service identity and unique operation resource targets
     let serviceId = "job_analysis";
-    if (config.description.toLowerCase().includes("interview")) {
+    if (config.description.toLowerCase().includes("visual") || cleanPath.includes("visual-explainer")) {
+      serviceId = "visual_explainer";
+    } else if (config.description.toLowerCase().includes("interview")) {
       serviceId = "interview_questions";
     } else if (config.description.toLowerCase().includes("learning")) {
       serviceId = "learning_path";

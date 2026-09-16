@@ -12,6 +12,7 @@ import { discoverJobs } from "../controllers/resume/apify.controller";
 import { analyzeJob } from "../controllers/resume/jobIntelligence.controller";
 import { applyResumeImprovements, generateProjectPlan } from "../controllers/resume/resumeImprovement.controller";
 import { generateCareerActionPlan } from "../services/resumeImprovement.service";
+import { visualExplain } from "../controllers/ai/visualExplain.controller";
 
 const router = express.Router();
 
@@ -124,6 +125,14 @@ const seedServices = async () => {
         priceUsd: 0.06,
         endpoint: "/api/v1/interview-pro/study-resources",
         status: "Active"
+      },
+      {
+        serviceId: "visual_explainer",
+        name: "AI Visual Concept Explainer",
+        description: "Interactive 3D isometric technical concept animation & mastery challenge",
+        priceUsd: 0.06,
+        endpoint: "/api/v1/x402/visual-explainer",
+        status: "Active"
       }
     ]);
   }
@@ -194,6 +203,19 @@ const seedServices = async () => {
     },
     { upsert: true }
   );
+  await X402Service.updateOne(
+    { serviceId: "visual_explainer" },
+    {
+      $set: {
+        name: "AI Visual Concept Explainer",
+        description: "Interactive 3D isometric technical concept animation & mastery challenge",
+        priceUsd: 0.06,
+        endpoint: "/api/v1/x402/visual-explainer",
+        status: "Active"
+      }
+    },
+    { upsert: true }
+  );
 };
 
 // GET /api/x402/services -> list pricing
@@ -210,7 +232,9 @@ router.get(
 router.get(
   "/transactions",
   asyncHandler(async (req, res) => {
-    const transactions = await X402Transaction.find({}).sort({ timestamp: -1 });
+    const serviceId = req.query.serviceId;
+    const filter: Record<string, any> = typeof serviceId === "string" ? { serviceId } : {};
+    const transactions = await X402Transaction.find(filter).sort({ timestamp: -1 });
     return sendSuccessResponse(res, transactions, "x402 Transactions retrieved successfully");
   })
 );
@@ -306,6 +330,26 @@ router.post(
     const actionPlan = await generateCareerActionPlan(resumeId, targetCareer);
     return sendSuccessResponse(res, actionPlan, "Career action plan generated successfully.");
   })
+);
+
+// ─── ENDPOINT 7: AI VISUAL CONCEPT EXPLAINER ($0.06) ───
+// Permanent stable endpoint handling all Visual Explainer transactions (1 endpoint -> N transactions)
+router.all(
+  "/visual-explainer",
+  optionalAuthenticate,
+  enforceWorkspacePayment({
+    priceUsd: 0.06,
+    description: "Sikho AI - Interactive 3D Visual Concept Explainer Pass",
+    discoveryInput: { concept: "Load Balancing", difficulty: "beginner" },
+    discoveryInputSchema: {
+      type: "object",
+      properties: {
+        concept: { type: "string", description: "Technical concept to visualize (e.g. Load Balancing, Token Streaming, Caching)" },
+        difficulty: { type: "string", description: "Target depth (beginner, intermediate, advanced)" }
+      }
+    }
+  }),
+  visualExplain
 );
 
 export default router;
