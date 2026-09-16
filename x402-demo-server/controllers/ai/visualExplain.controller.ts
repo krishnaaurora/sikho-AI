@@ -96,8 +96,8 @@ const FALLBACK_CONCEPTS: Record<string, VisualExplainResponse> = {
   },
   "token streaming": {
     concept: "Token Streaming",
-    title: "Token Streaming",
-    subtitle: "Why AI answers arrive word by word instead of all at once",
+    title: "Token Streaming Architecture",
+    subtitle: "Why AI answers arrive word by word instead of waiting for full generation",
     difficulty: "beginner",
     duration: 35,
     visualType: "token_streaming",
@@ -112,29 +112,29 @@ const FALLBACK_CONCEPTS: Record<string, VisualExplainResponse> = {
       {
         id: 1,
         stepNumber: 1,
-        title: "The Model Generates Word by Word",
-        description: "Large language models predict one token (word chunk) at a time in sequence.",
+        title: "Model Predicts Next Token",
+        description: "Large language models compute the probability distribution and emit one token chunk at a time.",
         animation: "model_generate",
         highlightNodes: ["model", "buffer"],
-        caption: "The AI model predicts each word sequentially."
+        caption: "The AI model predicts each word sequentially in real-time."
       },
       {
         id: 2,
         stepNumber: 2,
-        title: "Without Streaming: Long Waiting Time",
-        description: "Without streaming, the client must wait until the entire paragraph finishes before seeing any text.",
+        title: "Without Streaming: Long Blocking Delay",
+        description: "Without streaming, the client must wait until the entire 500-word response finishes before seeing any text.",
         animation: "compare_no_stream",
         highlightNodes: ["no_stream_channel"],
-        caption: "Traditional HTTP waits until the entire 500-word response completes."
+        caption: "Traditional HTTP blocks until the full response payload is completed."
       },
       {
         id: 3,
         stepNumber: 3,
-        title: "With Streaming: Instant Word Delivery",
-        description: "Using Server-Sent Events (SSE), every single token is pushed to the user the exact millisecond it is computed.",
+        title: "With Streaming: Instant Delivery via SSE",
+        description: "Using Server-Sent Events (SSE), every single token is pushed to the client interface the exact millisecond it is computed.",
         animation: "stream_packets",
         highlightNodes: ["stream_channel"],
-        caption: "Streaming sends each word the moment it exists."
+        caption: "Streaming transmits tokens immediately over an open HTTP stream."
       }
     ],
     realWorldExample: "ChatGPT, Claude, and Gemini use token streaming so you can start reading the answer within 100 milliseconds.",
@@ -148,17 +148,129 @@ const FALLBACK_CONCEPTS: Record<string, VisualExplainResponse> = {
       answer: 1,
       explanation: "Token streaming drastically reduces Time-To-First-Token (TTFT) by transmitting tokens immediately via persistent streaming chunks."
     }
+  },
+  "caching": {
+    concept: "Caching & Redis",
+    title: "How In-Memory Caching Works",
+    subtitle: "Accelerating data retrieval by serving frequent requests from ultra-fast RAM memory",
+    difficulty: "beginner",
+    duration: 40,
+    visualType: "caching",
+    author: "@sikho.ai",
+    metrics: {
+      labelLeft: "CACHE READ LATENCY",
+      valueLeft: "0.2ms (RAM)",
+      labelRight: "DATABASE DISK LATENCY",
+      valueRight: "25ms (Disk)"
+    },
+    steps: [
+      {
+        id: 1,
+        stepNumber: 1,
+        title: "Client Requests Resource",
+        description: "The user requests their profile or dashboard data from the application backend.",
+        animation: "client_to_cache",
+        highlightNodes: ["input", "cache"],
+        caption: "Request enters the gateway and first inspects the high-speed cache."
+      },
+      {
+        id: 2,
+        stepNumber: 2,
+        title: "Cache Hit vs Cache Miss",
+        description: "If data exists in RAM (Cache Hit), it returns in 0.2ms. If missing (Cache Miss), the database is queried and updates the cache.",
+        animation: "cache_evaluate",
+        highlightNodes: ["core", "cache"],
+        caption: "Fast RAM lookup delivers instantaneous response without database disk I/O."
+      },
+      {
+        id: 3,
+        stepNumber: 3,
+        title: "High Throughput Persistence",
+        description: "By offloading 95% of reads to Redis/Memcached, the database handles write transactions without lock contention.",
+        animation: "cache_persist",
+        highlightNodes: ["output", "db"],
+        caption: "Database remains lean, resilient, and responsive under peak load."
+      }
+    ],
+    realWorldExample: "Instagram and Twitter use Redis to cache user feeds so millions of concurrent users get sub-millisecond scrolling.",
+    challenge: {
+      question: "What is the primary trade-off when using in-memory caches?",
+      options: [
+        "Cache data can become stale if not invalidated upon database writes",
+        "It slows down network request round-trips",
+        "It completely prevents any database writes"
+      ],
+      answer: 0,
+      explanation: "Cache invalidation (TTL or write-through strategies) must be handled so users don't view stale data."
+    }
+  },
+  "dsa": {
+    concept: "Binary Search",
+    title: "Binary Search & Divide and Conquer",
+    subtitle: "Finding target elements in logarithmic O(log n) time by halving the search space",
+    difficulty: "beginner",
+    duration: 35,
+    visualType: "request_distribution",
+    author: "@sikho.ai",
+    metrics: {
+      labelLeft: "TIME COMPLEXITY",
+      valueLeft: "O(log n)",
+      labelRight: "SPACE COMPLEXITY",
+      valueRight: "O(1) Auxiliary"
+    },
+    steps: [
+      {
+        id: 1,
+        stepNumber: 1,
+        title: "Sorted Input Invariant",
+        description: "Binary search requires that the array or dataset is strictly sorted in ascending or descending order.",
+        animation: "sort_check",
+        highlightNodes: ["input"],
+        caption: "Confirming sorted array invariant and establishing left/right pointers."
+      },
+      {
+        id: 2,
+        stepNumber: 2,
+        title: "Divide Search Space at Midpoint",
+        description: "Compute mid = (left + right) / 2. Compare mid with target to eliminate half the entire search space in one comparison.",
+        animation: "halve_space",
+        highlightNodes: ["core"],
+        caption: "Comparing middle element and discarding the non-matching half."
+      },
+      {
+        id: 3,
+        stepNumber: 3,
+        title: "Logarithmic Convergence",
+        description: "Repeatedly halving reaches 1 element in log2(n) steps — finding targets across 1 million items in just 20 comparisons!",
+        animation: "converge_target",
+        highlightNodes: ["output"],
+        caption: "Target located in O(log n) optimal steps."
+      }
+    ],
+    realWorldExample: "Database B-Tree indexes and Git Bisect utilize binary search to find commits and index entries among billions of records instantly.",
+    challenge: {
+      question: "What happens if Binary Search is executed on an unsorted array?",
+      options: [
+        "It will still find the element in O(log n)",
+        "It will fail unpredictably because the elimination invariant is violated",
+        "It will automatically sort the array in O(1) time"
+      ],
+      answer: 1,
+      explanation: "Without a sorted array, discarding half the search space might discard the target element."
+    }
   }
 };
 
 export const visualExplain = asyncHandler(async (req: Request, res: Response) => {
-  const { concept, userQuery, difficulty = "beginner" } = req.body;
-  const rawTopic = (concept || userQuery || "Load Balancing").trim();
+  const method = req.method.toUpperCase();
+  const source = method === "GET" ? req.query : { ...req.query, ...req.body };
+  const rawTopic = (source.concept || source.userQuery || source.q || source.topic || "Load Balancing").toString().trim();
+  const difficulty = (source.difficulty || "beginner").toString().trim() as "beginner" | "intermediate" | "advanced";
   const lowerTopic = rawTopic.toLowerCase();
 
   // Check fallback dictionary
   for (const [key, fallback] of Object.entries(FALLBACK_CONCEPTS)) {
-    if (lowerTopic.includes(key)) {
+    if (lowerTopic.includes(key) || key.includes(lowerTopic)) {
       return sendSuccessResponse(res, fallback, "Visual explanation generated successfully");
     }
   }

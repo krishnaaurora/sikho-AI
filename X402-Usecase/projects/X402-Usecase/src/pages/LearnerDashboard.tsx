@@ -649,23 +649,6 @@ const LearnerDashboard: React.FC = () => {
                 <ChevronRight size={14} className="text-cyan-600 group-hover:translate-x-0.5 transition-transform" />
               </button>
 
-              {/* Option 2: Learn Now */}
-              <button
-                type="button"
-                onClick={() => executeLearnNow('academic')}
-                className="w-full flex items-center justify-between p-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-left transition-all group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100/50">
-                    <Zap size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-800">Learn it now</h4>
-                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Get a focused structured explanation immediately</p>
-                  </div>
-                </div>
-                <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-              </button>
 
               {/* Option 2: Guided Course */}
               <button

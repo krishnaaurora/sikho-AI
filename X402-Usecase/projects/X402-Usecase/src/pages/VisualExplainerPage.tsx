@@ -11,12 +11,14 @@ import { Button } from '../components/ui/button';
 import { IsometricStage } from '../components/visual-explainer/IsometricStage';
 import { RequestDistributionVisual } from '../components/visual-explainer/RequestDistributionVisual';
 import { TokenStreamingVisual } from '../components/visual-explainer/TokenStreamingVisual';
+import { UniversalVisualizer } from '../components/visual-explainer/UniversalVisualizer';
 import { StepControls } from '../components/visual-explainer/StepControls';
 import { QuizCard } from '../components/visual-explainer/QuizCard';
 
 import { useWallet } from '@txnlab/use-wallet-react';
 import { createX402Fetch } from '../utils/x402';
 import { ellipseAddress } from '../utils/ellipseAddress';
+import { API_BASE_URL } from '../config/api';
 
 interface VisualStep {
   id: number;
@@ -103,7 +105,7 @@ export default function VisualExplainerPage() {
     setAskAnswer(null);
     try {
       const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
-      const response = await fetch('/api/v1/x402/visual-explainer', {
+      const response = await fetch(`${API_BASE_URL}/x402/visual-explainer`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,12 +115,13 @@ export default function VisualExplainerPage() {
       });
 
       const res = await response.json();
-      if (res.success && res.data) {
-        setVisualData(res.data);
+      const payload = res?.data || res;
+      if (payload && payload.steps && payload.steps.length > 0) {
+        setVisualData(payload);
         setCurrentStepIndex(0);
         setIsPlaying(true);
-        if (isSpeaking && res.data.steps?.[0]) {
-          speakCurrentStep(res.data.steps[0].description);
+        if (isSpeaking && payload.steps?.[0]) {
+          speakCurrentStep(payload.steps[0].description);
         }
       }
     } catch (err) {
@@ -137,7 +140,7 @@ export default function VisualExplainerPage() {
     try {
       const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
       const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
-      const res = await x402Fetch('/api/v1/x402/visual-explainer', {
+      const res = await x402Fetch(`${API_BASE_URL}/x402/visual-explainer`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -146,8 +149,9 @@ export default function VisualExplainerPage() {
         body: JSON.stringify({ concept: inputTopic, difficulty: "intermediate" })
       });
       const data = await res.json();
-      if (data.success && data.data) {
-        setVisualData(data.data);
+      const payload = data?.data || data;
+      if (payload && payload.steps) {
+        setVisualData(payload);
         setPaymentSuccess(true);
         setTimeout(() => setPaymentSuccess(false), 5000);
       }
@@ -162,7 +166,7 @@ export default function VisualExplainerPage() {
   const loadTxHistory = async () => {
     setLoadingTx(true);
     try {
-      const res = await fetch('/api/v1/x402/transactions?serviceId=visual_explainer');
+      const res = await fetch(`${API_BASE_URL}/x402/transactions?serviceId=visual_explainer`);
       const data = await res.json();
       if (data.success && data.data) {
         setTxHistory(data.data);
@@ -232,7 +236,7 @@ export default function VisualExplainerPage() {
     try {
       const activeStep = visualData.steps[currentStepIndex];
       const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
-      const res = await fetch('/api/v1/ai/doubt-solve', {
+      const res = await fetch(`${API_BASE_URL}/ai/doubt-solve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -245,12 +249,13 @@ export default function VisualExplainerPage() {
       });
       const data = await res.json();
       if (data.success && data.data) {
-        setAskAnswer(data.data.answer || data.data.content || "Here is how this step works under the hood.");
+        setAskAnswer(data.data.answer || data.data.content || data.data.explanation || "Here is how this step works under the hood.");
       } else {
-        setAskAnswer(`In this step, "${activeStep.title}", the system coordinates incoming requests and applies routing logic to maintain stability.`);
+        setAskAnswer(`In Step ${activeStep.stepNumber} ("${activeStep.title}"), ${activeStep.description}`);
       }
     } catch {
-      setAskAnswer("This step maintains operational throughput and ensures fault tolerance across all nodes.");
+      const activeStep = visualData.steps[currentStepIndex];
+      setAskAnswer(`In Step ${activeStep.stepNumber} ("${activeStep.title}"), ${activeStep.description}`);
     } finally {
       setAskLoading(false);
     }
@@ -406,12 +411,22 @@ export default function VisualExplainerPage() {
                   stepNumber={activeStep?.stepNumber || 1}
                   isPlaying={isPlaying}
                 />
-              ) : (
+              ) : visualData.visualType === 'request_distribution' ? (
                 <RequestDistributionVisual
                   stepNumber={activeStep?.stepNumber || 1}
                   isPlaying={isPlaying}
                   highlightNodes={activeStep?.highlightNodes}
                   animationMode={activeStep?.animation}
+                />
+              ) : (
+                <UniversalVisualizer
+                  concept={visualData.concept || visualData.title}
+                  visualType={visualData.visualType || 'universal'}
+                  stepNumber={activeStep?.stepNumber || 1}
+                  isPlaying={isPlaying}
+                  highlightNodes={activeStep?.highlightNodes}
+                  animationMode={activeStep?.animation}
+                  stepTitle={activeStep?.title}
                 />
               )}
             </IsometricStage>
