@@ -110,15 +110,15 @@ const ENDPOINTS: EndpointInfo[] = [
   },
   {
     path: "/api/v1/x402/target-career-search",
-    name: "20. Target Career Search ($0.02)",
-    price: "$0.020",
+    name: "20. Target Career Search ($0.06)",
+    price: "$0.060",
     icon: <Compass size={16} />,
     placeholderInput: JSON.stringify({ resumeId: "65cb765f0123456789abcdef", role: "AI Engineer" }, null, 2)
   },
   {
     path: "/api/v1/x402/job-analysis",
-    name: "21. Job-Specific Gap Analysis ($0.02)",
-    price: "$0.020",
+    name: "21. Job-Specific Gap Analysis ($0.06)",
+    price: "$0.060",
     icon: <UserCheck size={16} />,
     placeholderInput: JSON.stringify({ jobId: "job_01", resumeId: "65cb765f0123456789abcdef" }, null, 2)
   },
