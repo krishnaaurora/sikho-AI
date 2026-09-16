@@ -13,6 +13,7 @@ import { encodePaymentRequiredHeader } from "@x402/core/http";
 import Chapter from "../../models/Chapter.model";
 import { AppError } from "../../utils/errors";
 import { logger } from "../../utils/logger";
+import { env } from "../../config/env";
 
 export const createCustomCourse = asyncHandler(async (req: Request, res: Response) => {
   const userId = (req as any).user._id;
