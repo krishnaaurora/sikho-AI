@@ -92,10 +92,11 @@ router.post(
   unlockResumePass
 );
 
-// POST  /api/v1/resume/:resumeId/quality    — Trigger quality & ATS analysis (Free)
+// POST  /api/v1/resume/:resumeId/quality    — Trigger quality & ATS analysis (Paid $0.06)
 router.post(
   "/:resumeId/quality",
   optionalAuthenticate,
+  enforceWorkspacePayment({ priceUsd: 0.06, description: "ATS Quality & AI Resume Auto-Fix Pass" }),
   runQualityAnalysis
 );
 
