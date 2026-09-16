@@ -14,7 +14,7 @@ import {
 } from "./githubRepository.service";
 import { processPlatformFee } from "./platformFee.service";
 import { queryAIWithJsonRotation } from "./ai/aiRotator";
-import { verifyX402Payment } from "./payment";
+import { verifyX402Payment, decodePaymentSignatureHeader } from "./payment";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
 
@@ -680,6 +680,25 @@ export async function submitPrismReviewWithSignature(
   logger.info("[PRISM X402] Payment group constructed");
   logger.info("[PRISM X402] User signed payment");
   logger.info("[PRISM X402] Payment sent to facilitator for verification");
+
+  // Decode & validate payment payload for debug logging
+  try {
+    const decodedPayload = decodePaymentSignatureHeader(paymentSignature);
+    logger.info("[PRISM X402 DEBUG] x402Version: 2");
+    logger.info(`[PRISM X402 DEBUG] scheme: ${decodedPayload.scheme}`);
+    logger.info(`[PRISM X402 DEBUG] network: ${decodedPayload.network}`);
+    logger.info(`[PRISM X402 DEBUG] paymentGroup length: ${decodedPayload.payload?.paymentGroup?.length || 0}`);
+    logger.info(`[PRISM X402 DEBUG] paymentIndex: ${decodedPayload.payload?.paymentIndex}`);
+    if (Array.isArray(decodedPayload.payload?.paymentGroup)) {
+      logger.info(`[PRISM X402 DEBUG] paymentGroup indexes: ${decodedPayload.payload.paymentGroup.map((_: any, i: number) => i).join(", ")}`);
+      decodedPayload.payload.paymentGroup.forEach((item: string, idx: number) => {
+        logger.info(`[PRISM X402 DEBUG] paymentGroup[${idx}] length: ${item ? item.length : 0}`);
+      });
+    }
+    logger.info("[PRISM X402 DEBUG] PAYMENT-SIGNATURE generated: true");
+  } catch (decLogErr: any) {
+    logger.warn(`[PRISM X402 DEBUG] Payload decode log warning: ${decLogErr.message}`);
+  }
 
   // 1. Facilitator Settlement (Submits complete payment group to Algorand MainNet)
   const challenge = await getPrismChallengeForFile(reviewId, fileId);

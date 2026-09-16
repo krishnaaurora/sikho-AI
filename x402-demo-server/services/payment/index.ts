@@ -3,14 +3,73 @@ import { env } from "../../config/env";
 import { logger } from "../../utils/logger";
 import { AppError } from "../../utils/errors";
 
-// @ts-ignore — @x402/core/http types may not be declared
-let decodePaymentSignatureHeader: (header: string) => any;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  decodePaymentSignatureHeader = require("@x402/core/http").decodePaymentSignatureHeader;
-} catch (e) {
-  logger.warn("@x402/core/http not available, will forward raw header to facilitator");
-  decodePaymentSignatureHeader = (header: string) => header;
+/**
+ * Validates the structure of an x402 V2 PaymentPayload object according to standard x402 V2 AVM spec.
+ */
+export function validatePaymentPayload(payload: any): boolean {
+  if (!payload || typeof payload !== "object") {
+    throw new AppError("Invalid payment payload: not an object", 400);
+  }
+  if (payload.x402Version !== 2) {
+    throw new AppError(`Invalid x402Version: expected 2, got ${payload.x402Version}`, 400);
+  }
+  if (payload.scheme !== "exact") {
+    throw new AppError(`Invalid scheme: expected "exact", got "${payload.scheme}"`, 400);
+  }
+  if (!payload.network) {
+    throw new AppError("Missing network in payment payload", 400);
+  }
+  if (!payload.payload || typeof payload.payload !== "object") {
+    throw new AppError("Missing inner payload object", 400);
+  }
+
+  const inner = payload.payload;
+  if (!Array.isArray(inner.paymentGroup) || inner.paymentGroup.length === 0) {
+    throw new AppError("paymentGroup must be a non-empty array of transaction strings", 400);
+  }
+  if (typeof inner.paymentIndex !== "number" || inner.paymentIndex < 0 || inner.paymentIndex >= inner.paymentGroup.length) {
+    throw new AppError(`Invalid paymentIndex: ${inner.paymentIndex} (group size: ${inner.paymentGroup.length})`, 400);
+  }
+
+  const userTxnStr = inner.paymentGroup[inner.paymentIndex];
+  if (!userTxnStr || typeof userTxnStr !== "string" || userTxnStr.length === 0) {
+    throw new AppError(`User payment transaction at index ${inner.paymentIndex} is empty or invalid`, 400);
+  }
+
+  return true;
+}
+
+/**
+ * Safely decodes a base64 or stringified X-PAYMENT / PAYMENT-SIGNATURE header into an x402 PaymentPayload object.
+ */
+export function decodePaymentSignatureHeader(header: string | object): any {
+  if (typeof header === "object" && header !== null) {
+    validatePaymentPayload(header);
+    return header;
+  }
+  if (!header || typeof header !== "string") {
+    throw new AppError("Invalid payment signature header: input is empty or invalid", 400);
+  }
+
+  let str = header.trim();
+
+  // If base64 encoded JSON string
+  if (str.startsWith("eyJ") || !str.includes("{")) {
+    try {
+      str = Buffer.from(str, "base64").toString("utf-8");
+    } catch (b64Err: any) {
+      throw new AppError(`Invalid payment signature header: Base64 decode failed (${b64Err.message})`, 400);
+    }
+  }
+
+  try {
+    const payloadObj = JSON.parse(str);
+    validatePaymentPayload(payloadObj);
+    return payloadObj;
+  } catch (jsonErr: any) {
+    if (jsonErr instanceof AppError) throw jsonErr;
+    throw new AppError(`Invalid payment signature header: ${jsonErr.message}`, 400);
+  }
 }import { declareDiscoveryExtension } from "@x402-avm/extensions/bazaar";
 
 /** CAIP-2 for Algorand MainNet */
