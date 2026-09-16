@@ -39,7 +39,7 @@ Strictly output JSON only.`;
 
 // 2. Doubt Solve
 export const doubtSolveMvp = asyncHandler(async (req: Request, res: Response) => {
-  const { doubt } = req.body;
+  const doubt = req.body.doubt || req.body.question || req.body.prompt || req.body.userQuery || (req.query.doubt as string) || (req.query.question as string);
   if (!doubt) throw new AppError("Doubt string parameter is required", 400);
 
   const system = `You are a helpful teaching assistant. Answer the student's doubt directly and clearly.

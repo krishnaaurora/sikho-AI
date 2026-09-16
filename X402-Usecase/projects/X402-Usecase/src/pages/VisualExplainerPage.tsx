@@ -114,6 +114,12 @@ export default function VisualExplainerPage() {
         body: JSON.stringify({ concept: topic, userQuery: topic })
       });
 
+      if (response.status === 402) {
+        // 402 Payment Required returned — user must unlock via x402 payment
+        setVisualData(null);
+        return;
+      }
+
       const res = await response.json();
       const payload = res?.data || res;
       if (payload && payload.steps && payload.steps.length > 0) {
@@ -133,7 +139,7 @@ export default function VisualExplainerPage() {
 
   const handlePayX402 = async () => {
     if (!activeAddress) {
-      alert("Please connect your Algorand wallet first to unlock via x402.");
+      alert("Please connect your Algorand wallet first to unlock this feature with x402.");
       return;
     }
     setPaying(true);
@@ -150,10 +156,15 @@ export default function VisualExplainerPage() {
       });
       const data = await res.json();
       const payload = data?.data || data;
-      if (payload && payload.steps) {
+      if (payload && payload.steps && payload.steps.length > 0) {
         setVisualData(payload);
+        setCurrentStepIndex(0);
+        setIsPlaying(true);
         setPaymentSuccess(true);
         setTimeout(() => setPaymentSuccess(false), 5000);
+        loadTxHistory();
+      } else {
+        throw new Error(data?.message || "Visual schematic could not be generated.");
       }
     } catch (err: any) {
       console.error("x402 payment error:", err);
@@ -189,6 +200,7 @@ export default function VisualExplainerPage() {
     e.preventDefault();
     if (!inputTopic.trim()) return;
     setSearchParams({ q: inputTopic.trim() });
+    fetchVisualExplanation(inputTopic.trim());
   };
 
   const handleNextStep = () => {
@@ -236,6 +248,8 @@ export default function VisualExplainerPage() {
     try {
       const activeStep = visualData.steps[currentStepIndex];
       const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+      const questionText = `Regarding Step ${activeStep.stepNumber} ("${activeStep.title}") of ${visualData.concept}: ${askQuestion.trim()}`;
+      
       const res = await fetch(`${API_BASE_URL}/ai/doubt-solve`, {
         method: 'POST',
         headers: {
@@ -243,13 +257,15 @@ export default function VisualExplainerPage() {
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
-          topic: visualData.concept,
-          question: `Regarding Step ${activeStep.stepNumber} ("${activeStep.title}"): ${askQuestion}`
+          doubt: questionText,
+          question: questionText,
+          topic: visualData.concept
         })
       });
       const data = await res.json();
-      if (data.success && data.data) {
-        setAskAnswer(data.data.answer || data.data.content || data.data.explanation || "Here is how this step works under the hood.");
+      const payload = data?.data || data;
+      if (payload && (payload.answer || payload.explanation || payload.content)) {
+        setAskAnswer(payload.answer || payload.explanation || payload.content);
       } else {
         setAskAnswer(`In Step ${activeStep.stepNumber} ("${activeStep.title}"), ${activeStep.description}`);
       }
@@ -384,6 +400,49 @@ export default function VisualExplainerPage() {
             </div>
             <h3 className="text-lg font-black text-white">Synthesizing Interactive Schematic</h3>
             <p className="text-xs font-mono text-cyan-400/80 mt-1">Generating 3D isometric animation nodes & real-world telemetry...</p>
+          </div>
+        )}
+
+        {/* Locked / Paywall State */}
+        {!loading && !visualData && (
+          <div className="p-8 sm:p-12 rounded-3xl bg-slate-900/90 border border-slate-800 text-center space-y-5 shadow-2xl backdrop-blur-xl">
+            <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-3xl mx-auto shadow-lg shadow-cyan-500/20 animate-bounce">
+              🔒
+            </div>
+            <div className="max-w-md mx-auto space-y-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-[10px] font-mono font-bold">
+                <span>⚡ Algorand x402 Micropayment</span>
+                <span>•</span>
+                <span>$0.06 USDC</span>
+              </div>
+              <h3 className="text-xl font-black text-white">Unlock 3D Visual Concept Explainer &amp; AI Answers</h3>
+              <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                Generate an interactive 3D step-by-step schematic, dynamic packet routing animations, and AI doubt solving for <span className="text-cyan-300 font-bold">"{inputTopic || 'this concept'}"</span>.
+              </p>
+            </div>
+
+            <div className="max-w-xs mx-auto space-y-2 pt-2">
+              <button
+                onClick={handlePayX402}
+                disabled={paying}
+                className="w-full bg-gradient-to-r from-cyan-500 via-teal-500 to-blue-600 hover:opacity-95 text-slate-950 font-black text-xs py-3.5 px-6 rounded-2xl shadow-lg shadow-cyan-500/20 transition-all flex items-center justify-center gap-2 group cursor-pointer"
+              >
+                {paying ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Signing $0.06 USDC with Wallet...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Unlock Explainer for $0.06 USDC</span>
+                    <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                  </>
+                )}
+              </button>
+              <p className="text-[10px] font-mono text-slate-500">
+                {activeAddress ? `Connected: ${ellipseAddress(activeAddress)}` : 'Connect your Algorand wallet to sign transaction'}
+              </p>
+            </div>
           </div>
         )}
 
