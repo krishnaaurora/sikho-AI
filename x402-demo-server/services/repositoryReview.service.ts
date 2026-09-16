@@ -588,8 +588,10 @@ export async function getPrismChallengeForFile(
         asset: assetId,
         description: `Prism code review ($0.20 USDC / 200,000 micro-USDC) for ${fileDoc.filePath}`,
         extra: {
-          name: "USDC",
-          version: "1",
+          asset: 31566704,
+          tag: "x402-global-challenge",
+          decimals: 6,
+          feePayer: "ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA",
           service: "prism-code-review",
           reviewId,
           fileId,

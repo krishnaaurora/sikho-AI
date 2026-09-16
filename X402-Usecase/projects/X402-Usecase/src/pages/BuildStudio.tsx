@@ -567,10 +567,9 @@ export const BuildStudio: React.FC = () => {
               payTo: prismPayTo,
               maxTimeoutSeconds: 300,
               extra: {
-                name: 'USDC',
-                version: '1',
                 asset: targetAsset,
                 decimals: 6,
+                feePayer: 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
                 service: 'prism-code-review',
               },
             },
@@ -582,10 +581,9 @@ export const BuildStudio: React.FC = () => {
             acc.network = acc.network || targetNetwork;
             acc.payTo = acc.payTo || prismPayTo;
             if (!acc.extra) acc.extra = {};
-            delete acc.extra.feePayer;
-            acc.extra.name = 'USDC';
-            acc.extra.version = '1';
+            acc.extra.feePayer = acc.extra.feePayer || 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA';
             acc.extra.decimals = 6;
+            acc.extra.asset = targetAsset;
           });
         }
       }
@@ -608,10 +606,9 @@ export const BuildStudio: React.FC = () => {
               payTo: prismPayTo,
               maxTimeoutSeconds: 300,
               extra: {
-                name: 'USDC',
-                version: '1',
                 asset: targetAsset,
                 decimals: 6,
+                feePayer: 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
                 service: 'prism-code-review',
               },
             },
