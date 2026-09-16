@@ -13,12 +13,21 @@ export function validatePaymentPayload(payload: any): boolean {
   if (payload.x402Version !== 2) {
     throw new AppError(`Invalid x402Version: expected 2, got ${payload.x402Version}`, 400);
   }
-  if (payload.scheme !== "exact") {
-    throw new AppError(`Invalid scheme: expected "exact", got "${payload.scheme}"`, 400);
+
+  const accepted = payload.accepted;
+  if (!accepted || typeof accepted !== "object") {
+    throw new AppError("Missing accepted object in payment payload", 400);
   }
-  if (!payload.network) {
+  if (accepted.scheme !== "exact") {
+    throw new AppError(`Invalid scheme: expected "exact", got "${accepted.scheme}"`, 400);
+  }
+  if (!accepted.network) {
     throw new AppError("Missing network in payment payload", 400);
   }
+  if (!accepted.payTo) {
+    throw new AppError("Missing payTo in payment payload", 400);
+  }
+
   if (!payload.payload || typeof payload.payload !== "object") {
     throw new AppError("Missing inner payload object", 400);
   }

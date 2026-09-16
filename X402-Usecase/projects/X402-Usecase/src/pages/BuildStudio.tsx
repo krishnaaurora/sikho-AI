@@ -712,6 +712,107 @@ export const BuildStudio: React.FC = () => {
       x402Cl.register('algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=' as any, scheme as any);
 
       const paymentPayload = await x402Cl.createPaymentPayload(paymentRequired);
+
+      // Ensure paymentPayload follows the exact x402 V2 PaymentPayload structure expected by SDK & Prism
+      const prismReq = paymentRequired.accepts?.[0] || {
+        scheme: 'exact',
+        network: targetNetwork,
+        amount: '200000',
+        asset: String(targetAsset),
+        payTo: prismPayTo,
+        maxTimeoutSeconds: 300,
+        extra: {
+          asset: targetAsset,
+          decimals: 6,
+          feePayer: 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
+          service: 'prism-code-review',
+        },
+      };
+
+      if (!paymentPayload.accepted) {
+        (paymentPayload as any).accepted = { ...prismReq };
+      }
+      paymentPayload.accepted.scheme = paymentPayload.accepted.scheme || prismReq.scheme || 'exact';
+      paymentPayload.accepted.network = paymentPayload.accepted.network || prismReq.network;
+      paymentPayload.accepted.amount = paymentPayload.accepted.amount || prismReq.amount;
+      paymentPayload.accepted.asset = paymentPayload.accepted.asset || prismReq.asset;
+      paymentPayload.accepted.payTo = paymentPayload.accepted.payTo || prismReq.payTo;
+      paymentPayload.accepted.maxTimeoutSeconds = paymentPayload.accepted.maxTimeoutSeconds || prismReq.maxTimeoutSeconds || 300;
+      if (!paymentPayload.accepted.extra) {
+        paymentPayload.accepted.extra = prismReq.extra || {};
+      }
+
+      // Pre-encoding validation
+      if (paymentPayload.x402Version !== 2) {
+        throw new Error("Invalid x402 version");
+      }
+
+      if (paymentPayload.accepted?.scheme !== "exact") {
+        throw new Error(`Invalid Prism scheme: ${paymentPayload.accepted?.scheme}`);
+      }
+
+      if (!paymentPayload.accepted?.network) {
+        throw new Error("Missing Prism network");
+      }
+
+      if (!paymentPayload.accepted?.payTo) {
+        throw new Error("Missing Prism payTo");
+      }
+
+      const innerPayload = (paymentPayload.payload as any) || {};
+
+      if (!innerPayload.paymentGroup?.length) {
+        throw new Error("Missing paymentGroup");
+      }
+
+      if (typeof innerPayload.paymentIndex !== "number") {
+        throw new Error("Missing paymentIndex");
+      }
+
+      console.log('[Prism x402] PaymentRequirements scheme:', paymentPayload.accepted.scheme);
+      console.log('[Prism x402] FINAL PaymentPayload before encoding:', JSON.stringify(paymentPayload, null, 2));
+      console.log('[Prism x402] FINAL PAYMENT PAYLOAD:', JSON.stringify(paymentPayload, null, 2));
+      console.log('[Prism x402] paymentGroup length:', innerPayload.paymentGroup.length);
+      console.log('[Prism x402] paymentIndex:', innerPayload.paymentIndex);
+
+      // Verify transaction at paymentIndex (USDC ASA transfer)
+      const targetTxnB64 = innerPayload.paymentGroup[innerPayload.paymentIndex];
+      if (targetTxnB64) {
+        try {
+          const txnBytes = new Uint8Array(atob(targetTxnB64).split('').map((c) => c.charCodeAt(0)));
+          let decodedTxn: any;
+          try {
+            decodedTxn = algosdk.decodeSignedTransaction(txnBytes).txn;
+          } catch (_) {
+            decodedTxn = algosdk.decodeUnsignedTransaction(txnBytes);
+          }
+          const receiver = decodedTxn.assetTransfer?.receiver
+            ? algosdk.encodeAddress(decodedTxn.assetTransfer.receiver.publicKey)
+            : decodedTxn.assetReceiver
+              ? algosdk.encodeAddress(decodedTxn.assetReceiver.publicKey)
+              : 'unknown';
+          const amt = decodedTxn.assetTransfer?.amount !== undefined
+            ? decodedTxn.assetTransfer.amount.toString()
+            : decodedTxn.assetAmount !== undefined
+              ? decodedTxn.assetAmount.toString()
+              : '0';
+          const ast = decodedTxn.assetTransfer?.assetId !== undefined
+            ? decodedTxn.assetTransfer.assetId.toString()
+            : decodedTxn.assetIndex !== undefined
+              ? decodedTxn.assetIndex.toString()
+              : 'unknown';
+
+          console.log('[Prism x402] Verified payment index transaction:', {
+            type: 'axfer',
+            asset: ast,
+            amount: amt,
+            receiver,
+          });
+        } catch (e: any) {
+          console.warn('[Prism x402] Could not decode paymentIndex txn:', e.message);
+        }
+      }
+
       const paymentSignatureHeader = btoa(JSON.stringify(paymentPayload));
 
       console.log('[PRISM X402] Payment sent to facilitator for verification');

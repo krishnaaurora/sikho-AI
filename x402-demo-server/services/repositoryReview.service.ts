@@ -684,11 +684,16 @@ export async function submitPrismReviewWithSignature(
   // Decode & validate payment payload for debug logging
   try {
     const decodedPayload = decodePaymentSignatureHeader(paymentSignature);
-    logger.info("[PRISM X402 DEBUG] x402Version: 2");
-    logger.info(`[PRISM X402 DEBUG] scheme: ${decodedPayload.scheme}`);
-    logger.info(`[PRISM X402 DEBUG] network: ${decodedPayload.network}`);
-    logger.info(`[PRISM X402 DEBUG] paymentGroup length: ${decodedPayload.payload?.paymentGroup?.length || 0}`);
-    logger.info(`[PRISM X402 DEBUG] paymentIndex: ${decodedPayload.payload?.paymentIndex}`);
+    const acceptedScheme = decodedPayload.accepted?.scheme;
+    const acceptedNetwork = decodedPayload.accepted?.network;
+
+    logger.info(`[Prism x402] PaymentRequirements scheme: ${acceptedScheme}`);
+    logger.info(`[Prism x402] FINAL PaymentPayload before encoding:\n${JSON.stringify(decodedPayload, null, 2)}`);
+    logger.info(`[Prism x402] FINAL PAYMENT PAYLOAD:\n${JSON.stringify(decodedPayload, null, 2)}`);
+    logger.info(`[Prism x402] x402Version: ${decodedPayload.x402Version}`);
+    logger.info(`[Prism x402] accepted.scheme: ${acceptedScheme}`);
+    logger.info(`[Prism x402] paymentGroup length: ${decodedPayload.payload?.paymentGroup?.length || 0}`);
+    logger.info(`[Prism x402] paymentIndex: ${decodedPayload.payload?.paymentIndex}`);
     if (Array.isArray(decodedPayload.payload?.paymentGroup)) {
       logger.info(`[PRISM X402 DEBUG] paymentGroup indexes: ${decodedPayload.payload.paymentGroup.map((_: any, i: number) => i).join(", ")}`);
       decodedPayload.payload.paymentGroup.forEach((item: string, idx: number) => {
