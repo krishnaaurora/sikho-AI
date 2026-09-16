@@ -64,26 +64,26 @@ const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode;
   return <>{children}</>;
 };
 
-function AppContent() {
-  const algodConfig = getAlgodConfigFromViteEnvironment()
+const algodConfig = getAlgodConfigFromViteEnvironment()
 
-  const walletManager = new WalletManager({
-    wallets: supportedWallets,
-    defaultNetwork: algodConfig.network,
-    networks: {
-      [algodConfig.network]: {
-        algod: {
-          baseServer: algodConfig.server,
-          port: algodConfig.port,
-          token: String(algodConfig.token),
-        },
+const walletManager = new WalletManager({
+  wallets: supportedWallets,
+  defaultNetwork: algodConfig.network,
+  networks: {
+    [algodConfig.network]: {
+      algod: {
+        baseServer: algodConfig.server,
+        port: algodConfig.port,
+        token: String(algodConfig.token),
       },
     },
-    options: {
-      resetNetwork: true,
-    },
-  })
+  },
+  options: {
+    resetNetwork: true,
+  },
+})
 
+function AppContent() {
   return (
     <SnackbarProvider maxSnack={3}>
       <WalletProvider manager={walletManager}>
