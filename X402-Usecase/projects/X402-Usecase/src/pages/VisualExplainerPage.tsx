@@ -430,11 +430,11 @@ export default function VisualExplainerPage() {
                 {paying ? (
                   <>
                     <Loader2 size={16} className="animate-spin" />
-                    <span>Signing $0.50 USDC with Wallet...</span>
+                    <span>Signing $0.30 USDC with Wallet...</span>
                   </>
                 ) : (
                   <>
-                    <span>Unlock Explainer for $0.50 USDC</span>
+                    <span>Unlock Explainer for $0.30 USDC</span>
                     <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                   </>
                 )}

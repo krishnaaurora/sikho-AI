@@ -59,7 +59,7 @@ const seedServices = async () => {
         serviceId: "resume_pass",
         name: "Resume Intelligence Pass",
         description: "Unlock full Resume Intelligence, ATS analysis, and career fit matching for 7 days",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/x402/resume-intelligence",
         status: "Active"
       },
@@ -67,7 +67,7 @@ const seedServices = async () => {
         serviceId: "custom_search",
         name: "Target Career Exploration Search",
         description: "Live Apify scraper search for custom target career transition goals",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/x402/target-career-search",
         status: "Active"
       },
@@ -75,7 +75,7 @@ const seedServices = async () => {
         serviceId: "job_analysis",
         name: "Deep Job-Specific Analysis",
         description: "Deep AI-driven gap analysis of your resume against a selected job description",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/x402/job-analysis",
         status: "Active"
       },
@@ -83,7 +83,7 @@ const seedServices = async () => {
         serviceId: "resume_improve",
         name: "Resume Improvement AI",
         description: "Modify and write high-impact resume section adjustments tailored to job requirements",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/x402/resume-improvement",
         status: "Active"
       },
@@ -91,7 +91,7 @@ const seedServices = async () => {
         serviceId: "project_generate",
         name: "Project Generation AI",
         description: "Generate comprehensive implementation blueprints matching missing technical skills",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/x402/project-generation",
         status: "Active"
       },
@@ -99,7 +99,7 @@ const seedServices = async () => {
         serviceId: "action_plan",
         name: "Career Action Plan",
         description: "Complete 30-day career transition roadmap with skills, projects, and interview prep",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/x402/career-action-plan",
         status: "Active"
       },
@@ -107,7 +107,7 @@ const seedServices = async () => {
         serviceId: "interview_questions",
         name: "Technical Interview Questions AI Pass",
         description: "Unlock tailored architectural & technical interview questions with STAR answers",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/v1/interview-pro/interview-questions",
         status: "Active"
       },
@@ -115,7 +115,7 @@ const seedServices = async () => {
         serviceId: "learning_path",
         name: "Learning Path 3-Module Batch Unlock",
         description: "Unlock next batch of 3 in-depth concept & scenario modules",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/v1/interview-pro/learning-path",
         status: "Active"
       },
@@ -123,7 +123,7 @@ const seedServices = async () => {
         serviceId: "study_resources",
         name: "Curated Study Resources Pass",
         description: "Unlock curated technical primers, system design docs, and indexing guides",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/v1/interview-pro/study-resources",
         status: "Active"
       },
@@ -131,7 +131,7 @@ const seedServices = async () => {
         serviceId: "visual_explainer",
         name: "AI Visual Concept Explainer",
         description: "Interactive 3D isometric technical concept animation & mastery challenge",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/v1/x402/visual-explainer",
         status: "Active"
       },
@@ -139,7 +139,7 @@ const seedServices = async () => {
         serviceId: "interview_prep",
         name: "Adaptive Technical Interview Prep",
         description: "Interactive adaptive mock interview with AI evaluation, follow-up questioning and performance report",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/v1/x402/interview-prep",
         status: "Active"
       },
@@ -147,21 +147,21 @@ const seedServices = async () => {
         serviceId: "download_resume",
         name: "AI Auto-Fixed ATS Resume PDF Download Pass",
         description: "Official AI Auto-Fixed ATS optimized resume high-resolution PDF download pass",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/v1/x402/download-resume",
         status: "Active"
       }
     ]);
   }
   // Ensure existing seeded services also update or insert
-  await X402Service.updateOne({ serviceId: "resume_pass" }, { $set: { priceUsd: 0.50 } });
+  await X402Service.updateOne({ serviceId: "resume_pass" }, { $set: { priceUsd: 0.30 } });
   await X402Service.updateOne(
     { serviceId: "custom_search" },
     {
       $set: {
         name: "Target Career Exploration Search",
         description: "Live Apify scraper search for custom target career transition goals",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/x402/target-career-search",
         status: "Active"
       }
@@ -174,7 +174,7 @@ const seedServices = async () => {
       $set: {
         name: "Deep Job-Specific Analysis",
         description: "Deep AI-driven gap analysis of your resume against a selected job description",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/x402/job-analysis",
         status: "Active"
       }
@@ -187,7 +187,7 @@ const seedServices = async () => {
       $set: {
         name: "Resume Improvement AI",
         description: "Modify and write high-impact resume section adjustments tailored to job requirements",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/x402/resume-improvement",
         status: "Active"
       }
@@ -200,7 +200,7 @@ const seedServices = async () => {
       $set: {
         name: "Project Generation AI",
         description: "Generate comprehensive implementation blueprints matching missing technical skills",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/x402/project-generation",
         status: "Active"
       }
@@ -213,7 +213,7 @@ const seedServices = async () => {
       $set: {
         name: "Career Action Plan",
         description: "Complete 30-day career transition roadmap with skills, projects, and interview prep",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/x402/career-action-plan",
         status: "Active"
       }
@@ -226,7 +226,7 @@ const seedServices = async () => {
       $set: {
         name: "Technical Interview Questions AI Pass",
         description: "Unlock tailored architectural & technical interview questions with STAR answers",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/v1/interview-pro/interview-questions",
         status: "Active"
       }
@@ -239,7 +239,7 @@ const seedServices = async () => {
       $set: {
         name: "Learning Path 3-Module Batch Unlock",
         description: "Unlock next batch of 3 in-depth concept & scenario modules",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/v1/interview-pro/learning-path",
         status: "Active"
       }
@@ -252,7 +252,7 @@ const seedServices = async () => {
       $set: {
         name: "Curated Study Resources Pass",
         description: "Unlock curated technical primers, system design docs, and indexing guides",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/v1/interview-pro/study-resources",
         status: "Active"
       }
@@ -265,7 +265,7 @@ const seedServices = async () => {
       $set: {
         name: "AI Visual Concept Explainer",
         description: "Interactive 3D isometric technical concept animation & mastery challenge",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/v1/x402/visual-explainer",
         status: "Active"
       }
@@ -278,7 +278,7 @@ const seedServices = async () => {
       $set: {
         name: "Adaptive Technical Interview Prep",
         description: "Interactive adaptive mock interview with AI evaluation, follow-up questioning and performance report",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/v1/x402/interview-prep",
         status: "Active"
       }
@@ -291,7 +291,7 @@ const seedServices = async () => {
       $set: {
         name: "AI Auto-Fixed ATS Resume PDF Download Pass",
         description: "Official AI Auto-Fixed ATS optimized resume high-resolution PDF download pass",
-        priceUsd: 0.50,
+        priceUsd: 0.30,
         endpoint: "/api/v1/x402/download-resume",
         status: "Active"
       }
@@ -340,11 +340,11 @@ router.post(
   })
 );
 
-// ─── ENDPOINT 1: RESUME INTELLIGENCE ($0.50) ───
+// ─── ENDPOINT 1: RESUME INTELLIGENCE ($0.30) ───
 router.all(
   "/resume-intelligence",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.50, description: "Resume Intelligence Pass" }),
+  enforceWorkspacePayment({ priceUsd: 0.30, description: "Resume Intelligence Pass" }),
   asyncHandler(async (req: any, res: Response) => {
     const resumeId = req.body?.resumeId || req.query?.resumeId;
     const resume = await Resume.findById(resumeId);
@@ -357,12 +357,12 @@ router.all(
   })
 );
 
-// ─── ENDPOINT 2: TARGET CAREER MARKET SEARCH ($0.50) ───
+// ─── ENDPOINT 2: TARGET CAREER MARKET SEARCH ($0.30) ───
 router.all(
   "/target-career-search",
   optionalAuthenticate,
   enforceWorkspacePayment({
-    priceUsd: 0.50,
+    priceUsd: 0.30,
     description: "Target Career Exploration Search",
     discoveryInput: { resumeId: "65cb765f0123456789abcdef", targetRole: "Machine Learning Engineer" },
     discoveryInputSchema: {
@@ -379,12 +379,12 @@ router.all(
   })
 );
 
-// ─── ENDPOINT 3: JOB-SPECIFIC ANALYSIS ($0.50) ───
+// ─── ENDPOINT 3: JOB-SPECIFIC ANALYSIS ($0.30) ───
 router.all(
   "/job-analysis",
   optionalAuthenticate,
   enforceWorkspacePayment({
-    priceUsd: 0.50,
+    priceUsd: 0.30,
     description: "Deep Job-Specific Analysis",
     discoveryInput: { jobId: "65cb765f0123456789abcdef", resumeId: "65cb765f0123456789abcdef" },
     discoveryInputSchema: {
@@ -402,12 +402,12 @@ router.all(
   })
 );
 
-// ─── ENDPOINT 4: RESUME IMPROVEMENT ($0.50) ───
+// ─── ENDPOINT 4: RESUME IMPROVEMENT ($0.30) ───
 router.all(
   "/resume-improvement",
   optionalAuthenticate,
   enforceWorkspacePayment({
-    priceUsd: 0.50,
+    priceUsd: 0.30,
     description: "Resume Improvement AI",
     discoveryInput: { resumeId: "65cb765f0123456789abcdef" },
     discoveryInputSchema: {
@@ -423,12 +423,12 @@ router.all(
   })
 );
 
-// ─── ENDPOINT 5: PROJECT GENERATION ($0.50) ───
+// ─── ENDPOINT 5: PROJECT GENERATION ($0.30) ───
 router.all(
   "/project-generation",
   optionalAuthenticate,
   enforceWorkspacePayment({
-    priceUsd: 0.50,
+    priceUsd: 0.30,
     description: "Project Generation AI",
     discoveryInput: { resumeId: "65cb765f0123456789abcdef", skillGaps: ["Redis", "Distributed Systems"] },
     discoveryInputSchema: {
@@ -445,12 +445,12 @@ router.all(
   })
 );
 
-// ─── ENDPOINT 6: CAREER ACTION PLAN ($0.50) ───
+// ─── ENDPOINT 6: CAREER ACTION PLAN ($0.30) ───
 router.all(
   "/career-action-plan",
   optionalAuthenticate,
   enforceWorkspacePayment({
-    priceUsd: 0.50,
+    priceUsd: 0.30,
     description: "Complete Career Action Plan",
     discoveryInput: { resumeId: "65cb765f0123456789abcdef", targetCareer: "Senior Backend Architect" },
     discoveryInputSchema: {
@@ -469,13 +469,13 @@ router.all(
   })
 );
 
-// ─── ENDPOINT 7: AI VISUAL CONCEPT EXPLAINER ($0.50) ───
+// ─── ENDPOINT 7: AI VISUAL CONCEPT EXPLAINER ($0.30) ───
 // Permanent stable endpoint handling all Visual Explainer transactions (1 endpoint -> N transactions)
 router.all(
   "/visual-explainer",
   optionalAuthenticate,
   enforceWorkspacePayment({
-    priceUsd: 0.50,
+    priceUsd: 0.30,
     description: "Sikho AI - Interactive 3D Visual Concept Explainer Pass",
     discoveryInput: { concept: "Load Balancing", difficulty: "beginner" },
     discoveryInputSchema: {
@@ -489,13 +489,13 @@ router.all(
   visualExplain
 );
 
-// ─── ENDPOINT 8: ADAPTIVE TECHNICAL INTERVIEW PREPARATION ($0.50) ───
+// ─── ENDPOINT 8: ADAPTIVE TECHNICAL INTERVIEW PREPARATION ($0.30) ───
 // Permanent stable endpoint handling all Adaptive Interview Prep transactions (1 endpoint -> N transactions)
 router.all(
   "/interview-prep",
   optionalAuthenticate,
   enforceWorkspacePayment({
-    priceUsd: 0.50,
+    priceUsd: 0.30,
     description: "Sikho AI - Adaptive Technical Interview Preparation Pass",
     discoveryInput: { topic: "Data Structures & Algorithms", action: "start" },
     discoveryInputSchema: {
@@ -509,13 +509,13 @@ router.all(
   handleAdaptiveInterview
 );
 
-// ─── ENDPOINT 9: AI AUTO-FIXED ATS RESUME PDF DOWNLOAD ($0.50) ───
+// ─── ENDPOINT 9: AI AUTO-FIXED ATS RESUME PDF DOWNLOAD ($0.30) ───
 // Permanent stable endpoint handling all AI Auto-Fixed ATS Resume PDF Download transactions (1 endpoint -> N transactions)
 router.all(
   "/download-resume",
   optionalAuthenticate,
   enforceWorkspacePayment({
-    priceUsd: 0.50,
+    priceUsd: 0.30,
     description: "Sikho AI - AI Auto-Fixed ATS Resume PDF Download Pass",
     discoveryInput: { resumeId: "65cb765f0123456789abcdef", format: "pdf" },
     discoveryInputSchema: {

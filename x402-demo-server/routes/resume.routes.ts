@@ -84,20 +84,20 @@ router.get("/:resumeId/status", optionalAuthenticate, getResumeStatus);
 // GET   /api/v1/resume/:resumeId/extraction — Full extracted data for Extraction Engine UI
 router.get("/:resumeId/extraction", optionalAuthenticate, getResumeExtraction);
 
-// POST  /api/v1/resume/:resumeId/unlock      — Unlock Resume Intelligence pass (Paid $0.50)
+// POST  /api/v1/resume/:resumeId/unlock      — Unlock Resume Intelligence pass (Paid $0.30)
 router.post(
   "/:resumeId/unlock",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.50, description: "Resume Intelligence Pass" }),
+  enforceWorkspacePayment({ priceUsd: 0.30, description: "Resume Intelligence Pass" }),
   unlockResumePass
 );
 
-// POST  /api/v1/resume/quality & /:resumeId/quality — Trigger quality & ATS analysis (Paid $0.50)
+// POST  /api/v1/resume/quality & /:resumeId/quality — Trigger quality & ATS analysis (Paid $0.30)
 router.all(
   ["/quality", "/:resumeId/quality"],
   optionalAuthenticate,
   enforceWorkspacePayment({
-    priceUsd: 0.50,
+    priceUsd: 0.30,
     description: "ATS Quality & AI Resume Auto-Fix Pass",
     discoveryInput: { resumeId: "65cb765f0123456789abcdef" },
     discoveryInputSchema: {
@@ -113,12 +113,12 @@ router.all(
 // GET   /api/v1/resume/quality & /:resumeId/quality — Fetch analyzed quality metrics
 router.get(["/quality", "/:resumeId/quality"], optionalAuthenticate, getQualityAnalysis);
 
-// POST  /api/v1/resume/career-fit & /:resumeId/career-fit — Trigger career fit analysis (Paid $0.50)
+// POST  /api/v1/resume/career-fit & /:resumeId/career-fit — Trigger career fit analysis (Paid $0.30)
 router.all(
   ["/career-fit", "/:resumeId/career-fit"],
   optionalAuthenticate,
   enforceWorkspacePayment({
-    priceUsd: 0.50,
+    priceUsd: 0.30,
     description: "Resume Career Fit & Top Roles Pass",
     discoveryInput: { resumeId: "65cb765f0123456789abcdef" },
     discoveryInputSchema: {
@@ -143,7 +143,7 @@ router.post("/:resumeId/intent", optionalAuthenticate, extractIntent);
 // POST  /api/v1/resume/:resumeId/discover-jobs — Real-time job discovery (free — no payment gate)
 router.post("/:resumeId/discover-jobs", optionalAuthenticate, discoverJobs);
 
-// GET & POST /api/v1/resume/find-jobs — Personalised job discovery (x402 $0.50)
+// GET & POST /api/v1/resume/find-jobs — Personalised job discovery (x402 $0.30)
 //   Returns 402 Payment Required if no payment header provided
 //   Page 1: Gemini + Google Search  |  Page 2+: Greenhouse + Lever + Ashby
 //
@@ -155,7 +155,7 @@ router.get(
   "/find-jobs",
   optionalAuthenticate,
   enforceWorkspacePayment({
-    priceUsd: 0.50,
+    priceUsd: 0.30,
     description: "Sikho AI Resume Intelligence — Personalised Real-Time Job Discovery",
     mimeType: "application/json",
     discoveryInput: {
@@ -221,7 +221,7 @@ router.post(
   "/find-jobs",
   optionalAuthenticate,
   enforceWorkspacePayment({
-    priceUsd: 0.50,
+    priceUsd: 0.30,
     description: "Sikho AI Resume Intelligence — Personalised Real-Time Job Discovery",
     mimeType: "application/json",
     discoveryInput: {
@@ -295,7 +295,7 @@ router.get("/jobs", listJobs);
 router.post("/jobs/backfill-intelligence", backfillIntelligence);
 
 // POST  /api/v1/resume/jobs/:jobId/analyze         — Analyze single job
-router.post("/jobs/:jobId/analyze", optionalAuthenticate, enforceWorkspacePayment({ priceUsd: 0.50, description: "Job-Specific Resume Analysis" }), analyzeJob);
+router.post("/jobs/:jobId/analyze", optionalAuthenticate, enforceWorkspacePayment({ priceUsd: 0.30, description: "Job-Specific Resume Analysis" }), analyzeJob);
 
 // GET   /api/v1/resume/jobs/:jobId/intelligence    — Fetch job intelligence
 router.get("/jobs/:jobId/intelligence", getJobIntelligence);
@@ -323,19 +323,19 @@ router.post("/:resumeId/improvements/analyze", optionalAuthenticate, analyzeResu
 // GET   /api/v1/resume/:resumeId/improvements          — Get market & job-specific tips
 router.get("/:resumeId/improvements", optionalAuthenticate, getResumeImprovements);
 
-// POST  /api/v1/resume/:resumeId/improvements/apply       — Live dynamic resume improvements (Paid $0.05)
+// POST  /api/v1/resume/:resumeId/improvements/apply       — Live dynamic resume improvements (Paid $0.30)
 router.post(
   "/:resumeId/improvements/apply",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.05, description: "Resume Improvement AI" }),
+  enforceWorkspacePayment({ priceUsd: 0.30, description: "Resume Improvement AI" }),
   applyResumeImprovements
 );
 
-// POST  /api/v1/resume/:resumeId/projects/generate        — Live dynamic project recommendations (Paid $0.03)
+// POST  /api/v1/resume/:resumeId/projects/generate        — Live dynamic project recommendations (Paid $0.30)
 router.post(
   "/:resumeId/projects/generate",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.03, description: "Project Generation AI" }),
+  enforceWorkspacePayment({ priceUsd: 0.30, description: "Project Generation AI" }),
   generateProjectPlan
 );
 

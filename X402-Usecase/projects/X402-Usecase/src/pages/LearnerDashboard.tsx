@@ -564,7 +564,7 @@ const LearnerDashboard: React.FC = () => {
                           >
                             {unlockingChapter === chapter._id
                               ? <span className="flex items-center gap-1.5"><Loader2 size={13} className="animate-spin" /> Paying…</span>
-                              : `Unlock · $${(chapter.price >= 0.50 ? chapter.price : 0.50).toFixed(2)}`
+                              : `Unlock · $${(chapter.price >= 0.30 ? chapter.price : 0.30).toFixed(2)}`
                             }
                           </Button>
                         )}

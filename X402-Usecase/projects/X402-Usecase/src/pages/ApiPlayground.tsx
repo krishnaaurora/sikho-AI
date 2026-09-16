@@ -77,8 +77,8 @@ const ENDPOINTS: EndpointInfo[] = [
   // ── Resume Intelligence & Action Plans Suite ──
   {
     path: "/api/v1/resume/find-jobs",
-    name: "16. Personalised Job Discovery ($0.50)",
-    price: "$0.500",
+    name: "16. Personalised Job Discovery ($0.30)",
+    price: "$0.300",
     icon: <Compass size={16} />,
     placeholderInput: JSON.stringify({
       resumeId: "65cb765f0123456789abcdef",
