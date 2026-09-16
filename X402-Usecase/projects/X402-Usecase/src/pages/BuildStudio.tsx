@@ -569,6 +569,7 @@ export const BuildStudio: React.FC = () => {
               extra: {
                 asset: targetAsset,
                 decimals: 6,
+                feePayer: 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
                 service: 'prism-code-review',
               },
             },
@@ -580,7 +581,7 @@ export const BuildStudio: React.FC = () => {
             acc.network = acc.network || targetNetwork;
             acc.payTo = acc.payTo || prismPayTo;
             if (!acc.extra) acc.extra = {};
-            delete acc.extra.feePayer;
+            acc.extra.feePayer = 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA';
             acc.extra.decimals = 6;
             acc.extra.asset = targetAsset;
           });
@@ -607,6 +608,7 @@ export const BuildStudio: React.FC = () => {
               extra: {
                 asset: targetAsset,
                 decimals: 6,
+                feePayer: 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
                 service: 'prism-code-review',
               },
             },
@@ -616,13 +618,10 @@ export const BuildStudio: React.FC = () => {
 
       // SAFE LOG: Payment requirements
       const targetAccept = (paymentRequired.accepts && paymentRequired.accepts[0]) || {};
-      console.log('[Prism x402 Debug] Payment requirements:', {
-        x402Version: paymentRequired.x402Version || 2,
-        amount: targetAccept.amount || '200000',
-        asset: targetAccept.asset || String(targetAsset),
-        network: targetAccept.network || targetNetwork,
-        payTo: targetAccept.payTo || prismPayTo,
-      });
+      console.log('[PRISM X402] Payment requirements received');
+      console.log('[PRISM X402] Amount: 200000 micro-USDC');
+      console.log(`[PRISM X402] Asset: ${targetAsset}`);
+      console.log(`[PRISM X402] PayTo: ${prismPayTo}`);
 
       // 2. Build AVM Signer for ExactAvmScheme using connected wallet
       const avmSigner: ClientAvmSigner = {
@@ -630,10 +629,7 @@ export const BuildStudio: React.FC = () => {
         signTransactions: async (txns: Uint8Array[], indexesToSign?: number[]) => {
           const targetIndexes = indexesToSign && indexesToSign.length > 0 ? indexesToSign : txns.map((_, i) => i);
 
-          // SAFE LOG: Detailed breakdown of the raw transaction group before signing
-          console.log('=== [Prism x402 Payment Group Details Before Signing] ===');
-          console.log('Number of transactions in group:', txns.length);
-          console.log('Direct On-Chain Payment to Prism:', prismPayTo);
+          console.log('[PRISM X402] Payment group constructed');
 
           txns.forEach((txnBytes, idx) => {
             try {
@@ -683,6 +679,8 @@ export const BuildStudio: React.FC = () => {
             throw new Error('Prism transaction signing was cancelled by user.');
           }
 
+          console.log('[PRISM X402] User signed payment');
+
           const signedList = walletResult.filter(Boolean) as (Uint8Array | string)[];
           let sIdx = 0;
           return txns.map((_, i) => {
@@ -713,63 +711,10 @@ export const BuildStudio: React.FC = () => {
       x402Cl.register('algorand:wGHE2Pvdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=' as any, scheme as any);
       x402Cl.register('algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=' as any, scheme as any);
 
-      // SAFE LOG: Payment construction
-      console.log('[Prism x402 Debug] Payment construction:', {
-        transactionType: 'ExactAvmScheme (Direct User Payment)',
-        sender: activeAddress,
-        receiver: prismPayTo,
-        asset: targetAsset,
-        amount: '200000 micro-units (0.20 USDC)',
-      });
-
       const paymentPayload = await x402Cl.createPaymentPayload(paymentRequired);
       const paymentSignatureHeader = btoa(JSON.stringify(paymentPayload));
 
-      // Extract transaction ID and raw signed transaction bytes from paymentGroup
-      let prismTxId = currentFile.prismPaymentTxId || '';
-      let rawSignedTxnBytes: Uint8Array | null = null;
-      try {
-        const payloadData = (paymentPayload as any)?.payload;
-        const pGroup = Array.isArray(payloadData?.paymentGroup) ? payloadData.paymentGroup : [];
-        for (let i = 0; i < pGroup.length; i++) {
-          const rawStxn = pGroup[i];
-          if (rawStxn) {
-            try {
-              const stxnBytes = new Uint8Array(
-                (typeof rawStxn === 'string' ? atob(rawStxn) : '')
-                  .split('')
-                  .map((c) => c.charCodeAt(0))
-              );
-              const decodedStxn: any = algosdk.decodeSignedTransaction(stxnBytes);
-              if (decodedStxn?.txn) {
-                prismTxId = decodedStxn.txn.txID();
-                rawSignedTxnBytes = stxnBytes;
-                break;
-              }
-            } catch (_) {}
-          }
-        }
-      } catch (_) { }
-
-      // Direct On-Chain Broadcast to Algorand MainNet Node
-      if (rawSignedTxnBytes) {
-        try {
-          console.log('[Prism x402 Direct Broadcast] Broadcasting signed 0.20 USDC transaction to Algorand MainNet...');
-          const algodUrl = `${import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud'}/v2/transactions`;
-          const bcRes = await fetch(algodUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-binary' },
-            body: rawSignedTxnBytes as any,
-          });
-          const bcData = await bcRes.json();
-          if (bcData?.txId) {
-            prismTxId = bcData.txId;
-            console.log('[Prism x402 Direct Broadcast] Transaction submitted successfully on-chain! TxID:', prismTxId);
-          }
-        } catch (bcErr: any) {
-          console.warn('[Prism x402 Direct Broadcast] Frontend broadcast info:', bcErr?.message);
-        }
-      }
+      console.log('[PRISM X402] Payment sent to facilitator for verification');
 
       // SAFE LOG: Retry request details
       console.log('[Prism x402 Debug] Retry request:', {
@@ -782,15 +727,14 @@ export const BuildStudio: React.FC = () => {
       const submitRes = await githubReviewApi.submitPrismReview(
         activeReviewId,
         file.fileReviewId,
-        paymentSignatureHeader,
-        prismTxId || undefined
+        paymentSignatureHeader
       );
 
       if (!submitRes.success || !submitRes.data) {
         throw new Error(submitRes.message || 'Prism code review verification failed.');
       }
 
-      const confirmedPrismTxId = submitRes.data.file?.prismPaymentTxId || prismTxId || '';
+      const confirmedPrismTxId = submitRes.data.file?.prismPaymentTxId || '';
       const rawPaymentResponse = submitRes.data.file?.prismPaymentResponse || '';
       let decodedPaymentResp: any = null;
       if (rawPaymentResponse) {
