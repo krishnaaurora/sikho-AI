@@ -45,21 +45,29 @@ export const getCourseById = async (req: Request, res: Response) => {};
  * - With X-PAYMENT header: verifies via facilitator, unlocks chapter, returns purchase.
  */
 export const unlockChapterX402 = asyncHandler(async (req: Request, res: Response) => {
-  const chapterId = String(req.query.chapterId || req.params.chapterId);
+  const chapterId = String(req.query.chapterId || req.params.chapterId || "65cb765f0123456789abcdef");
 
-  // Look up the chapter to get the price
-  // @ts-ignore
-  const chapter = await Chapter.findById(chapterId);
-  if (!chapter) {
-    throw new AppError("Chapter not found", 404);
+  // Look up the chapter to get the price (fallback to default 0.06 for GoPlausible indexer probe)
+  let chapterPrice = 0.06;
+  try {
+    // @ts-ignore
+    const chapter = await Chapter.findById(chapterId);
+    if (chapter && typeof chapter.price === "number") {
+      chapterPrice = chapter.price;
+    }
+  } catch {
+    chapterPrice = 0.06;
   }
 
   const forwardedProto = String(req.headers["x-forwarded-proto"] || req.protocol || "http");
   const forwardedHost = String(req.headers["x-forwarded-host"] || req.get("host") || "");
+  const isLocal = !forwardedHost || forwardedHost.includes("localhost") || forwardedHost.includes("127.0.0.1");
+  const publicOrigin = env.PUBLIC_BACKEND_URL || "https://sikho-ai.onrender.com";
+  const baseOrigin = isLocal ? publicOrigin : `${forwardedProto}://${forwardedHost}`;
   
   // Use static base URL for GoPlausible cataloging to prevent endpoint multiplication
-  const resourceUrl = `${forwardedProto}://${forwardedHost}/api/v1/learners/chapters/unlock`;
-  const paymentRequired = buildPaymentRequired(chapterId, chapter.price ?? 0, resourceUrl);
+  const resourceUrl = `${baseOrigin}/api/v1/learners/chapters/unlock`;
+  const paymentRequired = buildPaymentRequired(chapterId, chapterPrice, resourceUrl);
 
   const paymentHeader = (req.headers["x-payment"] || req.headers["payment-signature"]) as string | undefined;
 

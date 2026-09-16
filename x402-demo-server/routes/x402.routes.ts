@@ -281,12 +281,12 @@ router.post(
 );
 
 // ─── ENDPOINT 1: RESUME INTELLIGENCE ($0.50) ───
-router.post(
+router.all(
   "/resume-intelligence",
   optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.50, description: "Resume Intelligence Pass" }),
   asyncHandler(async (req: any, res: Response) => {
-    const { resumeId } = req.body;
+    const resumeId = req.body?.resumeId || req.query?.resumeId;
     const resume = await Resume.findById(resumeId);
     if (!resume) {
       return res.status(404).json({ success: false, error: "Resume not found" });
@@ -298,57 +298,112 @@ router.post(
 );
 
 // ─── ENDPOINT 2: TARGET CAREER MARKET SEARCH ($0.06) ───
-router.post(
+router.all(
   "/target-career-search",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.06, description: "Target Career Exploration Search" }),
+  enforceWorkspacePayment({
+    priceUsd: 0.06,
+    description: "Target Career Exploration Search",
+    discoveryInput: { resumeId: "65cb765f0123456789abcdef", targetRole: "Machine Learning Engineer" },
+    discoveryInputSchema: {
+      type: "object",
+      properties: {
+        resumeId: { type: "string", description: "Candidate resume ID" },
+        targetRole: { type: "string", description: "Target role title" }
+      }
+    }
+  }),
   asyncHandler(async (req: any, res: Response, next: NextFunction) => {
-    req.params.resumeId = req.body.resumeId;
+    req.params.resumeId = req.body?.resumeId || req.query?.resumeId;
     return discoverJobs(req, res, next);
   })
 );
 
 // ─── ENDPOINT 3: JOB-SPECIFIC ANALYSIS ($0.06) ───
-router.post(
+router.all(
   "/job-analysis",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.06, description: "Deep Job-Specific Analysis" }),
+  enforceWorkspacePayment({
+    priceUsd: 0.06,
+    description: "Deep Job-Specific Analysis",
+    discoveryInput: { jobId: "65cb765f0123456789abcdef", resumeId: "65cb765f0123456789abcdef" },
+    discoveryInputSchema: {
+      type: "object",
+      properties: {
+        jobId: { type: "string", description: "Target Job ID" },
+        resumeId: { type: "string", description: "Candidate resume ID" }
+      }
+    }
+  }),
   asyncHandler(async (req: any, res: Response, next: NextFunction) => {
-    req.params.jobId = req.body.jobId;
-    req.params.resumeId = req.body.resumeId;
+    req.params.jobId = req.body?.jobId || req.query?.jobId;
+    req.params.resumeId = req.body?.resumeId || req.query?.resumeId;
     return analyzeJob(req, res, next);
   })
 );
 
-// ─── ENDPOINT 4: RESUME IMPROVEMENT ($0.05) ───
-router.post(
+// ─── ENDPOINT 4: RESUME IMPROVEMENT ($0.06) ───
+router.all(
   "/resume-improvement",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.05, description: "Resume Improvement AI" }),
+  enforceWorkspacePayment({
+    priceUsd: 0.06,
+    description: "Resume Improvement AI",
+    discoveryInput: { resumeId: "65cb765f0123456789abcdef" },
+    discoveryInputSchema: {
+      type: "object",
+      properties: {
+        resumeId: { type: "string", description: "Candidate resume ID" }
+      }
+    }
+  }),
   asyncHandler(async (req: any, res: Response, next: NextFunction) => {
-    req.params.resumeId = req.body.resumeId;
+    req.params.resumeId = req.body?.resumeId || req.query?.resumeId;
     return applyResumeImprovements(req, res, next);
   })
 );
 
-// ─── ENDPOINT 5: PROJECT GENERATION ($0.03) ───
-router.post(
+// ─── ENDPOINT 5: PROJECT GENERATION ($0.06) ───
+router.all(
   "/project-generation",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.03, description: "Project Generation AI" }),
+  enforceWorkspacePayment({
+    priceUsd: 0.06,
+    description: "Project Generation AI",
+    discoveryInput: { resumeId: "65cb765f0123456789abcdef", skillGaps: ["Redis", "Distributed Systems"] },
+    discoveryInputSchema: {
+      type: "object",
+      properties: {
+        resumeId: { type: "string", description: "Candidate resume ID" },
+        skillGaps: { type: "array", items: { type: "string" }, description: "Missing skill gaps to address" }
+      }
+    }
+  }),
   asyncHandler(async (req: any, res: Response, next: NextFunction) => {
-    req.params.resumeId = req.body.resumeId;
+    req.params.resumeId = req.body?.resumeId || req.query?.resumeId;
     return generateProjectPlan(req, res, next);
   })
 );
 
-// ─── ENDPOINT 6: CAREER ACTION PLAN ($0.10) ───
-router.post(
+// ─── ENDPOINT 6: CAREER ACTION PLAN ($0.06) ───
+router.all(
   "/career-action-plan",
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.10, description: "Complete Career Action Plan" }),
+  enforceWorkspacePayment({
+    priceUsd: 0.06,
+    description: "Complete Career Action Plan",
+    discoveryInput: { resumeId: "65cb765f0123456789abcdef", targetCareer: "Senior Backend Architect" },
+    discoveryInputSchema: {
+      type: "object",
+      properties: {
+        resumeId: { type: "string", description: "Candidate resume ID" },
+        targetCareer: { type: "string", description: "Target career goal" }
+      }
+    }
+  }),
   asyncHandler(async (req: any, res: Response) => {
-    const { resumeId, targetCareer } = req.body;
+    const resumeId = req.body?.resumeId || req.query?.resumeId;
+    const targetCareer = req.body?.targetCareer || req.query?.targetCareer;
     const actionPlan = await generateCareerActionPlan(resumeId, targetCareer);
     return sendSuccessResponse(res, actionPlan, "Career action plan generated successfully.");
   })
