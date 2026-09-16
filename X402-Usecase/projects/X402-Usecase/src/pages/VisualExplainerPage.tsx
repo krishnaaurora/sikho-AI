@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles, Search, Play, Pause, RotateCcw,
-  Layers, Brain, ArrowLeft, MessageSquare, HelpCircle,
+  Layers, Brain, ArrowLeft, ArrowRight, MessageSquare, HelpCircle,
   Zap, Compass, Globe, CheckCircle2, ChevronRight,
   Send, Loader2, BookOpen
 } from 'lucide-react';
