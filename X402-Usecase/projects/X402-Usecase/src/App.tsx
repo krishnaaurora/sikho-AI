@@ -12,6 +12,7 @@ import AdminDashboard from './pages/AdminDashboard'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ExplainPage from './pages/ExplainPage'
+import VisualExplainerPage from './pages/VisualExplainerPage'
 import ApiPlayground from './pages/ApiPlayground'
 import ResumeIntelligence from './pages/ResumeIntelligence'
 import InterviewPrep from './pages/InterviewPrep'
@@ -95,6 +96,11 @@ function AppContent() {
             <Route path="/explain" element={
               <ProtectedRoute>
                 <ExplainPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/visual-explainer" element={
+              <ProtectedRoute>
+                <VisualExplainerPage />
               </ProtectedRoute>
             } />
             <Route path="/playground" element={

@@ -48,9 +48,10 @@ function getGreeting() {
 }
 
 const quickPrompts = [
+  'Explain Load Balancing',
+  'Token Streaming',
   'Explain neural networks',
   'Create a study plan for DSA',
-  'Summarize this concept',
   'Help me prepare for interviews',
 ];
 
@@ -130,6 +131,11 @@ const LearnerDashboard: React.FC = () => {
   const executeLearnNow = (style: string) => {
     setShowRouterModal(false);
     navigate(`/explain?q=${encodeURIComponent(routerTopic)}&style=${style}`);
+  };
+
+  const executeVisualExplainer = () => {
+    setShowRouterModal(false);
+    navigate(`/visual-explainer?q=${encodeURIComponent(routerTopic)}`);
   };
 
   const executeCreateCourse = async () => {
@@ -614,8 +620,31 @@ const LearnerDashboard: React.FC = () => {
             <h2 className="text-2xl font-black text-slate-900 mb-2 leading-tight">"{routerTopic}"</h2>
             <p className="text-sm text-slate-400 font-semibold mb-6">How would you like to explore this topic?</p>
             
-            <div className="space-y-4">
-              {/* Option 1: Learn Now */}
+            <div className="space-y-3">
+              {/* Option 1: AI Visual Concept Explainer (NEW) */}
+              <button
+                type="button"
+                onClick={executeVisualExplainer}
+                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-cyan-500/40 bg-gradient-to-r from-cyan-950/20 via-slate-900/10 to-indigo-950/20 hover:border-cyan-400 hover:bg-cyan-50/50 text-left transition-all group shadow-sm"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-cyan-100 text-cyan-700 rounded-xl flex items-center justify-center border border-cyan-200">
+                    <Sparkles size={18} className="animate-pulse text-cyan-600" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-extrabold text-slate-900">AI Visual Concept Explainer</h4>
+                      <span className="px-1.5 py-0.5 rounded-full bg-cyan-100 text-cyan-800 text-[9px] font-black uppercase tracking-wider">
+                        Interactive 3D
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Step-by-step animated isometric schematic + instant quiz</p>
+                  </div>
+                </div>
+                <ChevronRight size={14} className="text-cyan-600 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+
+              {/* Option 2: Learn Now */}
               <button
                 type="button"
                 onClick={() => executeLearnNow('academic')}

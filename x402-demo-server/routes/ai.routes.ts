@@ -16,6 +16,7 @@ import { authenticate, requireLearner } from "../middlewares/auth.middleware";
 import { validate } from "../middlewares/validate.middleware";
 import { explainRequestSchema } from "../types/explain.types";
 import { uploadSingle } from "../middlewares/upload.middleware";
+import { visualExplain } from "../controllers/ai/visualExplain.controller";
 
 // New MVP imports
 import {
@@ -155,6 +156,12 @@ router.post(
 );
 
 // Keep other advanced helper endpoints
+router.post(
+  "/visual-explain",
+  optionalAuthenticate,
+  visualExplain
+);
+
 router.post(
   "/explain/visual",
   optionalAuthenticate,
