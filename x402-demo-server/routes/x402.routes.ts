@@ -142,6 +142,14 @@ const seedServices = async () => {
         priceUsd: 0.06,
         endpoint: "/api/v1/x402/interview-prep",
         status: "Active"
+      },
+      {
+        serviceId: "download_resume",
+        name: "AI Auto-Fixed ATS Resume PDF Download Pass",
+        description: "Official AI Auto-Fixed ATS optimized resume high-resolution PDF download pass",
+        priceUsd: 0.03,
+        endpoint: "/api/v1/x402/download-resume",
+        status: "Active"
       }
     ]);
   }
@@ -233,6 +241,19 @@ const seedServices = async () => {
         description: "Interactive adaptive mock interview with AI evaluation, follow-up questioning and performance report",
         priceUsd: 0.06,
         endpoint: "/api/v1/x402/interview-prep",
+        status: "Active"
+      }
+    },
+    { upsert: true }
+  );
+  await X402Service.updateOne(
+    { serviceId: "download_resume" },
+    {
+      $set: {
+        name: "AI Auto-Fixed ATS Resume PDF Download Pass",
+        description: "Official AI Auto-Fixed ATS optimized resume high-resolution PDF download pass",
+        priceUsd: 0.03,
+        endpoint: "/api/v1/x402/download-resume",
         status: "Active"
       }
     },
@@ -447,6 +468,28 @@ router.all(
     }
   }),
   handleAdaptiveInterview
+);
+
+// ─── ENDPOINT 9: AI AUTO-FIXED ATS RESUME PDF DOWNLOAD ($0.03) ───
+// Permanent stable endpoint handling all AI Auto-Fixed ATS Resume PDF Download transactions (1 endpoint -> N transactions)
+router.all(
+  "/download-resume",
+  optionalAuthenticate,
+  enforceWorkspacePayment({
+    priceUsd: 0.03,
+    description: "Sikho AI - AI Auto-Fixed ATS Resume PDF Download Pass",
+    discoveryInput: { resumeId: "65cb765f0123456789abcdef", format: "pdf" },
+    discoveryInputSchema: {
+      type: "object",
+      properties: {
+        resumeId: { type: "string", description: "Candidate resume ID" },
+        format: { type: "string", enum: ["pdf"], description: "Export format" }
+      }
+    }
+  }),
+  asyncHandler(async (req: any, res: Response) => {
+    return sendSuccessResponse(res, { success: true, downloadAllowed: true }, "AI Auto-Fixed ATS Resume PDF download authorized successfully.");
+  })
 );
 
 export default router;

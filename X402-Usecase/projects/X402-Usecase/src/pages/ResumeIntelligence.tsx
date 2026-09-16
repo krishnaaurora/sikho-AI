@@ -148,6 +148,8 @@ const ResumeIntelligence: React.FC = () => {
   const [projectPlanPaymentStep, setProjectPlanPaymentStep] = useState<'paywall' | '402' | 'wallet' | 'verifying' | 'complete' | null>(null);
   const [activePlanTab, setActivePlanTab] = useState<string>('arch');
   const [selectedTx, setSelectedTx] = useState<any | null>(null);
+  const [resumeDownloadUnlocked, setResumeDownloadUnlocked] = useState(false);
+  const [resumeDownloadPaymentStep, setResumeDownloadPaymentStep] = useState<'402' | 'wallet' | 'verifying' | 'complete' | null>(null);
 
   // Dynamic parser extracting exact candidate info and applying improvements
   const getResolvedResumeData = useCallback(() => {
@@ -330,8 +332,8 @@ const ResumeIntelligence: React.FC = () => {
     };
   }, [extractedData, user, suggestionStatuses]);
 
-  // High-Resolution Vector PDF Generator
-  const handleDownloadEnhancedResumePdf = useCallback(() => {
+  // High-Resolution Vector PDF Generator Core
+  const generateAndSavePdf = useCallback(() => {
     const data = getResolvedResumeData();
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -562,6 +564,53 @@ const ResumeIntelligence: React.FC = () => {
     const cleanFilename = `${data.name.replace(/[^a-zA-Z0-9]/g, '_')}_AI_AutoFixed_ATS_Resume.pdf`;
     doc.save(cleanFilename);
   }, [getResolvedResumeData]);
+
+  // High-Resolution Vector PDF Generator with x402 Payment Challenge
+  const handleDownloadEnhancedResumePdf = useCallback(async () => {
+    if (resumeDownloadUnlocked) {
+      generateAndSavePdf();
+      return;
+    }
+
+    // Require Algorand Wallet Connection
+    if (!activeAddress) {
+      alert("Please connect your Algorand wallet to unlock and download your AI Auto-Fixed ATS Resume ($0.03 USDC pass).");
+      return;
+    }
+
+    setResumeDownloadPaymentStep('402');
+    const targetResumeId = sessionStorage.getItem('ri_resume_id') || localStorage.getItem('ri_resume_id') || "default_resume";
+
+    try {
+      setResumeDownloadPaymentStep('wallet');
+      const x402Fetch = await createX402Fetch({ address: activeAddress, signTransactions });
+      const downloadEndpoint = `${backendOrigin}/api/v1/x402/download-resume`;
+
+      const res = await x402Fetch(downloadEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeId: targetResumeId, format: 'pdf' })
+      });
+
+      if (res.ok || res.status === 200) {
+        setResumeDownloadPaymentStep('verifying');
+        setTimeout(() => {
+          setResumeDownloadPaymentStep('complete');
+          setTimeout(() => {
+            setResumeDownloadUnlocked(true);
+            setResumeDownloadPaymentStep(null);
+            generateAndSavePdf();
+          }, 800);
+        }, 1000);
+      } else {
+        throw new Error(`Download pass endpoint returned HTTP ${res.status}`);
+      }
+    } catch (err: any) {
+      console.error('[x402] Resume download payment failed:', err);
+      alert(`Payment verification failed: ${err.message || err}`);
+      setResumeDownloadPaymentStep(null);
+    }
+  }, [resumeDownloadUnlocked, generateAndSavePdf, activeAddress, signTransactions, backendOrigin]);
 
   const handleDownloadEnhancedResume = (text: string, filename: string) => {
     const element = document.createElement("a");
@@ -2619,7 +2668,7 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
               <div className="space-y-1">
                 {([
                   { id: 'quality',       emoji: '🎯', label: 'ATS Analysis',          step: 1, sublabel: atsAnalysisUnlocked ? 'Score & Audit' : '🔒 $0.06 USDC Pass', locked: !atsAnalysisUnlocked },
-                  { id: 'autofix',       emoji: '🤖', label: 'AI Auto-Fixed Resume',  step: 2, sublabel: atsAnalysisUnlocked ? 'ATS Optimized & Free PDF' : '🔒 $0.06 USDC Pass', locked: !atsAnalysisUnlocked },
+                  { id: 'autofix',       emoji: '🤖', label: 'AI Auto-Fixed Resume',  step: 2, sublabel: atsAnalysisUnlocked ? (resumeDownloadUnlocked ? 'ATS Optimized & PDF Ready' : '🔒 $0.03 USDC Pass') : '🔒 $0.03 USDC Pass', locked: !atsAnalysisUnlocked },
                   { id: 'career',        emoji: '🧭', label: 'Career Fit',            step: 3, sublabel: careerFitUnlocked ? 'Top 5 matches' : '🔒 $0.06 USDC Pass', locked: !careerFitUnlocked },
                   { id: 'jobs',          emoji: '💼', label: 'Job Opportunities',     step: 4, sublabel: jobDiscoveryUnlocked ? 'Live jobs' : '🔒 $0.06 USDC Pass', locked: !jobDiscoveryUnlocked },
                 ] as const).map((item) => {
@@ -3220,8 +3269,12 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
                         <div className="flex items-center gap-2">
                           <span className="text-xl">🤖</span>
                           <h3 className="text-base font-black text-white">AI Auto-Fixed ATS Resume</h3>
-                          <span className="text-[9px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                            Free Instant Download
+                          <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border ${
+                            resumeDownloadUnlocked
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                              : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                          }`}>
+                            {resumeDownloadUnlocked ? '✓ PDF Ready' : '🔒 $0.03 USDC Pass'}
                           </span>
                         </div>
                         <p className="text-xs text-slate-300 font-medium">
@@ -3240,7 +3293,7 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
                           onClick={handleDownloadEnhancedResumePdf}
                           className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 text-white text-xs font-black px-4 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5"
                         >
-                          <FileText size={13} /> Download PDF
+                          <FileText size={13} /> {resumeDownloadUnlocked ? 'Download PDF' : 'Download PDF ($0.03 USDC)'}
                         </button>
                         <button
                           onClick={() => handleCopyEnhancedResume(generateEnhancedResumeText())}
@@ -3290,8 +3343,12 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">🤖</span>
                           <h2 className="text-xl font-black text-slate-900">AI Auto-Fixed ATS Resume</h2>
-                          <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                            ATS Optimized
+                          <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border ${
+                            resumeDownloadUnlocked
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                              : 'bg-amber-100 text-amber-800 border-amber-200'
+                          }`}>
+                            {resumeDownloadUnlocked ? '✓ ATS Optimized & Ready' : '🔒 $0.03 USDC Pass'}
                           </span>
                         </div>
                         <p className="text-xs text-slate-500 font-semibold mt-1">
@@ -3305,7 +3362,7 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
                           className="flex-1 md:flex-none bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white text-xs font-black py-2.5 px-4 rounded-xl shadow-md flex items-center gap-2"
                         >
                           <FileText size={14} />
-                          <span>Download PDF Resume</span>
+                          <span>{resumeDownloadUnlocked ? 'Download PDF Resume' : 'Download PDF Resume ($0.03 USDC)'}</span>
                         </Button>
                         <Button
                           variant="outline"
@@ -3339,20 +3396,20 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 space-y-1">
                           <span className="text-[8.5px] font-black text-emerald-400 uppercase tracking-widest block">Direct API Endpoint</span>
-                          <code className="text-[10px] font-mono font-bold text-slate-200 block truncate">POST /api/v1/resume/:id/improvements/apply</code>
-                          <span className="text-[8px] text-slate-400 block">AI Suggestion &amp; Auto-Fix Engine</span>
+                          <code className="text-[10px] font-mono font-bold text-slate-200 block truncate">POST /api/v1/x402/download-resume</code>
+                          <span className="text-[8px] text-slate-400 block">AI Auto-Fixed PDF Generator</span>
                         </div>
 
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 space-y-1">
                           <span className="text-[8.5px] font-black text-indigo-400 uppercase tracking-widest block">x402 Gateway Endpoint</span>
-                          <code className="text-[10px] font-mono font-bold text-slate-200 block truncate">POST /api/x402/resume-improvement</code>
+                          <code className="text-[10px] font-mono font-bold text-slate-200 block truncate">POST /api/v1/x402/download-resume</code>
                           <span className="text-[8px] text-slate-400 block">Micropayment settlement proxy</span>
                         </div>
 
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 space-y-1">
                           <span className="text-[8.5px] font-black text-amber-400 uppercase tracking-widest block">Micropayment Pass</span>
                           <p className="text-xs font-black text-white">$0.03 USDC</p>
-                          <span className="text-[8px] text-slate-400 block">One-time per resume pass</span>
+                          <span className="text-[8px] text-slate-400 block">One-time per resume PDF pass</span>
                         </div>
 
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 space-y-1">
@@ -3559,7 +3616,7 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
                             className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white text-xs font-black py-2 px-5 rounded-xl shadow-md flex items-center gap-2"
                           >
                             <FileText size={14} />
-                            <span>Download PDF (.pdf)</span>
+                            <span>{resumeDownloadUnlocked ? 'Download PDF (.pdf)' : 'Download PDF ($0.03 USDC)'}</span>
                           </Button>
                         </div>
                       </div>
@@ -6647,6 +6704,54 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
                   <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mx-auto text-xl text-emerald-600">✓</div>
                   <h4 className="text-sm font-black text-emerald-600">Action Plan Ready!</h4>
                   <p className="text-[10px] text-slate-500 font-semibold">Your custom 30-day roadmap is loaded. Enjoy your transition plan!</p>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* x402 Resume PDF Download Payment Modal */}
+      <AnimatePresence>
+        {resumeDownloadPaymentStep !== null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-white border rounded-3xl p-6 shadow-2xl max-w-sm w-full space-y-5 text-center"
+            >
+              {resumeDownloadPaymentStep === '402' && (
+                <div className="space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-xl animate-pulse">💸</div>
+                  <h4 className="text-sm font-black text-slate-900">402 Payment Required</h4>
+                  <p className="text-[10px] text-slate-500 font-semibold">Initializing $0.03 USDC AI Auto-Fixed ATS Resume PDF Download Pass...</p>
+                </div>
+              )}
+              {resumeDownloadPaymentStep === 'wallet' && (
+                <div className="space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-xl animate-bounce">🔑</div>
+                  <h4 className="text-sm font-black text-slate-900">Sign Transaction</h4>
+                  <p className="text-[10px] text-slate-500 font-semibold">Please sign the $0.03 USDC transaction in your Algorand wallet popup.</p>
+                </div>
+              )}
+              {resumeDownloadPaymentStep === 'verifying' && (
+                <div className="space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-xl animate-spin">⏳</div>
+                  <h4 className="text-sm font-black text-slate-900">Settling On-Chain</h4>
+                  <p className="text-[10px] text-slate-500 font-semibold">Verifying transaction settlement on Algorand MainNet...</p>
+                </div>
+              )}
+              {resumeDownloadPaymentStep === 'complete' && (
+                <div className="space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mx-auto text-xl text-emerald-600">✓</div>
+                  <h4 className="text-sm font-black text-emerald-600">Download Pass Unlocked!</h4>
+                  <p className="text-[10px] text-slate-500 font-semibold">Your AI Auto-Fixed ATS Resume PDF is downloading now...</p>
                 </div>
               )}
             </motion.div>

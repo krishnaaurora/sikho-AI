@@ -50,7 +50,9 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
 
     // Derive service identity and unique operation resource targets
     let serviceId = "job_analysis";
-    if (config.description.toLowerCase().includes("visual") || cleanPath.includes("visual-explainer")) {
+    if (config.description.toLowerCase().includes("download") || cleanPath.includes("download-resume")) {
+      serviceId = "download_resume";
+    } else if (config.description.toLowerCase().includes("visual") || cleanPath.includes("visual-explainer")) {
       serviceId = "visual_explainer";
     } else if (cleanPath.includes("interview-prep") || config.description.toLowerCase().includes("interview prep") || config.description.toLowerCase().includes("adaptive technical interview")) {
       serviceId = "interview_prep";
