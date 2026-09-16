@@ -13,6 +13,7 @@ import { analyzeJob } from "../controllers/resume/jobIntelligence.controller";
 import { applyResumeImprovements, generateProjectPlan } from "../controllers/resume/resumeImprovement.controller";
 import { generateCareerActionPlan } from "../services/resumeImprovement.service";
 import { visualExplain } from "../controllers/ai/visualExplain.controller";
+import { handleAdaptiveInterview } from "../controllers/interview/adaptiveInterview.controller";
 
 const router = express.Router();
 
@@ -133,6 +134,14 @@ const seedServices = async () => {
         priceUsd: 0.06,
         endpoint: "/api/v1/x402/visual-explainer",
         status: "Active"
+      },
+      {
+        serviceId: "interview_prep",
+        name: "Adaptive Technical Interview Prep",
+        description: "Interactive adaptive mock interview with AI evaluation, follow-up questioning and performance report",
+        priceUsd: 0.06,
+        endpoint: "/api/v1/x402/interview-prep",
+        status: "Active"
       }
     ]);
   }
@@ -211,6 +220,19 @@ const seedServices = async () => {
         description: "Interactive 3D isometric technical concept animation & mastery challenge",
         priceUsd: 0.06,
         endpoint: "/api/v1/x402/visual-explainer",
+        status: "Active"
+      }
+    },
+    { upsert: true }
+  );
+  await X402Service.updateOne(
+    { serviceId: "interview_prep" },
+    {
+      $set: {
+        name: "Adaptive Technical Interview Prep",
+        description: "Interactive adaptive mock interview with AI evaluation, follow-up questioning and performance report",
+        priceUsd: 0.06,
+        endpoint: "/api/v1/x402/interview-prep",
         status: "Active"
       }
     },
@@ -350,6 +372,26 @@ router.all(
     }
   }),
   visualExplain
+);
+
+// ─── ENDPOINT 8: ADAPTIVE TECHNICAL INTERVIEW PREPARATION ($0.06) ───
+// Permanent stable endpoint handling all Adaptive Interview Prep transactions (1 endpoint -> N transactions)
+router.all(
+  "/interview-prep",
+  optionalAuthenticate,
+  enforceWorkspacePayment({
+    priceUsd: 0.06,
+    description: "Sikho AI - Adaptive Technical Interview Preparation Pass",
+    discoveryInput: { topic: "Data Structures & Algorithms", action: "start" },
+    discoveryInputSchema: {
+      type: "object",
+      properties: {
+        topic: { type: "string", description: "Detected technical interview topic" },
+        action: { type: "string", enum: ["overview", "start", "evaluate", "report"] }
+      }
+    }
+  }),
+  handleAdaptiveInterview
 );
 
 export default router;

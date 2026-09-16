@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { 
   Sparkles, Play, Code2, HelpCircle, Terminal, Microscope, 
   UserCheck, Compass, MessageSquare, AlertCircle, FileSpreadsheet,
-  Wallet, ShieldAlert
+  Wallet, ShieldAlert, BrainCircuit
 } from 'lucide-react';
 import { useWallet } from '@txnlab/use-wallet-react';
 // @ts-ignore
@@ -151,6 +151,13 @@ const ENDPOINTS: EndpointInfo[] = [
     price: "$0.060", 
     icon: <Sparkles size={16} />, 
     placeholderInput: JSON.stringify({ concept: "Load Balancing", difficulty: "beginner" }, null, 2) 
+  },
+  { 
+    path: "/api/v1/x402/interview-prep", 
+    name: "26. Adaptive Technical Interview Prep ($0.06)", 
+    price: "$0.060", 
+    icon: <BrainCircuit size={16} />, 
+    placeholderInput: JSON.stringify({ topic: "Data Structures & Algorithms", action: "start" }, null, 2) 
   }
 ];
 

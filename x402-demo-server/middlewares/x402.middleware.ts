@@ -48,6 +48,8 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
     let serviceId = "job_analysis";
     if (config.description.toLowerCase().includes("visual") || cleanPath.includes("visual-explainer")) {
       serviceId = "visual_explainer";
+    } else if (cleanPath.includes("interview-prep") || config.description.toLowerCase().includes("interview prep") || config.description.toLowerCase().includes("adaptive technical interview")) {
+      serviceId = "interview_prep";
     } else if (config.description.toLowerCase().includes("interview")) {
       serviceId = "interview_questions";
     } else if (config.description.toLowerCase().includes("learning")) {

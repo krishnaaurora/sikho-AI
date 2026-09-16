@@ -138,6 +138,11 @@ const LearnerDashboard: React.FC = () => {
     navigate(`/visual-explainer?q=${encodeURIComponent(routerTopic)}`);
   };
 
+  const executeInterviewPrep = () => {
+    setShowRouterModal(false);
+    navigate(`/interview-prep?topic=${encodeURIComponent(routerTopic)}`);
+  };
+
   const executeCreateCourse = async () => {
     setShowRouterModal(false);
     setIsCreating(true);
@@ -685,10 +690,10 @@ const LearnerDashboard: React.FC = () => {
                 )}
               </button>
 
-              {/* Option 3: Interview crash prep */}
+              {/* Option 3: Prepare for interviews */}
               <button
                 type="button"
-                onClick={() => executeLearnNow('interview')}
+                onClick={executeInterviewPrep}
                 className="w-full flex items-center justify-between p-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-left transition-all group"
               >
                 <div className="flex items-center gap-4">
@@ -697,7 +702,7 @@ const LearnerDashboard: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-slate-800">Prepare for interviews</h4>
-                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Quick crash answers + simulated follow-ups</p>
+                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Adaptive Q&A, real-time evaluation & difficulty progression</p>
                   </div>
                 </div>
                 <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
