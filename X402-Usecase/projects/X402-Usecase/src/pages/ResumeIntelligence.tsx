@@ -574,7 +574,7 @@ const ResumeIntelligence: React.FC = () => {
 
     // Require Algorand Wallet Connection
     if (!activeAddress) {
-      alert("Please connect your Algorand wallet to unlock and download your AI Auto-Fixed ATS Resume ($0.03 USDC pass).");
+      alert("Please connect your Algorand wallet to unlock and download your AI Auto-Fixed ATS Resume ($0.50 USDC pass).");
       return;
     }
 
@@ -2667,10 +2667,10 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
               {/* Nav Items */}
               <div className="space-y-1">
                 {([
-                  { id: 'quality',       emoji: '🎯', label: 'ATS Analysis',          step: 1, sublabel: atsAnalysisUnlocked ? 'Score & Audit' : '🔒 $0.06 USDC Pass', locked: !atsAnalysisUnlocked },
-                  { id: 'autofix',       emoji: '🤖', label: 'AI Auto-Fixed Resume',  step: 2, sublabel: atsAnalysisUnlocked ? (resumeDownloadUnlocked ? 'ATS Optimized & PDF Ready' : '🔒 $0.03 USDC Pass') : '🔒 $0.03 USDC Pass', locked: !atsAnalysisUnlocked },
-                  { id: 'career',        emoji: '🧭', label: 'Career Fit',            step: 3, sublabel: careerFitUnlocked ? 'Top 5 matches' : '🔒 $0.06 USDC Pass', locked: !careerFitUnlocked },
-                  { id: 'jobs',          emoji: '💼', label: 'Job Opportunities',     step: 4, sublabel: jobDiscoveryUnlocked ? 'Live jobs' : '🔒 $0.06 USDC Pass', locked: !jobDiscoveryUnlocked },
+                  { id: 'quality',       emoji: '🎯', label: 'ATS Analysis',          step: 1, sublabel: atsAnalysisUnlocked ? 'Score & Audit' : '🔒 $0.50 USDC Pass', locked: !atsAnalysisUnlocked },
+                  { id: 'autofix',       emoji: '🤖', label: 'AI Auto-Fixed Resume',  step: 2, sublabel: atsAnalysisUnlocked ? (resumeDownloadUnlocked ? 'ATS Optimized & PDF Ready' : '🔒 $0.50 USDC Pass') : '🔒 $0.50 USDC Pass', locked: !atsAnalysisUnlocked },
+                  { id: 'career',        emoji: '🧭', label: 'Career Fit',            step: 3, sublabel: careerFitUnlocked ? 'Top 5 matches' : '🔒 $0.50 USDC Pass', locked: !careerFitUnlocked },
+                  { id: 'jobs',          emoji: '💼', label: 'Job Opportunities',     step: 4, sublabel: jobDiscoveryUnlocked ? 'Live jobs' : '🔒 $0.50 USDC Pass', locked: !jobDiscoveryUnlocked },
                 ] as const).map((item) => {
                   const isActive = currentView === item.id;
                   const isDone = (
@@ -3004,7 +3004,7 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-black">
                           <span>🔒 Algorand X402 Micropayment</span>
                           <span>•</span>
-                          <span>$0.06 USDC</span>
+                          <span>$0.50 USDC</span>
                         </div>
                         <h3 className="text-xl font-black text-slate-900">Unlock ATS Quality &amp; AI Resume Auto-Fix Pass</h3>
                         <p className="text-xs text-slate-500 font-semibold leading-relaxed">
@@ -3015,12 +3015,12 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
                       {/* Payment step feedback */}
                       {atsPaymentStep === '402' && (
                         <div className="flex items-center justify-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs font-black text-indigo-700 animate-pulse">
-                          <span>💸 Preparing $0.06 USDC micropayment challenge...</span>
+                          <span>💸 Preparing $0.50 USDC micropayment challenge...</span>
                         </div>
                       )}
                       {atsPaymentStep === 'wallet' && (
                         <div className="flex items-center justify-center gap-2 p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs font-black text-purple-700 animate-pulse">
-                          <span>🔑 Check your wallet to sign the $0.06 USDC transaction...</span>
+                          <span>🔑 Check your wallet to sign the $0.50 USDC transaction...</span>
                         </div>
                       )}
                       {atsPaymentStep === 'verifying' && (
@@ -3031,7 +3031,7 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
                       )}
                       {atsPaymentStep === 'complete' && (
                         <div className="flex items-center justify-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-xs font-black text-emerald-700">
-                          <span>✓ Payment confirmed ($0.06 USDC) — Unlocking ATS Analysis...</span>
+                          <span>✓ Payment confirmed ($0.50 USDC) — Unlocking ATS Analysis...</span>
                         </div>
                       )}
 
@@ -3041,7 +3041,7 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
                             onClick={unlockAtsAnalysis}
                             className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:opacity-95 text-white font-black text-sm py-4 rounded-2xl shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 group"
                           >
-                            <span>Unlock ATS Analysis &amp; AI Fix for $0.06 USDC</span>
+                            <span>Unlock ATS Analysis &amp; AI Fix for $0.50 USDC</span>
                             <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
                           </button>
                           <p className="text-[10px] text-slate-400 font-bold">One-time payment • Settles instantly on Algorand testnet</p>

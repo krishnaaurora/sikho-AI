@@ -52,7 +52,7 @@ export const createCustomCourseService = async (userId: string, topic: string) =
       description: aiChapter.description,
       totalLessons: aiChapter.lessons.length,
       duration: 15 + aiChapter.lessons.length * 10,
-      price: 0.02,
+      price: 0.50,
       currency: "USDC",
     });
     chapters.push(chapter);
@@ -86,6 +86,20 @@ export const getLearnerCoursesService = async (userId: string) => {
     isDeleted: false,
   }).sort({ createdAt: -1 });
 
+  // Ensure all existing chapters are upgraded to $0.50 USDC
+  try {
+    const courseIds = courses.map((c: any) => c._id);
+    if (courseIds.length > 0) {
+      // @ts-ignore
+      await Chapter.updateMany(
+        { courseId: { $in: courseIds } },
+        { $set: { price: 0.50, currency: "USDC" } }
+      );
+    }
+  } catch (err) {
+    // Non-blocking
+  }
+
   // Get all purchases for this learner to check unlocked chapters
   // @ts-ignore
   const purchases = await Purchase.find({
@@ -94,41 +108,47 @@ export const getLearnerCoursesService = async (userId: string) => {
   });
 
   // For each course, get chapters and mark unlocked ones
-    const coursesWithChapters = await Promise.all(
-      courses.map(async (course: any) => {
-        // @ts-ignore
-        const chapters = await Chapter.find({
-          courseId: course._id,
-          isDeleted: false,
-        }).sort({ order: 1 });
+  const coursesWithChapters = await Promise.all(
+    courses.map(async (course: any) => {
+      // @ts-ignore
+      const chapters = await Chapter.find({
+        courseId: course._id,
+        isDeleted: false,
+      }).sort({ order: 1 });
 
-        // @ts-ignore
-        const allLessons = await Lesson.find({
-          courseId: course._id,
-          isDeleted: false,
-        }).sort({ order: 1 });
+      // @ts-ignore
+      const allLessons = await Lesson.find({
+        courseId: course._id,
+        isDeleted: false,
+      }).sort({ order: 1 });
 
-        const chaptersWithUnlocked = chapters.map((chapter: any) => {
-          const isUnlocked = purchases.some(
-            (p: any) => p.chapterId && p.chapterId.toString() === chapter._id.toString()
-          );
-          
-          const chapterLessons = allLessons
-            .filter((l: any) => l.chapterId.toString() === chapter._id.toString())
-            .map((l: any) => {
-              const lessonObj = l.toObject();
-              if (!isUnlocked && !lessonObj.isFree) {
-                delete lessonObj.content;
-              }
-              return lessonObj;
-            });
+      const chaptersWithUnlocked = chapters.map((chapter: any) => {
+        const isUnlocked = purchases.some(
+          (p: any) => p.chapterId && p.chapterId.toString() === chapter._id.toString()
+        );
+        
+        const chapterLessons = allLessons
+          .filter((l: any) => l.chapterId.toString() === chapter._id.toString())
+          .map((l: any) => {
+            const lessonObj = l.toObject();
+            if (!isUnlocked && !lessonObj.isFree) {
+              delete lessonObj.content;
+            }
+            return lessonObj;
+          });
 
-          return { ...chapter.toObject(), isUnlocked, lessons: chapterLessons };
-        });
+        return { 
+          ...chapter.toObject(), 
+          price: 0.50,
+          currency: "USDC",
+          isUnlocked, 
+          lessons: chapterLessons 
+        };
+      });
 
-        return { ...course.toObject(), chapters: chaptersWithUnlocked };
-      })
-    );
+      return { ...course.toObject(), chapters: chaptersWithUnlocked };
+    })
+  );
 
   return coursesWithChapters;
 };
@@ -164,8 +184,8 @@ export const unlockChapterService = async (
     courseId: chapter.courseId,
     // @ts-ignore
     chapterId: new Types.ObjectId(chapterId),
-    amount: chapter.price,
-    currency: chapter.currency,
+    amount: chapter.price || 0.50,
+    currency: chapter.currency || "USDC",
     transactionHash,
     purchaseStatus: PurchaseStatus.COMPLETED,
   });
