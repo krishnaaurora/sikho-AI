@@ -2476,7 +2476,7 @@ export class DataEngine {
                   </div>
                   <div className="max-w-md mx-auto space-y-2">
                     <span className="text-[10px] font-mono bg-indigo-100 text-indigo-800 font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-                      x402 Pay-Per-Use Pass · $0.03 USDC
+                      x402 Pay-Per-Use Pass · $0.06 USDC
                     </span>
                     <h2 className="text-2xl font-black text-slate-900">
                       Unlock Tailored Technical &amp; Architectural Interview Questions
@@ -2489,7 +2489,7 @@ export class DataEngine {
                   <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 max-w-md mx-auto grid grid-cols-2 gap-4 text-left">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Micro-Price</p>
-                      <p className="text-base font-black text-slate-800">0.03 USDC</p>
+                      <p className="text-base font-black text-slate-800">0.06 USDC</p>
                       <p className="text-[10px] text-slate-500 font-semibold">Instant Access</p>
                     </div>
                     <div>
@@ -2514,7 +2514,7 @@ export class DataEngine {
                       ) : (
                         <>
                           <KeyRound size={16} />
-                          <span>Unlock All Questions ($0.03 USDC)</span>
+                          <span>Unlock All Questions ($0.06 USDC)</span>
                         </>
                       )}
                     </button>
@@ -2637,7 +2637,7 @@ export class DataEngine {
                   </div>
                   <div className="max-w-md mx-auto space-y-2">
                     <span className="text-[10px] font-mono bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-                      x402 Pay-Per-Use Pass · $0.03 USDC
+                      x402 Pay-Per-Use Pass · $0.06 USDC
                     </span>
                     <h2 className="text-2xl font-black text-slate-900">
                       Unlock Verified Architectural &amp; System Design Study Primers
@@ -2650,7 +2650,7 @@ export class DataEngine {
                   <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 max-w-md mx-auto grid grid-cols-2 gap-4 text-left">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Micro-Price</p>
-                      <p className="text-base font-black text-slate-800">0.03 USDC</p>
+                      <p className="text-base font-black text-slate-800">0.06 USDC</p>
                       <p className="text-[10px] text-slate-500 font-semibold">Instant Access</p>
                     </div>
                     <div>
@@ -2675,7 +2675,7 @@ export class DataEngine {
                       ) : (
                         <>
                           <KeyRound size={16} />
-                          <span>Unlock Study Resources ($0.03 USDC)</span>
+                          <span>Unlock Study Resources ($0.06 USDC)</span>
                         </>
                       )}
                     </button>

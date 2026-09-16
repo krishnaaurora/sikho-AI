@@ -105,7 +105,7 @@ const seedServices = async () => {
         serviceId: "interview_questions",
         name: "Technical Interview Questions AI Pass",
         description: "Unlock tailored architectural & technical interview questions with STAR answers",
-        priceUsd: 0.03,
+        priceUsd: 0.06,
         endpoint: "/api/v1/interview-pro/interview-questions",
         status: "Active"
       },
@@ -121,7 +121,7 @@ const seedServices = async () => {
         serviceId: "study_resources",
         name: "Curated Study Resources Pass",
         description: "Unlock curated technical primers, system design docs, and indexing guides",
-        priceUsd: 0.03,
+        priceUsd: 0.06,
         endpoint: "/api/v1/interview-pro/study-resources",
         status: "Active"
       }
@@ -135,7 +135,7 @@ const seedServices = async () => {
       $set: {
         name: "Technical Interview Questions AI Pass",
         description: "Unlock tailored architectural & technical interview questions with STAR answers",
-        priceUsd: 0.03,
+        priceUsd: 0.06,
         endpoint: "/api/v1/interview-pro/interview-questions",
         status: "Active"
       }
@@ -161,7 +161,7 @@ const seedServices = async () => {
       $set: {
         name: "Curated Study Resources Pass",
         description: "Unlock curated technical primers, system design docs, and indexing guides",
-        priceUsd: 0.03,
+        priceUsd: 0.06,
         endpoint: "/api/v1/interview-pro/study-resources",
         status: "Active"
       }
