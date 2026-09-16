@@ -777,6 +777,22 @@ export async function submitPrismReviewWithSignature(
 
   let paidRes: any = null;
 
+  // Pre-request debug validation
+  console.log("[Prism x402 Debug] PAYMENT-SIGNATURE length:", paymentSignature.length);
+  console.log("[Prism x402 Debug] PAYMENT-SIGNATURE prefix:", paymentSignature.substring(0, 60));
+
+  try {
+    const rawDecodedJson = Buffer.from(paymentSignature, "base64").toString("utf-8");
+    const testParsed = JSON.parse(rawDecodedJson);
+    console.log("[Prism x402 Debug] decoded payment payload:", testParsed);
+    console.log("[Prism x402 Debug] local JSON parse: SUCCESS");
+  } catch (parseTestErr: any) {
+    const rawDecodedJson = Buffer.from(paymentSignature, "base64").toString("utf-8");
+    console.error("[Prism x402 Debug] Local JSON parse failure:", parseTestErr.message);
+    console.error("[Prism x402 Debug] data around parse failure:", rawDecodedJson.substring(1600, 1720));
+    throw new Error(`Invalid local PAYMENT-SIGNATURE: ${parseTestErr.message}`);
+  }
+
   logger.info("[PRISM] Code review request sent");
   logger.info(`[Prism x402 Debug] Retry request URL: ${prismEndpoint}`);
   logger.info(`[Prism x402 Debug] Payment header created: ${paymentSignature.slice(0, 30)}...`);
@@ -794,7 +810,6 @@ export async function submitPrismReviewWithSignature(
           headers: {
             Accept: "application/json",
             "Payment-Signature": paymentSignature,
-            "payment-signature": paymentSignature,
           },
           validateStatus: (status) => status < 500,
           timeout: 25000,
@@ -813,7 +828,6 @@ export async function submitPrismReviewWithSignature(
               "Content-Type": "application/json",
               Accept: "application/json",
               "Payment-Signature": paymentSignature,
-              "payment-signature": paymentSignature,
             },
             validateStatus: (status) => status < 500,
             timeout: 25000,

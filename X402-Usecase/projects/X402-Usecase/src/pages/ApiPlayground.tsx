@@ -267,9 +267,7 @@ const ApiPlayground: React.FC = () => {
     };
 
     if (signedPaymentHeader) {
-      headers["X-PAYMENT"] = signedPaymentHeader;
       headers["Payment-Signature"] = signedPaymentHeader;
-      headers["payment-signature"] = signedPaymentHeader;
     }
 
     try {

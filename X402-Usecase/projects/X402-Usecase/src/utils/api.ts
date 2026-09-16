@@ -469,7 +469,6 @@ export const githubReviewApi = {
       method: 'POST',
       headers: {
         'Payment-Signature': paymentSignature,
-        'payment-signature': paymentSignature,
       },
       body: JSON.stringify({ reviewId, fileId, paymentSignature, prismPaymentTxId }),
     });
