@@ -306,21 +306,7 @@ export async function discoverRepository(
 export async function getSikhoChallengeForFile(
   reviewId: string,
   fileId: string
-): Promise<{
-  x402Version: number;
-  error: string;
-  resource: { url: string; description: string };
-  accepts: Array<{
-    scheme: string;
-    network: string;
-    payTo: string;
-    amount: string;
-    asset: string;
-    description: string;
-    extra: any;
-    maxTimeoutSeconds: number;
-  }>;
-}> {
+): Promise<any> {
   const review = await RepositoryReview.findOne({ reviewId });
   if (!review) {
     throw new Error(`Repository review "${reviewId}" not found.`);
@@ -340,14 +326,16 @@ export async function getSikhoChallengeForFile(
   const amountMicro = 50000;
   const assetId = "31566704";
   const network = "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
-  const endpointUrl = `${env.PUBLIC_BACKEND_URL}/api/v1/services/github-review/${reviewId}/files/${fileId}/sikho-x402`;
+  const publicOrigin = env.PUBLIC_BACKEND_URL || "https://sikho-ai.onrender.com";
+  const endpointUrl = `${publicOrigin}/api/v1/services/github-review/sikho-x402`;
 
   return {
     x402Version: 2,
-    error: "Payment Required",
+    error: "Payment required",
     resource: {
       url: endpointUrl,
-      description: `Sikho AI platform fee ($0.05 USDC) for reviewing ${fileDoc.filePath}`,
+      description: `Git Repo Analyser: Sikho AI platform fee ($0.05 USDC) for reviewing ${fileDoc.filePath}`,
+      mimeType: "application/json",
     },
     accepts: [
       {
@@ -368,6 +356,39 @@ export async function getSikhoChallengeForFile(
         maxTimeoutSeconds: 300,
       },
     ],
+    extensions: {
+      bazaar: {
+        info: {
+          input: {
+            type: "http",
+            method: "POST",
+            bodyType: "json",
+            body: {
+              reviewId,
+              fileId,
+              filePath: fileDoc.filePath,
+            },
+          },
+          output: {
+            type: "json",
+            example: {
+              success: true,
+              message: "Sikho AI platform fee verified",
+            },
+          },
+        },
+        schema: {
+          input: {
+            type: "object",
+            properties: {
+              method: { type: "string", enum: ["POST", "GET"] },
+              reviewId: { type: "string" },
+              fileId: { type: "string" },
+            },
+          },
+        },
+      },
+    },
   };
 }
 
