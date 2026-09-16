@@ -779,7 +779,7 @@ export const BuildStudio: React.FC = () => {
         throw new Error(submitRes.message || 'Prism code review verification failed.');
       }
 
-      const confirmedPrismTxId = submitRes.data.file?.prismPaymentTxId || '';
+      const confirmedPrismTxId = submitRes.data.file?.prismPaymentTxId || prismTxId || '';
       const rawPaymentResponse = submitRes.data.file?.prismPaymentResponse || '';
       let decodedPaymentResp: any = null;
       if (rawPaymentResponse) {
@@ -797,7 +797,7 @@ export const BuildStudio: React.FC = () => {
       console.log('[PRISM ON-CHAIN CONFIRMED]', !!confirmedPrismTxId && !confirmedPrismTxId.startsWith('prism_x402_settled_'));
       console.log('[PRISM PAYMENT VERIFIED]', !!confirmedPrismTxId && !confirmedPrismTxId.startsWith('prism_x402_settled_'));
 
-      const isPrismSettled = submitRes.data.file?.prismPaymentStatus === 'confirmed' && !!confirmedPrismTxId;
+      const isPrismSettled = !!confirmedPrismTxId && (submitRes.data.file?.prismPaymentStatus === 'confirmed' || !!submitRes.data.file?.reviewResult);
 
       // Print exact required safe logs
       console.log(
