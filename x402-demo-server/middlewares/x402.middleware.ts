@@ -27,22 +27,26 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
 
     logger.info(`[x402] ${req.method} ${req.originalUrl || req.path} - PaymentHeader: ${paymentHeader ? 'PRESENT (' + paymentHeader.substring(0, 15) + '...)' : 'MISSING'}`);
 
-    const forwardedProto = String(req.headers["x-forwarded-proto"] || req.protocol || "http");
-    const forwardedHost = String(req.headers["x-forwarded-host"] || req.get("host") || "");
-    // Stable catalog URL: drop query string and Mongo ObjectIds so GoPlausible
-    // does not register a new resource per resumeId / jobId / probe.
-    const cleanPath = String(req.originalUrl || req.path)
-      .split("?")[0]
+    // Stable catalog URL: strictly canonicalize paths to prevent duplicate entries in GoPlausible facilitator
+    let rawPath = String(req.originalUrl || req.path).split("?")[0].replace(/\/+$/, "");
+    if (!rawPath.startsWith("/api/v1")) {
+      if (rawPath.startsWith("/api/")) {
+        rawPath = rawPath.replace(/^\/api/, "/api/v1");
+      } else {
+        rawPath = `/api/v1${rawPath.startsWith("/") ? "" : "/"}${rawPath}`;
+      }
+    }
+    // Normalize parameter segments: e.g. /api/v1/resume/:id/quality -> /api/v1/resume/quality
+    const cleanPath = rawPath
+      .replace(/\/resume\/[^/]+\/quality/i, "/resume/quality")
+      .replace(/\/resume\/[^/]+\/career-fit/i, "/resume/career-fit")
+      .replace(/\/resume\/[^/]+\/intent/i, "/resume/intent")
+      .replace(/\/learners\/chapters\/[^/]+\/unlock/i, "/learners/chapters/unlock")
       .replace(/\/[a-f\d]{24}/gi, "");
 
-    // Canonical public origin for GoPlausible cataloging:
-    // GoPlausible groups resources by merchant domain (e.g. sikho-ai.onrender.com).
-    // If running locally, route to https://sikho-ai.onrender.com so the facilitator
-    // associates this resource under merchant c2e058960979f0f2.
+    // Canonical public origin: always associate with merchant domain sikho-ai.onrender.com
     const publicOrigin = env.PUBLIC_BACKEND_URL || "https://sikho-ai.onrender.com";
-    const isLocal = !forwardedHost || forwardedHost.includes("localhost") || forwardedHost.includes("127.0.0.1");
-    const baseOrigin = isLocal ? publicOrigin : `${forwardedProto}://${forwardedHost}`;
-    const requestUrl = `${baseOrigin}${cleanPath}`;
+    const requestUrl = `${publicOrigin}${cleanPath}`;
 
     // Derive service identity and unique operation resource targets
     let serviceId = "job_analysis";
