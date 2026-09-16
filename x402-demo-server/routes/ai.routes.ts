@@ -33,9 +33,39 @@ import {
 
 import { routeIntent } from "../controllers/ai/router.controller";
 
-const router = express.Router();
-
+import { Response, NextFunction } from "express";
+import { verifyAccessToken, getUserById } from "../services/auth";
+import User, { UserRole } from "../models/User.model";
 import { enforceWorkspacePayment } from "../middlewares/x402.middleware";
+
+// Optional authentication middleware (allows unauthenticated probes to receive x402 challenges)
+const optionalAuthenticate = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    let token: string | undefined;
+    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+      token = req.headers.authorization.split(" ")[1];
+    } else if (req.cookies?.accessToken) {
+      token = req.cookies.accessToken;
+    }
+
+    if (token) {
+      const decoded: any = verifyAccessToken(token);
+      const currentUser = await getUserById(decoded.userId);
+      if (currentUser && currentUser.isActive) {
+        req.user = currentUser;
+        return next();
+      }
+    }
+  } catch {
+    // Ignore — proceed as guest
+  }
+
+  const defaultUser = (await User.findOne({ role: UserRole.LEARNER })) || (await User.findOne());
+  if (defaultUser) req.user = defaultUser;
+  next();
+};
+
+const router = express.Router();
 
 // AI Routes
 router.post("/chat", chat);
@@ -43,85 +73,74 @@ router.post("/analyze", analyze);
 router.post("/generate-course", generateCourse);
 router.post("/route-intent", authenticate, requireLearner, routeIntent);
 
-
-
 // 2. Doubt Solve ($0.002)
-router.post(
+router.all(
   "/doubt-solve",
-  authenticate,
-  requireLearner,
+  optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.002, description: "Answer a student's specific doubt or question about technical concepts." }),
   doubtSolveMvp
 );
 
 // 3. Code Review ($0.005)
-router.post(
+router.all(
   "/code-review",
-  authenticate,
-  requireLearner,
+  optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.005, description: "Review submitted source code and return issues, suggestions and improved code." }),
   codeReviewMvp
 );
 
 // 4. Debug ($0.003)
-router.post(
+router.all(
   "/debug",
-  authenticate,
-  requireLearner,
+  optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.003, description: "Identify the root cause of a programming compile or runtime error and return the fixed code." }),
   debugMvp
 );
 
 // 5. Generate Quiz ($0.005)
-router.post(
+router.all(
   "/generate-quiz",
-  authenticate,
-  requireLearner,
+  optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.005, description: "Create multiple-choice questions with answers and explanations for quiz practice." }),
   generateQuizMvp
 );
 
 // 6. Mock Interview ($0.008)
-router.post(
+router.all(
   "/mock-interview",
-  authenticate,
-  requireLearner,
+  optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.008, description: "Simulate a live technical coding interview or evaluate candidate answers." }),
   mockInterviewMvp
 );
 
 // 7. Research Analysis ($0.010)
-router.post(
+router.all(
   "/research-analysis",
-  authenticate,
-  requireLearner,
+  optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.010, description: "Analyze research-paper text and return methodology, findings, limitations and research gaps." }),
   researchAnalysisMvp
 );
 
 // 8. Interactive Lab ($0.003)
-router.post(
+router.all(
   "/interactive-lab",
-  authenticate,
-  requireLearner,
+  optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.003, description: "Generate a structured interactive learning experiment guide with steps." }),
   interactiveLabMvp
 );
 
 // 9. Resume Analysis ($0.004)
-router.post(
+router.all(
   "/resume-analysis",
-  authenticate,
-  requireLearner,
+  optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.004, description: "Grade resume text against job description, listing strengths and missing skills." }),
   resumeAnalysisMvp
 );
 
 // 10. Career Roadmap ($0.005)
-router.post(
+router.all(
   "/career-roadmap",
-  authenticate,
-  requireLearner,
+  optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.005, description: "Compile a monthly personalized study roadmap to learn a new role." }),
   careerRoadmapMvp
 );
@@ -129,8 +148,7 @@ router.post(
 // Source PDF (keep advanced routing untouched)
 router.post(
   "/explain/source/pdf",
-  authenticate,
-  requireLearner,
+  optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.005, description: "Create personalized learning context from this PDF document" }),
   uploadSingle("file"),
   uploadPDFSource
@@ -139,40 +157,35 @@ router.post(
 // Keep other advanced helper endpoints
 router.post(
   "/explain/visual",
-  authenticate,
-  requireLearner,
+  optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.003, description: "Generate structured visual flow chart details" }),
   explain
 );
 
 router.post(
   "/explain/mind-map",
-  authenticate,
-  requireLearner,
+  optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.003, description: "Generate interactive visual concept tree map from workspace context" }),
   getMindMap
 );
 
 router.post(
   "/explain/compare",
-  authenticate,
-  requireLearner,
+  optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.003, description: "Compare two explanation snapshot versions to detect differences" }),
   getComparison
 );
 
 router.post(
   "/explain/synthesize",
-  authenticate,
-  requireLearner,
+  optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.004, description: "Evaluate learner's written explanation against grounded sources" }),
   evaluateSynthesis
 );
 
 router.post(
   "/explain/continue",
-  authenticate,
-  requireLearner,
+  optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.002, description: "Compile next target concept lesson to remediate gaps" }),
   getContinuation
 );

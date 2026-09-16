@@ -75,7 +75,7 @@ export const handleSikhoX402Payment = asyncHandler(async (req: Request, res: Res
   const reviewId: string =
     typeof req.params.reviewId === "string"
       ? req.params.reviewId
-      : req.body.reviewId || "";
+      : req.body?.reviewId || "";
 
   const fileId: string =
     typeof req.params.fileId === "string"

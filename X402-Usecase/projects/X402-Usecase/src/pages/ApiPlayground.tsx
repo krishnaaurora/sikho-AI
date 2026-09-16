@@ -22,7 +22,8 @@ interface EndpointInfo {
 }
 
 const ENDPOINTS: EndpointInfo[] = [
-  { path: "/api/v1/ai/explain", name: "1. Explain", price: "$0.002", icon: <Sparkles size={16} />, placeholderInput: JSON.stringify({ query: "Explain WebSockets", learningStyle: "visual", language: "English" }, null, 2) },
+  // ── AI Interactive Workspace Suite ──
+  { path: "/api/v1/ai/explain", name: "1. Explain Concept", price: "$0.002", icon: <Sparkles size={16} />, placeholderInput: JSON.stringify({ query: "Explain WebSockets", learningStyle: "visual", language: "English" }, null, 2) },
   { path: "/api/v1/ai/doubt-solve", name: "2. Doubt Solve", price: "$0.002", icon: <HelpCircle size={16} />, placeholderInput: JSON.stringify({ doubt: "Why is WebSocket better than polling?" }, null, 2) },
   { path: "/api/v1/ai/code-review", name: "3. Code Review", price: "$0.005", icon: <Code2 size={16} />, placeholderInput: JSON.stringify({ language: "python", code: "def add(a,b): return a+b" }, null, 2) },
   { path: "/api/v1/ai/debug", name: "4. Debug", price: "$0.003", icon: <Terminal size={16} />, placeholderInput: JSON.stringify({ language: "python", code: "print(items[10])", error: "IndexError" }, null, 2) },
@@ -32,34 +33,114 @@ const ENDPOINTS: EndpointInfo[] = [
   { path: "/api/v1/ai/interactive-lab", name: "8. Interactive Lab", price: "$0.003", icon: <Compass size={16} />, placeholderInput: JSON.stringify({ labId: "http-request-response", topic: "HTTP" }, null, 2) },
   { path: "/api/v1/ai/resume-analysis", name: "9. Resume Analysis", price: "$0.004", icon: <UserCheck size={16} />, placeholderInput: JSON.stringify({ resumeText: "Sneha, Backend Developer. Skills: Python, Node.js.", targetRole: "Software Engineer" }, null, 2) },
   { path: "/api/v1/ai/career-roadmap", name: "10. Career Roadmap", price: "$0.005", icon: <Compass size={16} />, placeholderInput: JSON.stringify({ targetRole: "ML Engineer", currentSkills: ["Python", "Machine Learning"], experienceLevel: "Beginner" }, null, 2) },
-  { path: "https://prism-99h2.onrender.com/code-review-accurate", name: "11. Senior Code Review (Raw Prism x402 Challenge)", price: "$0.200", icon: <ShieldAlert size={16} />, placeholderInput: JSON.stringify({ file_path: "src/index.ts", raw_url: "https://raw.githubusercontent.com/algorandfoundation/algokit-utils-ts/main/src/index.ts" }, null, 2) },
-  { 
-    path: "/api/v1/services/code-review/orchestrate", 
-    name: "12. Prism Code Review (Sikho Marketplace 2-Tier Orchestration)", 
-    price: "$0.250", 
-    icon: <ShieldAlert size={16} />, 
-    placeholderInput: JSON.stringify({ 
+
+  // ── GitHub Code Review & Repository Analysis Suite ──
+  {
+    path: "/api/v1/services/github-review/git-repo-analyser",
+    name: "11. Git Repo Analyser (x402 Protocol $0.05)",
+    price: "$0.050",
+    icon: <Code2 size={16} />,
+    placeholderInput: JSON.stringify({ repoUrl: "https://github.com/algorandfoundation/algokit-utils-ts", branch: "main" }, null, 2)
+  },
+  {
+    path: "/api/v1/services/github-review/code-review",
+    name: "12. Code Review Standalone (x402 Protocol $0.05)",
+    price: "$0.050",
+    icon: <ShieldAlert size={16} />,
+    placeholderInput: JSON.stringify({ repoUrl: "https://github.com/algorandfoundation/algokit-utils-ts", branch: "main" }, null, 2)
+  },
+  {
+    path: "/api/v1/services/github-review/sikho-x402",
+    name: "13. Sikho x402 Protocol Settlement ($0.05)",
+    price: "$0.050",
+    icon: <ShieldAlert size={16} />,
+    placeholderInput: JSON.stringify({ repoUrl: "https://github.com/algorandfoundation/algokit-utils-ts" }, null, 2)
+  },
+  {
+    path: "/api/v1/services/github-review/code-review-accurate",
+    name: "14. Accurate Code Review ($0.05)",
+    price: "$0.050",
+    icon: <ShieldAlert size={16} />,
+    placeholderInput: JSON.stringify({ repoUrl: "https://github.com/algorandfoundation/algokit-utils-ts" }, null, 2)
+  },
+  {
+    path: "/api/v1/services/code-review/orchestrate",
+    name: "15. Prism Code Review (2-Tier Orchestration $0.25)",
+    price: "$0.250",
+    icon: <ShieldAlert size={16} />,
+    placeholderInput: JSON.stringify({
       rawUrl: "https://raw.githubusercontent.com/algorandfoundation/algokit-utils-ts/main/src/index.ts",
       filePath: "src/index.ts"
-    }, null, 2) 
+    }, null, 2)
   },
+
+  // ── Resume Intelligence & Action Plans Suite ──
+  {
+    path: "/api/v1/resume/find-jobs",
+    name: "16. Personalised Job Discovery ($0.50)",
+    price: "$0.500",
+    icon: <Compass size={16} />,
+    placeholderInput: JSON.stringify({
+      resumeId: "65cb765f0123456789abcdef",
+      skills: ["Python", "React", "Machine Learning"],
+      location: "Remote",
+      experienceLevel: "entry-level"
+    }, null, 2)
+  },
+  {
+    path: "/api/v1/x402/resume-improvement",
+    name: "17. Resume Improvement AI ($0.05)",
+    price: "$0.050",
+    icon: <UserCheck size={16} />,
+    placeholderInput: JSON.stringify({ resumeId: "65cb765f0123456789abcdef", targetRole: "Full Stack Engineer" }, null, 2)
+  },
+  {
+    path: "/api/v1/x402/project-generation",
+    name: "18. Project Blueprint Generation ($0.03)",
+    price: "$0.030",
+    icon: <Code2 size={16} />,
+    placeholderInput: JSON.stringify({ resumeId: "65cb765f0123456789abcdef", missingSkill: "Distributed Caching" }, null, 2)
+  },
+  {
+    path: "/api/v1/x402/career-action-plan",
+    name: "19. 30-Day Career Action Plan ($0.10)",
+    price: "$0.100",
+    icon: <Compass size={16} />,
+    placeholderInput: JSON.stringify({ resumeId: "65cb765f0123456789abcdef", targetCareer: "Senior Backend Architect" }, null, 2)
+  },
+  {
+    path: "/api/v1/x402/target-career-search",
+    name: "20. Target Career Search ($0.02)",
+    price: "$0.020",
+    icon: <Compass size={16} />,
+    placeholderInput: JSON.stringify({ resumeId: "65cb765f0123456789abcdef", role: "AI Engineer" }, null, 2)
+  },
+  {
+    path: "/api/v1/x402/job-analysis",
+    name: "21. Job-Specific Gap Analysis ($0.02)",
+    price: "$0.020",
+    icon: <UserCheck size={16} />,
+    placeholderInput: JSON.stringify({ jobId: "job_01", resumeId: "65cb765f0123456789abcdef" }, null, 2)
+  },
+
+  // ── Interview Pro Suite ──
   { 
     path: "/api/v1/interview-pro/interview-questions", 
-    name: "13. Technical Interview Questions (x402 AI Pass)", 
+    name: "22. Technical Interview Questions ($0.03)", 
     price: "$0.030", 
     icon: <MessageSquare size={16} />, 
     placeholderInput: JSON.stringify({ role: "Full Stack Software Engineer", experience: "Senior", gaps: ["System Design", "Database Indexing", "Distributed Caching"] }, null, 2) 
   },
   { 
     path: "/api/v1/interview-pro/learning-path", 
-    name: "14. Learning Path 3-Module Batch (x402 AI Pass)", 
+    name: "23. Learning Path 3-Module Batch ($0.09)", 
     price: "$0.090", 
     icon: <Compass size={16} />, 
     placeholderInput: JSON.stringify({ batch: 2, role: "Full Stack Software Engineer", modulesToUnlock: 3 }, null, 2) 
   },
   { 
     path: "/api/v1/interview-pro/study-resources", 
-    name: "15. Curated Study Resources (x402 AI Pass)", 
+    name: "24. Curated Study Resources ($0.03)", 
     price: "$0.030", 
     icon: <HelpCircle size={16} />, 
     placeholderInput: JSON.stringify({ topic: "System Design & Modern Backend Architecture", gaps: ["Distributed Systems", "SQL Indexing"] }, null, 2) 
