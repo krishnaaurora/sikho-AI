@@ -126,22 +126,22 @@ const ENDPOINTS: EndpointInfo[] = [
   // ── Interview Pro Suite ──
   { 
     path: "/api/v1/interview-pro/interview-questions", 
-    name: "22. Technical Interview Questions ($0.06)", 
-    price: "$0.060", 
+    name: "22. Technical Interview Questions ($0.15)", 
+    price: "$0.150", 
     icon: <MessageSquare size={16} />, 
     placeholderInput: JSON.stringify({ role: "Full Stack Software Engineer", experience: "Senior", gaps: ["System Design", "Database Indexing", "Distributed Caching"] }, null, 2) 
   },
   { 
     path: "/api/v1/interview-pro/learning-path", 
-    name: "23. Learning Path 3-Module Batch ($0.09)", 
-    price: "$0.090", 
+    name: "23. Learning Path 3-Module Batch ($0.15)", 
+    price: "$0.150", 
     icon: <Compass size={16} />, 
     placeholderInput: JSON.stringify({ batch: 2, role: "Full Stack Software Engineer", modulesToUnlock: 3 }, null, 2) 
   },
   { 
     path: "/api/v1/interview-pro/study-resources", 
-    name: "24. Curated Study Resources ($0.06)", 
-    price: "$0.060", 
+    name: "24. Curated Study Resources ($0.15)", 
+    price: "$0.150", 
     icon: <HelpCircle size={16} />, 
     placeholderInput: JSON.stringify({ topic: "System Design & Modern Backend Architecture", gaps: ["Distributed Systems", "SQL Indexing"] }, null, 2) 
   },

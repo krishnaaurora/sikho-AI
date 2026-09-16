@@ -107,7 +107,7 @@ const seedServices = async () => {
         serviceId: "interview_questions",
         name: "Technical Interview Questions AI Pass",
         description: "Unlock tailored architectural & technical interview questions with STAR answers",
-        priceUsd: 0.30,
+        priceUsd: 0.15,
         endpoint: "/api/v1/interview-pro/interview-questions",
         status: "Active"
       },
@@ -115,7 +115,7 @@ const seedServices = async () => {
         serviceId: "learning_path",
         name: "Learning Path 3-Module Batch Unlock",
         description: "Unlock next batch of 3 in-depth concept & scenario modules",
-        priceUsd: 0.30,
+        priceUsd: 0.15,
         endpoint: "/api/v1/interview-pro/learning-path",
         status: "Active"
       },
@@ -123,7 +123,7 @@ const seedServices = async () => {
         serviceId: "study_resources",
         name: "Curated Study Resources Pass",
         description: "Unlock curated technical primers, system design docs, and indexing guides",
-        priceUsd: 0.30,
+        priceUsd: 0.15,
         endpoint: "/api/v1/interview-pro/study-resources",
         status: "Active"
       },
@@ -226,7 +226,7 @@ const seedServices = async () => {
       $set: {
         name: "Technical Interview Questions AI Pass",
         description: "Unlock tailored architectural & technical interview questions with STAR answers",
-        priceUsd: 0.30,
+        priceUsd: 0.15,
         endpoint: "/api/v1/interview-pro/interview-questions",
         status: "Active"
       }
@@ -239,7 +239,7 @@ const seedServices = async () => {
       $set: {
         name: "Learning Path 3-Module Batch Unlock",
         description: "Unlock next batch of 3 in-depth concept & scenario modules",
-        priceUsd: 0.30,
+        priceUsd: 0.15,
         endpoint: "/api/v1/interview-pro/learning-path",
         status: "Active"
       }
@@ -252,7 +252,7 @@ const seedServices = async () => {
       $set: {
         name: "Curated Study Resources Pass",
         description: "Unlock curated technical primers, system design docs, and indexing guides",
-        priceUsd: 0.30,
+        priceUsd: 0.15,
         endpoint: "/api/v1/interview-pro/study-resources",
         status: "Active"
       }

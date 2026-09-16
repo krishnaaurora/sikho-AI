@@ -40,19 +40,19 @@ const ENDPOINTS: EndpointTarget[] = [
     name: "Technical Interview Questions AI Pass",
     method: "GET",
     path: "/api/v1/interview-pro/interview-questions",
-    priceUsd: 0.30,
+    priceUsd: 0.15,
   },
   {
     name: "Learning Path 3-Module Batch Unlock",
     method: "GET",
     path: "/api/v1/interview-pro/learning-path",
-    priceUsd: 0.30,
+    priceUsd: 0.15,
   },
   {
     name: "Curated Study Resources Pass",
     method: "GET",
     path: "/api/v1/interview-pro/study-resources",
-    priceUsd: 0.30,
+    priceUsd: 0.15,
   },
   {
     name: "ATS Resume Quality Audit Pass",
