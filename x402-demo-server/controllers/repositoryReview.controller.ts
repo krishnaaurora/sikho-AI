@@ -149,8 +149,7 @@ export const handleSikhoX402Payment = asyncHandler(async (req: Request, res: Res
  */
 export const handleGitRepoAnalyserEndpoint = asyncHandler(async (req: Request, res: Response) => {
   const publicOrigin = env.PUBLIC_BACKEND_URL || "https://sikho-ai.onrender.com";
-  const cleanPath = String(req.originalUrl || req.path).split("?")[0];
-  const requestUrl = `${publicOrigin}${cleanPath}`;
+  const requestUrl = `${publicOrigin}/api/v1/services/github-review/sikho-x402`;
   const treasuryAddress = env.AVM_ADDRESS || process.env.AVM_ADDRESS || "2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY";
 
   const paymentSignature = (
@@ -166,6 +165,8 @@ export const handleGitRepoAnalyserEndpoint = asyncHandler(async (req: Request, r
     req.body?.senderAddress
   ) as string | undefined;
 
+  const currentMethod = (req.method || "POST").toUpperCase();
+
   const challenge = {
     x402Version: 2,
     error: "Payment required",
@@ -178,7 +179,7 @@ export const handleGitRepoAnalyserEndpoint = asyncHandler(async (req: Request, r
       {
         scheme: "exact",
         network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
-        amount: "50000",
+        amount: "300000",
         asset: "31566704",
         payTo: treasuryAddress,
         maxTimeoutSeconds: 300,
@@ -194,7 +195,7 @@ export const handleGitRepoAnalyserEndpoint = asyncHandler(async (req: Request, r
         info: {
           input: {
             type: "http",
-            method: req.method.toUpperCase(),
+            method: currentMethod,
             bodyType: "json",
             body: {
               repoUrl: "https://github.com/algorandfoundation/algokit-utils-ts",
@@ -216,6 +217,7 @@ export const handleGitRepoAnalyserEndpoint = asyncHandler(async (req: Request, r
           input: {
             type: "object",
             properties: {
+              method: { type: "string", enum: [currentMethod, "POST", "GET"] },
               repoUrl: { type: "string" },
               branch: { type: "string" },
             },
