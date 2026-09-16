@@ -569,7 +569,6 @@ export const BuildStudio: React.FC = () => {
               extra: {
                 asset: targetAsset,
                 decimals: 6,
-                feePayer: 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
                 service: 'prism-code-review',
               },
             },
@@ -581,7 +580,7 @@ export const BuildStudio: React.FC = () => {
             acc.network = acc.network || targetNetwork;
             acc.payTo = acc.payTo || prismPayTo;
             if (!acc.extra) acc.extra = {};
-            acc.extra.feePayer = acc.extra.feePayer || 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA';
+            delete acc.extra.feePayer;
             acc.extra.decimals = 6;
             acc.extra.asset = targetAsset;
           });
@@ -608,7 +607,6 @@ export const BuildStudio: React.FC = () => {
               extra: {
                 asset: targetAsset,
                 decimals: 6,
-                feePayer: 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
                 service: 'prism-code-review',
               },
             },
@@ -635,7 +633,7 @@ export const BuildStudio: React.FC = () => {
           // SAFE LOG: Detailed breakdown of the raw transaction group before signing
           console.log('=== [Prism x402 Payment Group Details Before Signing] ===');
           console.log('Number of transactions in group:', txns.length);
-          console.log('FeePayer address:', targetAccept.extra?.feePayer || 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA');
+          console.log('Direct On-Chain Payment to Prism:', prismPayTo);
 
           txns.forEach((txnBytes, idx) => {
             try {
@@ -645,22 +643,7 @@ export const BuildStudio: React.FC = () => {
               const txnFee = dTxn.fee !== undefined ? dTxn.fee.toString() : '0';
               const groupId = dTxn.group ? btoa(String.fromCharCode(...dTxn.group)) : 'none';
 
-              if (txnType === 'pay') {
-                const receiver = dTxn.payment?.receiver
-                  ? algosdk.encodeAddress(dTxn.payment.receiver.publicKey)
-                  : dTxn.receiver
-                    ? algosdk.encodeAddress(dTxn.receiver.publicKey)
-                    : 'unknown';
-                const amount = dTxn.payment?.amount !== undefined ? dTxn.payment.amount.toString() : (dTxn.amount !== undefined ? dTxn.amount.toString() : '0');
-                console.log(`Transaction ${idx} (Fee Payer Txn):`, {
-                  type: 'pay',
-                  sender: txnSender,
-                  receiver,
-                  amount: `${amount} micro-ALGO (0 ALGO)`,
-                  fee: `${txnFee} micro-ALGO (covers group fee)`,
-                  groupId,
-                });
-              } else if (txnType === 'axfer') {
+              if (txnType === 'axfer') {
                 const receiver = dTxn.assetTransfer?.receiver
                   ? algosdk.encodeAddress(dTxn.assetTransfer.receiver.publicKey)
                   : dTxn.assetReceiver
@@ -682,7 +665,7 @@ export const BuildStudio: React.FC = () => {
                   receiver,
                   asset: assetId,
                   amount: `${amount} micro-USDC (0.20 USDC)`,
-                  fee: `${txnFee} micro-ALGO (0 fee paid by user)`,
+                  fee: `${txnFee} micro-ALGO`,
                   groupId,
                 });
               } else {
@@ -742,8 +725,9 @@ export const BuildStudio: React.FC = () => {
       const paymentPayload = await x402Cl.createPaymentPayload(paymentRequired);
       const paymentSignatureHeader = btoa(JSON.stringify(paymentPayload));
 
-      // Extract transaction ID from signed transaction in paymentGroup if present
+      // Extract transaction ID and raw signed transaction bytes from paymentGroup
       let prismTxId = currentFile.prismPaymentTxId || '';
+      let rawSignedTxnBytes: Uint8Array | null = null;
       try {
         const payloadData = (paymentPayload as any)?.payload;
         const pGroup = Array.isArray(payloadData?.paymentGroup) ? payloadData.paymentGroup : [];
@@ -759,12 +743,33 @@ export const BuildStudio: React.FC = () => {
               const decodedStxn: any = algosdk.decodeSignedTransaction(stxnBytes);
               if (decodedStxn?.txn) {
                 prismTxId = decodedStxn.txn.txID();
+                rawSignedTxnBytes = stxnBytes;
                 break;
               }
             } catch (_) {}
           }
         }
       } catch (_) { }
+
+      // Direct On-Chain Broadcast to Algorand MainNet Node
+      if (rawSignedTxnBytes) {
+        try {
+          console.log('[Prism x402 Direct Broadcast] Broadcasting signed 0.20 USDC transaction to Algorand MainNet...');
+          const algodUrl = `${import.meta.env.VITE_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud'}/v2/transactions`;
+          const bcRes = await fetch(algodUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-binary' },
+            body: rawSignedTxnBytes as any,
+          });
+          const bcData = await bcRes.json();
+          if (bcData?.txId) {
+            prismTxId = bcData.txId;
+            console.log('[Prism x402 Direct Broadcast] Transaction submitted successfully on-chain! TxID:', prismTxId);
+          }
+        } catch (bcErr: any) {
+          console.warn('[Prism x402 Direct Broadcast] Frontend broadcast info:', bcErr?.message);
+        }
+      }
 
       // SAFE LOG: Retry request details
       console.log('[Prism x402 Debug] Retry request:', {
