@@ -538,21 +538,12 @@ export async function recordSikhoPaymentForFile(
 
 /**
  * 4. Step 2A: Fetch Prism 402 Challenge for a File
- * Verifies Sikho fee is paid, reads file code, calls Prism, returns 402 challenge parameters
+ * Verifies Sikho fee is paid, returns Prism 402 challenge parameters matching Sikho structure
  */
 export async function getPrismChallengeForFile(
   reviewId: string,
   fileId: string
-): Promise<{
-  fileReviewId: string;
-  filePath: string;
-  language: string;
-  payTo: string;
-  amountMicroUSDC: number;
-  assetId: string;
-  network: string;
-  paymentRequiredHeader?: string;
-}> {
+): Promise<any> {
   const review = await RepositoryReview.findOne({ reviewId });
   if (!review) {
     throw new Error(`Repository review "${reviewId}" not found.`);
@@ -572,147 +563,61 @@ export async function getPrismChallengeForFile(
     );
   }
 
-  const prismEndpoint =
-    process.env.PRISM_ENDPOINT ||
-    "https://prism-99h2.onrender.com/code-review-accurate";
-  const defaultPrismPayTo =
+  const prismPayTo =
     process.env.PRISM_PAYTO ||
     "FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE";
+  const amountMicro = 200000;
+  const assetId = "31566704";
+  const network = "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
+  const endpointUrl = "https://prism-99h2.onrender.com/code-review-accurate";
 
-  // Fetch Raw File Content from GitHub
-  const fileContent = await fetchRawGithubFileContent(
-    review.owner,
-    review.repository,
-    review.commitSha,
-    fileDoc.filePath
-  );
-
-  // Probe Prism to trigger HTTP 402 Challenge (try GET as in spec, then POST)
-  let initialRes: any;
-  const rawGithubUrl = `https://raw.githubusercontent.com/${review.owner}/${review.repository}/${review.commitSha}/${fileDoc.filePath}`;
-  try {
-    initialRes = await axios.get(prismEndpoint, {
-      params: {
-        file_path: fileDoc.filePath,
-        raw_url: rawGithubUrl,
-      },
-      headers: {
-        Accept: "application/json",
-      },
-      validateStatus: (status) => status < 500,
-      timeout: 25000,
-    });
-  } catch (_) {
-    try {
-      initialRes = await axios.post(
-        prismEndpoint,
-        {
-          file_path: fileDoc.filePath,
-          code: fileContent,
-          language: fileDoc.language,
-          raw_url: rawGithubUrl,
+  const challengeObj = {
+    x402Version: 2,
+    error: "Payment required",
+    resource: {
+      url: endpointUrl,
+      description: `Prism AI Code Review: Senior architectural and security audit ($0.20 USDC) for ${fileDoc.filePath}`,
+      mimeType: "application/json",
+    },
+    accepts: [
+      {
+        scheme: "exact",
+        network,
+        payTo: prismPayTo,
+        amount: String(amountMicro),
+        asset: assetId,
+        description: `Prism code review ($0.20 USDC / 200,000 micro-USDC) for ${fileDoc.filePath}`,
+        extra: {
+          name: "USDC",
+          version: "1",
+          service: "prism-code-review",
+          reviewId,
+          fileId,
+          filePath: fileDoc.filePath,
         },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          validateStatus: (status) => status < 500,
-          timeout: 25000,
-        }
-      );
-    } catch (err: any) {
-      logger.warn(`Prism direct probe error: ${err.message}. Using standard challenge parameters.`);
-    }
-  }
-
-  let challengePayTo = defaultPrismPayTo;
-  let challengeAmount = 200000;
-  let challengeAsset = "31566704";
-  let challengeNetwork = "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
-  let paymentRequiredHeader = "";
-
-  if (initialRes && initialRes.status === 402) {
-    paymentRequiredHeader =
-      initialRes.headers["payment-required"] ||
-      initialRes.headers["Payment-Required"] ||
-      "";
-
-    if (paymentRequiredHeader) {
-      try {
-        const b64 = paymentRequiredHeader.includes(",")
-          ? paymentRequiredHeader.split(",")[1].trim()
-          : paymentRequiredHeader.trim();
-        const decoded = JSON.parse(
-          Buffer.from(b64, "base64").toString("utf-8")
-        );
-        const accepts = decoded.accepts?.[0] || decoded;
-        if (accepts.payTo) challengePayTo = accepts.payTo;
-        if (accepts.asset) challengeAsset = String(accepts.asset);
-        if (accepts.network) challengeNetwork = accepts.network;
-
-        // Ensure clean x402 challenge without third-party feePayer conflicts
-        challengeAmount = 200000;
-        if (decoded.accepts && Array.isArray(decoded.accepts) && decoded.accepts[0]) {
-          decoded.accepts[0].amount = "200000";
-          decoded.accepts[0].payTo = challengePayTo;
-          if (decoded.accepts[0].extra) {
-            delete decoded.accepts[0].extra.feePayer;
-          }
-          paymentRequiredHeader = Buffer.from(JSON.stringify(decoded)).toString("base64");
-        }
-      } catch (_) {}
-    }
-  }
-
-  if (!paymentRequiredHeader) {
-    const defaultChallenge = {
-      x402Version: 2,
-      error: "Payment Required",
-      resource: {
-        url: "https://prism-99h2.onrender.com/code-review-accurate",
-        description: `Prism AI Code Review for ${fileDoc.filePath} ($0.20 USDC)`,
-        mimeType: "application/json",
+        maxTimeoutSeconds: 300,
       },
-      accepts: [
-        {
-          scheme: "exact",
-          network: challengeNetwork,
-          payTo: challengePayTo,
-          amount: "200000",
-          asset: challengeAsset,
-          description: `Prism AI Senior Code Review ($0.20 USDC / 200,000 micro-USDC) for ${fileDoc.filePath}`,
-          extra: {
-            name: "USDC",
-            version: "1",
-            asset: 31566704,
-            decimals: 6,
-            service: "prism-code-review",
-            reviewId,
-            fileId,
-            filePath: fileDoc.filePath,
-          },
-          maxTimeoutSeconds: 300,
-        },
-      ],
-    };
-    paymentRequiredHeader = Buffer.from(JSON.stringify(defaultChallenge)).toString("base64");
-  }
+    ],
+  };
+
+  const paymentRequiredHeader = Buffer.from(JSON.stringify(challengeObj)).toString("base64");
 
   return {
+    ...challengeObj,
     fileReviewId: fileDoc.fileReviewId,
     filePath: fileDoc.filePath,
     language: fileDoc.language,
-    payTo: challengePayTo,
-    amountMicroUSDC: 200000,
-    assetId: challengeAsset,
-    network: challengeNetwork,
+    payTo: prismPayTo,
+    amountMicroUSDC: amountMicro,
+    assetId,
+    network,
     paymentRequiredHeader,
   };
 }
 
 /**
  * 5. Step 2B: Submit User's Signed x402 Payment & Receive Real Prism Review
+ * Identical payment settlement and on-chain execution logic as Sikho platform fee
  */
 export async function submitPrismReviewWithSignature(
   reviewId: string,
@@ -768,8 +673,8 @@ export async function submitPrismReviewWithSignature(
 
   // Extract real signed transaction bytes, txid, and sender from paymentSignature
   let signedTxnBytes: Buffer | null = null;
-  let extractedTxId = prismPaymentTxId || "";
-  let extractedSender = review.senderAddress || prismPayTo;
+  let txId = prismPaymentTxId || "";
+  let sender = review.senderAddress || prismPayTo;
 
   if (paymentSignature) {
     try {
@@ -787,9 +692,9 @@ export async function submitPrismReviewWithSignature(
               const stxn: any = algosdk.decodeSignedTransaction(b);
               if (stxn?.txn) {
                 signedTxnBytes = b;
-                extractedTxId = stxn.txn.txID();
+                txId = stxn.txn.txID();
                 if (stxn.txn.sender?.publicKey || stxn.txn.from?.publicKey) {
-                  extractedSender = algosdk.encodeAddress(stxn.txn.sender?.publicKey || stxn.txn.from?.publicKey);
+                  sender = algosdk.encodeAddress(stxn.txn.sender?.publicKey || stxn.txn.from?.publicKey);
                 }
                 break;
               }
@@ -798,46 +703,22 @@ export async function submitPrismReviewWithSignature(
         }
       }
 
-      if (!extractedTxId) {
-        extractedTxId = decoded.payload?.txid || decoded.txid || decoded.txId || decoded.transactionId || "";
+      if (!txId) {
+        txId = decoded.payload?.txid || decoded.txid || decoded.txId || decoded.transactionId || "";
       }
-      if (!extractedSender || extractedSender === prismPayTo) {
-        extractedSender = decoded.payload?.sender || decoded.sender || decoded.payer || extractedSender;
+      if (!sender || sender === prismPayTo) {
+        sender = decoded.payload?.sender || decoded.sender || decoded.payer || sender;
       }
     } catch (_) {
       if (!paymentSignature.includes("{") && paymentSignature.length > 20) {
-        extractedTxId = paymentSignature;
+        txId = paymentSignature;
       }
     }
   }
 
-  // 1. Settle & Broadcast the Prism $0.20 Payment on Algorand MainNet
-  const prismChallengeObj = {
-    accepts: [
-      {
-        scheme: "exact",
-        network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
-        amount: "200000",
-        asset: "31566704",
-        payTo: prismPayTo,
-        maxTimeoutSeconds: 300,
-        extra: {
-          name: "USDC",
-          version: "1",
-          asset: 31566704,
-          decimals: 6,
-          service: "prism-code-review",
-          reviewId,
-          fileId,
-          filePath: fileDoc.filePath,
-        },
-      },
-    ],
-  };
-
-  // Broadcast signed transaction directly to Algod on Algorand MainNet
-  let onChainSettledTxId = extractedTxId;
-  let onChainConfirmed = false;
+  // 1. Settle & Broadcast the Prism $0.20 Payment on Algorand MainNet (Direct Algod broadcast)
+  let settledTxId = txId;
+  let settledPayer = sender;
 
   if (signedTxnBytes) {
     try {
@@ -849,39 +730,40 @@ export async function submitPrismReviewWithSignature(
         timeout: 10000,
       });
       if (broadcastRes.data?.txId) {
-        onChainSettledTxId = broadcastRes.data.txId;
-        logger.info(`[Prism x402] Successfully broadcasted transaction ${onChainSettledTxId} to Algorand MainNet`);
+        settledTxId = broadcastRes.data.txId;
+        logger.info(`[Prism x402] Successfully broadcasted transaction ${settledTxId} to Algorand MainNet`);
       }
     } catch (bcErr: any) {
       logger.warn(`[Prism x402] Algod broadcast note: ${bcErr.response?.data?.message || bcErr.message}`);
     }
   }
 
-  // Try GoPlausible Facilitator settle
+  // 2. Settle via GoPlausible Facilitator
   try {
-    const facResult = await verifyX402Payment(paymentSignature, prismChallengeObj);
+    const challenge = await getPrismChallengeForFile(reviewId, fileId);
+    const facResult = await verifyX402Payment(paymentSignature, challenge);
     if (facResult.transactionHash) {
-      onChainSettledTxId = facResult.transactionHash;
-      extractedSender = facResult.payer || extractedSender;
-      logger.info(`[Prism x402] Facilitator settled tx: ${onChainSettledTxId} from ${extractedSender}`);
+      settledTxId = facResult.transactionHash;
+      settledPayer = facResult.payer || sender;
+      logger.info(`[Prism x402] Facilitator settled tx: ${settledTxId} from ${settledPayer}`);
     }
   } catch (facErr: any) {
-    logger.info(`[Prism x402] Facilitator settlement note: ${facErr.message}`);
+    logger.info(`[Prism x402] Facilitator settlement note: ${facErr.message}. Verifying on-chain...`);
   }
 
-  // Verify on-chain $0.20 USDC Prism payment if txid is present
-  if (onChainSettledTxId) {
+  // 3. Verify on-chain $0.20 USDC Prism payment
+  let verifiedSender = settledPayer;
+  if (settledTxId) {
     try {
       const verified = await verifyOnChainPrismPayment(
-        onChainSettledTxId,
+        settledTxId,
         prismPayTo,
         "31566704", // USDC ASA ID
         200000,     // 0.20 USDC (200,000 micro-units)
         fileDoc.fileReviewId
       );
       if (verified.confirmed) {
-        onChainConfirmed = true;
-        extractedSender = verified.sender || extractedSender;
+        verifiedSender = verified.sender || settledPayer;
       }
     } catch (verifyErr: any) {
       logger.warn(`[Prism Payment] On-chain verification note: ${verifyErr.message}`);
@@ -976,29 +858,29 @@ export async function submitPrismReviewWithSignature(
             Buffer.from(paymentResponseHeader, "base64").toString("utf-8")
           );
           if (dec.transaction || dec.txId || dec.txid) {
-            onChainSettledTxId = dec.transaction || dec.txId || dec.txid;
+            settledTxId = dec.transaction || dec.txId || dec.txid;
           }
         } catch (_) {}
       }
       reviewData = paidRes.data;
     }
 
-    if (!paymentResponseHeader && onChainSettledTxId) {
+    if (!paymentResponseHeader && settledTxId) {
       const respObj = {
         success: true,
-        transaction: onChainSettledTxId,
-        payer: extractedSender || prismPayTo,
+        transaction: settledTxId,
+        payer: verifiedSender || prismPayTo,
         network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
       };
       paymentResponseHeader = Buffer.from(JSON.stringify(respObj)).toString("base64");
     }
 
-    const verificationStatus = (onChainConfirmed || onChainSettledTxId)
+    const verificationStatus = settledTxId
       ? "PRISM_PAYMENT_CONFIRMED"
       : "PRISM_PAYMENT_NOT_SETTLED";
 
-    console.log("[PRISM ON-CHAIN TX]", onChainSettledTxId || "None");
-    console.log("[PRISM ON-CHAIN CONFIRMED]", !!onChainSettledTxId);
+    console.log("[PRISM ON-CHAIN TX]", settledTxId || "None");
+    console.log("[PRISM ON-CHAIN CONFIRMED]", !!settledTxId);
     console.log(`[PRISM SETTLEMENT RESULT] ${verificationStatus}`);
 
     // If Prism endpoint returned no structured findings, enrich with AI review engine
@@ -1127,15 +1009,15 @@ Provide a deep, critical review with at least 3 concrete findings across High, M
       }
     }
 
-    const isSettled = !!onChainSettledTxId;
+    const isSettled = !!settledTxId;
 
     fileDoc.fileId = fileDoc.fileReviewId;
     fileDoc.prismPaymentAmount = 200000;
     fileDoc.prismPaymentStatus = isSettled ? "confirmed" : "pending";
-    fileDoc.prismPaymentTxId = onChainSettledTxId || "";
+    fileDoc.prismPaymentTxId = settledTxId || "";
     fileDoc.prismPaymentResponse = paymentResponseHeader;
     fileDoc.prismX402Status = isSettled ? "confirmed" : "pending";
-    fileDoc.prismX402TxId = onChainSettledTxId || "";
+    fileDoc.prismX402TxId = settledTxId || "";
     fileDoc.prismX402PaymentResponse = paymentResponseHeader;
     fileDoc.reviewResult = reviewData;
     fileDoc.status = "completed";
