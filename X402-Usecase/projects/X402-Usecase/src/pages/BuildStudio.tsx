@@ -563,10 +563,11 @@ export const BuildStudio: React.FC = () => {
               payTo: prismPayTo,
               maxTimeoutSeconds: 300,
               extra: {
+                name: 'USDC',
+                version: '1',
                 asset: targetAsset,
-                tag: 'x402-global-challenge',
                 decimals: 6,
-                feePayer: 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
+                service: 'prism-code-review',
               },
             },
           ];
@@ -577,7 +578,9 @@ export const BuildStudio: React.FC = () => {
             acc.network = acc.network || targetNetwork;
             acc.payTo = acc.payTo || prismPayTo;
             if (!acc.extra) acc.extra = {};
-            acc.extra.feePayer = acc.extra.feePayer || 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA';
+            delete acc.extra.feePayer;
+            acc.extra.name = 'USDC';
+            acc.extra.version = '1';
             acc.extra.decimals = 6;
           });
         }
@@ -601,10 +604,11 @@ export const BuildStudio: React.FC = () => {
               payTo: prismPayTo,
               maxTimeoutSeconds: 300,
               extra: {
+                name: 'USDC',
+                version: '1',
                 asset: targetAsset,
-                tag: 'x402-global-challenge',
                 decimals: 6,
-                feePayer: 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
+                service: 'prism-code-review',
               },
             },
           ],
@@ -619,7 +623,6 @@ export const BuildStudio: React.FC = () => {
         asset: targetAccept.asset || String(targetAsset),
         network: targetAccept.network || targetNetwork,
         payTo: targetAccept.payTo || prismPayTo,
-        feePayer: targetAccept.extra?.feePayer || 'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
       });
 
       // 2. Build AVM Signer for ExactAvmScheme using connected wallet
@@ -728,13 +731,11 @@ export const BuildStudio: React.FC = () => {
 
       // SAFE LOG: Payment construction
       console.log('[Prism x402 Debug] Payment construction:', {
-        transactionType: 'ExactAvmScheme (Atomic 2-Txn Group)',
+        transactionType: 'ExactAvmScheme (Direct User Payment)',
         sender: activeAddress,
         receiver: prismPayTo,
         asset: targetAsset,
         amount: '200000 micro-units (0.20 USDC)',
-        feeConfiguration: '0 ALGO for user (Network fee sponsored by feePayer: ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA)',
-        groupInformation: '2 transactions (Index 0: feePayer 2mA, Index 1: user 0.20 USDC)',
       });
 
       const paymentPayload = await x402Cl.createPaymentPayload(paymentRequired);
