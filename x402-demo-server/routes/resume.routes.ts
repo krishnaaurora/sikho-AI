@@ -92,27 +92,47 @@ router.post(
   unlockResumePass
 );
 
-// POST  /api/v1/resume/:resumeId/quality    — Trigger quality & ATS analysis (Paid $0.06)
-router.post(
-  "/:resumeId/quality",
+// POST  /api/v1/resume/quality & /:resumeId/quality — Trigger quality & ATS analysis (Paid $0.06)
+router.all(
+  ["/quality", "/:resumeId/quality"],
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.06, description: "ATS Quality & AI Resume Auto-Fix Pass" }),
+  enforceWorkspacePayment({
+    priceUsd: 0.06,
+    description: "ATS Quality & AI Resume Auto-Fix Pass",
+    discoveryInput: { resumeId: "65cb765f0123456789abcdef" },
+    discoveryInputSchema: {
+      type: "object",
+      properties: {
+        resumeId: { type: "string", description: "Candidate resume ID" }
+      }
+    }
+  }),
   runQualityAnalysis
 );
 
-// GET   /api/v1/resume/:resumeId/quality     — Fetch analyzed quality metrics
-router.get("/:resumeId/quality", optionalAuthenticate, getQualityAnalysis);
+// GET   /api/v1/resume/quality & /:resumeId/quality — Fetch analyzed quality metrics
+router.get(["/quality", "/:resumeId/quality"], optionalAuthenticate, getQualityAnalysis);
 
-// POST  /api/v1/resume/:resumeId/career-fit  — Trigger career fit analysis (Paid $0.50)
-router.post(
-  "/:resumeId/career-fit",
+// POST  /api/v1/resume/career-fit & /:resumeId/career-fit — Trigger career fit analysis (Paid $0.03)
+router.all(
+  ["/career-fit", "/:resumeId/career-fit"],
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.03, description: "Resume Career Fit & Top Roles Pass" }),
+  enforceWorkspacePayment({
+    priceUsd: 0.03,
+    description: "Resume Career Fit & Top Roles Pass",
+    discoveryInput: { resumeId: "65cb765f0123456789abcdef" },
+    discoveryInputSchema: {
+      type: "object",
+      properties: {
+        resumeId: { type: "string", description: "Candidate resume ID" }
+      }
+    }
+  }),
   runCareerFit
 );
 
-// GET   /api/v1/resume/:resumeId/career-fit  — Get cached career fit data
-router.get("/:resumeId/career-fit", optionalAuthenticate, getCareerFit);
+// GET   /api/v1/resume/career-fit & /:resumeId/career-fit — Get cached career fit data
+router.get(["/career-fit", "/:resumeId/career-fit"], optionalAuthenticate, getCareerFit);
 
 // POST  /api/v1/resume/:resumeId/skill-gap   — Trigger skill gap analysis
 router.post("/:resumeId/skill-gap", optionalAuthenticate, runSkillGap);
