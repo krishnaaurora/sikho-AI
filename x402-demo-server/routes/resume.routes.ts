@@ -92,12 +92,12 @@ router.post(
   unlockResumePass
 );
 
-// POST  /api/v1/resume/quality & /:resumeId/quality — Trigger quality & ATS analysis (Paid $0.06)
+// POST  /api/v1/resume/quality & /:resumeId/quality — Trigger quality & ATS analysis (Paid $0.50)
 router.all(
   ["/quality", "/:resumeId/quality"],
   optionalAuthenticate,
   enforceWorkspacePayment({
-    priceUsd: 0.06,
+    priceUsd: 0.50,
     description: "ATS Quality & AI Resume Auto-Fix Pass",
     discoveryInput: { resumeId: "65cb765f0123456789abcdef" },
     discoveryInputSchema: {
@@ -113,12 +113,12 @@ router.all(
 // GET   /api/v1/resume/quality & /:resumeId/quality — Fetch analyzed quality metrics
 router.get(["/quality", "/:resumeId/quality"], optionalAuthenticate, getQualityAnalysis);
 
-// POST  /api/v1/resume/career-fit & /:resumeId/career-fit — Trigger career fit analysis (Paid $0.03)
+// POST  /api/v1/resume/career-fit & /:resumeId/career-fit — Trigger career fit analysis (Paid $0.50)
 router.all(
   ["/career-fit", "/:resumeId/career-fit"],
   optionalAuthenticate,
   enforceWorkspacePayment({
-    priceUsd: 0.03,
+    priceUsd: 0.50,
     description: "Resume Career Fit & Top Roles Pass",
     discoveryInput: { resumeId: "65cb765f0123456789abcdef" },
     discoveryInputSchema: {

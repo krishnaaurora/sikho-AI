@@ -11,11 +11,11 @@ import {
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// ─── 1. INTERVIEW QUESTIONS ($0.06 USDC) ────────────────────────────────────
+// ─── 1. INTERVIEW QUESTIONS ($0.50 USDC) ────────────────────────────────────
 router.all(
   "/interview-questions",
   enforceWorkspacePayment({
-    priceUsd: 0.06,
+    priceUsd: 0.50,
     description: "Sikho AI - High-Yield Technical Interview Questions Pass",
     discoveryInput: { role: "Software Engineer", experience: "Senior", gaps: "System Design, Caching" },
     discoveryInputSchema: {
@@ -30,11 +30,11 @@ router.all(
   getOrPostInterviewQuestions
 );
 
-// ─── 2. LEARNING PATH 3-MODULE BATCH ($0.09 USDC) ───────────────────────────
+// ─── 2. LEARNING PATH 3-MODULE BATCH ($0.50 USDC) ───────────────────────────
 router.all(
   "/learning-path",
   enforceWorkspacePayment({
-    priceUsd: 0.09,
+    priceUsd: 0.50,
     description: "Sikho AI - Learning Path 3-Module Batch Unlock",
     discoveryInput: { batch: 2, role: "Full Stack Software Engineer", modulesToUnlock: 3 },
     discoveryInputSchema: {
@@ -49,11 +49,11 @@ router.all(
   getOrPostLearningPathBatch
 );
 
-// ─── 3. STUDY RESOURCES ($0.06 USDC) ────────────────────────────────────────
+// ─── 3. STUDY RESOURCES ($0.50 USDC) ────────────────────────────────────────
 router.all(
   "/study-resources",
   enforceWorkspacePayment({
-    priceUsd: 0.06,
+    priceUsd: 0.50,
     description: "Sikho AI - Verified Architectural Study Resources Pass",
     discoveryInput: { topic: "System Design & Modern Backend Architecture" },
     discoveryInputSchema: {

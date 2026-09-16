@@ -49,16 +49,16 @@ export const getCourseById = async (req: Request, res: Response) => {};
 export const unlockChapterX402 = asyncHandler(async (req: Request, res: Response) => {
   const chapterId = String(req.query.chapterId || req.params.chapterId || "65cb765f0123456789abcdef");
 
-  // Look up the chapter to get the price (fallback to default 0.06 for GoPlausible indexer probe)
-  let chapterPrice = 0.06;
+  // Look up the chapter to get the price (fallback to default 0.50 for GoPlausible indexer probe)
+  let chapterPrice = 0.50;
   try {
     // @ts-ignore
     const chapter = await Chapter.findById(chapterId);
     if (chapter && typeof chapter.price === "number") {
-      chapterPrice = chapter.price;
+      chapterPrice = chapter.price || 0.50;
     }
   } catch {
-    chapterPrice = 0.06;
+    chapterPrice = 0.50;
   }
 
   const forwardedProto = String(req.headers["x-forwarded-proto"] || req.protocol || "http");
