@@ -655,7 +655,7 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
   }, [location.pathname]);
 
   // Gating & Pricing Model States (Phase 31)
-  const [atsAnalysisUnlocked, setAtsAnalysisUnlocked] = useState(false);
+  const [atsAnalysisUnlocked, setAtsAnalysisUnlocked] = useState(true);
   const [careerFitUnlocked, setCareerFitUnlocked] = useState(false);
   const [atsPaymentStep, setAtsPaymentStep] = useState<'402' | 'wallet' | 'verifying' | 'complete' | null>(null);
   const [careerFitPaymentStep, setCareerFitPaymentStep] = useState<'402' | 'wallet' | 'verifying' | 'complete' | null>(null);
@@ -2618,8 +2618,8 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
               {/* Nav Items */}
               <div className="space-y-1">
                 {([
-                  { id: 'quality',       emoji: '🎯', label: 'ATS Analysis',          step: 1, sublabel: atsAnalysisUnlocked ? 'Score & Audit' : '🔒 $0.03 USDC Pass', locked: !atsAnalysisUnlocked },
-                  { id: 'autofix',       emoji: '🤖', label: 'AI Auto-Fixed Resume',  step: 2, sublabel: atsAnalysisUnlocked ? 'ATS Optimized & PDF' : '🔒 $0.03 USDC Pass', locked: !atsAnalysisUnlocked },
+                  { id: 'quality',       emoji: '🎯', label: 'ATS Analysis',          step: 1, sublabel: 'Score & Audit', locked: false },
+                  { id: 'autofix',       emoji: '🤖', label: 'AI Auto-Fixed Resume',  step: 2, sublabel: 'ATS Optimized & Free PDF', locked: false },
                   { id: 'career',        emoji: '🧭', label: 'Career Fit',            step: 3, sublabel: careerFitUnlocked ? 'Top 5 matches' : '🔒 $0.03 USDC Pass', locked: !careerFitUnlocked },
                   { id: 'jobs',          emoji: '💼', label: 'Job Opportunities',     step: 4, sublabel: jobDiscoveryUnlocked ? 'Live jobs' : '🔒 $0.06 USDC Pass', locked: !jobDiscoveryUnlocked },
                 ] as const).map((item) => {
@@ -3221,7 +3221,7 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
                           <span className="text-xl">🤖</span>
                           <h3 className="text-base font-black text-white">AI Auto-Fixed ATS Resume</h3>
                           <span className="text-[9px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                            Included in $0.03 Pass
+                            Free Instant Download
                           </span>
                         </div>
                         <p className="text-xs text-slate-300 font-medium">
