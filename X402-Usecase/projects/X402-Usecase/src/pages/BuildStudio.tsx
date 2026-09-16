@@ -432,17 +432,21 @@ export const BuildStudio: React.FC = () => {
       try {
         const payloadData = (paymentPayload as any)?.payload;
         const pGroup = Array.isArray(payloadData?.paymentGroup) ? payloadData.paymentGroup : [];
-        const pIdx: number = typeof payloadData?.paymentIndex === 'number' ? payloadData.paymentIndex : 1;
-        if (pGroup[pIdx]) {
-          const rawStxn = pGroup[pIdx];
-          const stxnBytes = new Uint8Array(
-            (typeof rawStxn === 'string' ? atob(rawStxn) : '')
-              .split('')
-              .map((c) => c.charCodeAt(0))
-          );
-          const decodedStxn: any = algosdk.decodeSignedTransaction(stxnBytes);
-          if (decodedStxn?.txn) {
-            sikhoTxId = decodedStxn.txn.txID();
+        for (let i = 0; i < pGroup.length; i++) {
+          const rawStxn = pGroup[i];
+          if (rawStxn) {
+            try {
+              const stxnBytes = new Uint8Array(
+                (typeof rawStxn === 'string' ? atob(rawStxn) : '')
+                  .split('')
+                  .map((c) => c.charCodeAt(0))
+              );
+              const decodedStxn: any = algosdk.decodeSignedTransaction(stxnBytes);
+              if (decodedStxn?.txn) {
+                sikhoTxId = decodedStxn.txn.txID();
+                break;
+              }
+            } catch (_) {}
           }
         }
       } catch (_) {}
@@ -746,17 +750,21 @@ export const BuildStudio: React.FC = () => {
       try {
         const payloadData = (paymentPayload as any)?.payload;
         const pGroup = Array.isArray(payloadData?.paymentGroup) ? payloadData.paymentGroup : [];
-        const pIdx: number = typeof payloadData?.paymentIndex === 'number' ? payloadData.paymentIndex : 1;
-        if (pGroup[pIdx]) {
-          const rawStxn = pGroup[pIdx];
-          const stxnBytes = new Uint8Array(
-            (typeof rawStxn === 'string' ? atob(rawStxn) : '')
-              .split('')
-              .map((c) => c.charCodeAt(0))
-          );
-          const decodedStxn: any = algosdk.decodeSignedTransaction(stxnBytes);
-          if (decodedStxn?.txn) {
-            prismTxId = decodedStxn.txn.txID();
+        for (let i = 0; i < pGroup.length; i++) {
+          const rawStxn = pGroup[i];
+          if (rawStxn) {
+            try {
+              const stxnBytes = new Uint8Array(
+                (typeof rawStxn === 'string' ? atob(rawStxn) : '')
+                  .split('')
+                  .map((c) => c.charCodeAt(0))
+              );
+              const decodedStxn: any = algosdk.decodeSignedTransaction(stxnBytes);
+              if (decodedStxn?.txn) {
+                prismTxId = decodedStxn.txn.txID();
+                break;
+              }
+            } catch (_) {}
           }
         }
       } catch (_) { }
