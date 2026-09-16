@@ -79,13 +79,13 @@ const ENDPOINTS: EndpointTarget[] = [
     method: "POST",
     path: "/api/v1/services/github-review/sikho-x402",
     body: { repoUrl: "https://github.com/algorandfoundation/algokit-utils-ts" },
-    priceUsd: 0.30,
+    priceUsd: 0.05,
   },
   {
     name: "Git Repo Analyser & Code Review (GET)",
     method: "GET",
     path: "/api/v1/services/github-review/sikho-x402",
-    priceUsd: 0.30,
+    priceUsd: 0.05,
   }
 ];
 

@@ -283,14 +283,14 @@ export const BuildStudio: React.FC = () => {
           error: 'Payment required',
           resource: {
             url: `https://sikho-ai.onrender.com/api/v1/services/github-review/sikho-x402`,
-            description: `Sikho AI platform fee ($0.30 USDC) for reviewing ${file.filePath}`,
+            description: `Sikho AI platform fee ($0.05 USDC) for reviewing ${file.filePath}`,
             mimeType: 'application/json',
           },
           accepts: [
             {
               scheme: 'exact',
               network: targetNetwork,
-              amount: '300000',
+              amount: '50000',
               asset: String(targetAsset),
               payTo: sikhoPayTo,
               maxTimeoutSeconds: 300,

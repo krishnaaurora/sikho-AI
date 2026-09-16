@@ -172,14 +172,14 @@ export const handleGitRepoAnalyserEndpoint = asyncHandler(async (req: Request, r
     error: "Payment required",
     resource: {
       url: requestUrl,
-      description: "Git Repo Analyser: Multi-file GitHub repository discovery, vulnerability audit, security scanning, and code review.",
+      description: "Git Repo Analyser: Sikho AI platform fee ($0.05 USDC) for multi-file repository audit and code review coordination.",
       mimeType: "application/json",
     },
     accepts: [
       {
         scheme: "exact",
         network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
-        amount: "300000",
+        amount: "50000",
         asset: "31566704",
         payTo: treasuryAddress,
         maxTimeoutSeconds: 300,
