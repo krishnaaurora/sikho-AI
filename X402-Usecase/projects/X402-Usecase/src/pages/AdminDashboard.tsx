@@ -5,7 +5,7 @@ import { useSnackbar } from 'notistack';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, PieChart, Pie, Cell, Legend
+  BarChart, Bar, PieChart, Pie, Cell, Legend, LabelList
 } from 'recharts';
 import {
   LayoutDashboard, Users, CreditCard, BarChart3, Settings, LogOut,
@@ -450,24 +450,36 @@ const AdminDashboard: React.FC = () => {
 
                 {/* Chart 2: Payment & Revenue Trends */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center justify-between mb-4">
                     <div>
                       <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                         <CreditCard className="w-4 h-4 text-emerald-600" /> Revenue Trends (USDC)
                       </h3>
-                      <p className="text-xs text-slate-500">Completed USDC payment amounts over time</p>
+                      <p className="text-xs text-slate-500">Daily USDC revenue breakdown over the last 7 days</p>
                     </div>
                   </div>
                   <div className="h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={overviewData.charts?.paymentTrends || []}>
+                      <BarChart data={overviewData.charts?.paymentTrends || []} margin={{ top: 20, right: 10, left: -10, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
                         <YAxis stroke="#64748b" fontSize={11} />
                         <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', fontSize: '12px', color: '#0f172a' }} />
-                        <Bar dataKey="revenue" fill="#10b981" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="revenue" fill="#10b981" radius={[6, 6, 0, 0]}>
+                          <LabelList dataKey="revenue" position="top" formatter={(val: any) => `$${val}`} style={{ fontSize: '11px', fontWeight: 'bold', fill: '#059669' }} />
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
+                  </div>
+
+                  {/* Always Visible Daily Revenue Breakdown List Below Chart */}
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-1.5 overflow-x-auto">
+                    {(overviewData.charts?.paymentTrends || []).map((item: any, idx: number) => (
+                      <div key={idx} className="bg-emerald-50/70 border border-emerald-200/60 rounded-xl px-2.5 py-1.5 text-center flex-1 min-w-[65px]">
+                        <p className="text-[10px] text-slate-500 font-semibold">{item.date}</p>
+                        <p className="text-xs font-extrabold text-emerald-700">${item.revenue} <span className="text-[9px] font-medium text-slate-400">USDC</span></p>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
