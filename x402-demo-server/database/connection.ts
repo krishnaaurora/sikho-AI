@@ -52,20 +52,36 @@ export const connectToDatabase = async () => {
 };
 
 async function seedDatabase() {
-  const adminEmail = "admin@sikhaoai.com";
   const User = Models.User;
-  const admin = await User.findOne({ email: adminEmail });
+  
+  // 1. Ensure admin@gmail.com is created
+  const targetAdminEmail = "admin@gmail.com";
+  let admin = await User.findOne({ email: targetAdminEmail });
   if (!admin) {
-    logger.info("Admin user not found. Seeding admin user...");
-    await User.create({
+    logger.info("Admin user (admin@gmail.com) not found. Seeding admin user...");
+    admin = await User.create({
       fullName: "SikhoAI Admin",
-      email: adminEmail,
+      email: targetAdminEmail,
+      password: "Admin123",
+      role: UserRole.ADMIN,
+      isVerified: true,
+      isActive: true,
+    });
+    logger.info("Admin user (admin@gmail.com) seeded successfully!");
+  }
+
+  // Backup admin email check
+  const fallbackAdminEmail = "admin@sikhaoai.com";
+  const fallbackAdmin = await User.findOne({ email: fallbackAdminEmail });
+  if (!fallbackAdmin) {
+    await User.create({
+      fullName: "SikhoAI Admin Backup",
+      email: fallbackAdminEmail,
       password: "Admin123!",
       role: UserRole.ADMIN,
       isVerified: true,
       isActive: true,
     });
-    logger.info("Admin user seeded successfully!");
   }
 
   const Category = Models.Category;
@@ -92,7 +108,7 @@ async function seedDatabase() {
       description: "Decentralized applications and smart contracts",
     });
 
-    const adminUser = await User.findOne({ email: adminEmail });
+    const adminUser = await User.findOne({ email: targetAdminEmail });
     if (adminUser) {
       logger.info("Seeding initial mock courses and lessons...");
       
@@ -295,8 +311,84 @@ async function seedDatabase() {
         quizAttempts: 21,
         learningHours: 110,
       });
+
+      // Seed AppUsageEvent telemetries for the 7 Sikho AI applications
+      const AppUsageEvent = Models.AppUsageEvent;
+      const AppTypes = [
+        "Learn Anything",
+        "Resume Intelligence",
+        "Career Roadmap",
+        "Interview Mission",
+        "GitHub Review",
+        "Job Intelligence",
+        "Career Consultant",
+      ];
+
+      const sampleUsers = [student1, student2];
+      for (const app of AppTypes) {
+        // Create 10 to 30 events per application
+        const count = Math.floor(Math.random() * 20) + 15;
+        for (let i = 0; i < count; i++) {
+          const u = sampleUsers[i % sampleUsers.length];
+          const isPaid = app === "GitHub Review" || app === "Learn Anything";
+          const paymentAmount = isPaid ? (app === "GitHub Review" ? 0.25 : 15.0) : 0;
+
+          await AppUsageEvent.create({
+            userId: (u as any)._id,
+            userName: u.fullName,
+            userEmail: u.email,
+            appName: app as any,
+            featureName: `${app} Analysis Session`,
+            isPaid,
+            paymentAmount,
+            currency: "USDC",
+            timestamp: new Date(Date.now() - Math.floor(Math.random() * 14 * 24 * 60 * 60 * 1000)),
+          });
+        }
+      }
+
+      // Seed Platform Fee Split Transactions for GitHub Review
+      const PlatformFeeTransaction = Models.PlatformFeeTransaction;
+      await PlatformFeeTransaction.create({
+        feeTransactionId: "FEE_SIKHO_001_TX",
+        reviewId: "REV_GH_88102",
+        fileId: "FILE_001",
+        filePath: "src/services/auth.ts",
+        amount: 50000, // $0.05 USDC (50,000 micro-USDC)
+        currency: "USDC",
+        assetId: "31566704",
+        network: "Algorand MainNet",
+        purpose: "github_code_review_platform_fee",
+        status: "completed",
+        timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      });
+
+      await PlatformFeeTransaction.create({
+        feeTransactionId: "FEE_SIKHO_002_TX",
+        reviewId: "REV_GH_88102",
+        fileId: "FILE_002",
+        filePath: "src/controllers/admin.controller.ts",
+        amount: 50000, // $0.05 USDC
+        currency: "USDC",
+        assetId: "31566704",
+        network: "Algorand MainNet",
+        purpose: "github_code_review_platform_fee",
+        status: "completed",
+        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      });
+
+      // Seed Admin Activity Log
+      const AdminLog = Models.AdminLog;
+      await AdminLog.create({
+        adminEmail: targetAdminEmail,
+        action: "ADMIN_LOGIN",
+        target: "Admin Dashboard",
+        details: "Authenticated via secure route admin@gmail.com",
+        ipAddress: "127.0.0.1",
+        timestamp: new Date(),
+      });
       
       logger.info("Mock database seeding completed!");
     }
   }
-}
+}

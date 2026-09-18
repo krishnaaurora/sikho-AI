@@ -45,4 +45,8 @@ export { default as RepositoryFileReview } from "./RepositoryFileReview.model";
 export * from "./RepositoryFileReview.model";
 export { default as PlatformFeeTransaction } from "./PlatformFeeTransaction.model";
 export * from "./PlatformFeeTransaction.model";
+export { default as AdminLog } from "./AdminLog.model";
+export * from "./AdminLog.model";
+export { default as AppUsageEvent } from "./AppUsageEvent.model";
+export * from "./AppUsageEvent.model";
 

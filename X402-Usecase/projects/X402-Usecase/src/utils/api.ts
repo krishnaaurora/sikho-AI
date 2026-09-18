@@ -264,14 +264,61 @@ export const learnerApi = {
 };
 
 export const adminApi = {
+  async getOverview() {
+    return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/overview`);
+  },
   async getStats() {
     return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/stats`);
   },
-  async getTransactions() {
-    return fetchAPI<ApiResponse<any[]>>(`${API_BASE_URL}/admin/transactions`);
+  async getTransactions(params?: { status?: string; feature?: string; search?: string }) {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.feature) queryParams.append('feature', params.feature);
+    if (params?.search) queryParams.append('search', params.search);
+    const qs = queryParams.toString() ? `?${queryParams}` : '';
+    return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/payments${qs}`);
   },
-  async getUsers() {
-    return fetchAPI<ApiResponse<any[]>>(`${API_BASE_URL}/admin/users`);
+  async getPayments(params?: { status?: string; feature?: string; search?: string }) {
+    return this.getTransactions(params);
+  },
+  async getUsers(params?: { search?: string; status?: string; page?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.page) queryParams.append('page', String(params.page));
+    const qs = queryParams.toString() ? `?${queryParams}` : '';
+    return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/users${qs}`);
+  },
+  async getUserDetails(userId: string) {
+    return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/users/${userId}/details`);
+  },
+  async getAppAnalytics(range: string = '30d') {
+    return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/app-analytics?range=${range}`);
+  },
+  async getActivityLogs() {
+    return fetchAPI<ApiResponse<any[]>>(`${API_BASE_URL}/admin/activity-logs`);
+  },
+  async createActivityLog(data: { action: string; target?: string; details?: string }) {
+    return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/activity-logs`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  async downloadCsv(type: 'users' | 'payments' | 'app-usage') {
+    const activeToken = localStorage.getItem('accessToken') || localStorage.getItem('token');
+    const res = await fetch(`${API_BASE_URL}/admin/export-csv?type=${type}`, {
+      headers: {
+        Authorization: `Bearer ${activeToken}`,
+      },
+    });
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sikho_${type}_report.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   },
   async addCourse(data: { title: string; description?: string; level?: string; price: number; categoryName?: string }) {
     return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/courses`, {

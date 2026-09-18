@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { adminApi, analyticsApi } from '../utils/api';
+import { adminApi } from '../utils/api';
 import { useSnackbar } from 'notistack';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -8,652 +8,1110 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import {
-  Users, BookOpen, CreditCard, TrendingUp, Cpu, Award, Zap, Activity, Clock,
-  CheckCircle, HelpCircle, FileText, Plus, Search, ArrowUpRight, ShieldAlert,
-  UserCheck, Layers, Sparkles, Filter, ChevronRight, X, List, DollarSign
+  LayoutDashboard, Users, CreditCard, BarChart3, Settings, LogOut,
+  TrendingUp, Activity, CheckCircle2, Clock, AlertCircle, Search,
+  Download, Filter, ChevronRight, Shield, ShieldCheck, FileSpreadsheet,
+  ExternalLink, Sparkles, BookOpen, Code2, Briefcase, FileText, Target,
+  MessageSquare, UserCheck, Eye, EyeOff, RefreshCw, X, DollarSign, Layers
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 
-// Color palette for charts
-const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
+// Color Palette for Charts & Badges
+const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#3b82f6'];
+
+const APP_ICONS: Record<string, any> = {
+  'Learn Anything': BookOpen,
+  'Resume Intelligence': FileText,
+  'Career Roadmap': Target,
+  'Interview Mission': MessageSquare,
+  'GitHub Review': Code2,
+  'Job Intelligence': Briefcase,
+  'Career Consultant': Sparkles,
+};
 
 const AdminDashboard: React.FC = () => {
   const { logout, user } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
 
-  // Core Data State
-  const [stats, setStats] = useState<any>({
-    totalUsers: 0,
-    activeUsers: 0,
-    totalCourses: 0,
-    totalLessons: 0,
-    totalPurchases: 0,
-    totalRevenue: 0,
-    aiRequestsToday: 0,
-    x402Transactions: 0,
-  });
+  // Active Navigation Tab
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'payments' | 'apps' | 'settings'>('overview');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  const [analytics, setAnalytics] = useState<any>({
-    trends: {
-      revenue7D: [],
-      revenue30D: [],
-      revenue12M: [],
-      revenueByCourse: [],
-      revenueByLesson: [],
-    },
-    users: {
-      totalUsers: 0,
-      newUsersLast7D: 0,
-      returningUsers: 0,
-      dailyActiveUsers: [],
-    },
-    courses: {
-      popularCourses: [],
-      popularLessons: [],
-    },
-    ai: {
-      totalAiChats: 0,
-      aiRequestsToday: 0,
-      avgResponseTime: 1.5,
-      mostAskedTopics: [],
-    },
-    recentActivity: {
-      latestRegistrations: [],
-      latestPurchases: [],
-      latestCourseCompletions: [],
-      latestAIConversations: [],
-    },
-  });
-
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [userList, setUserList] = useState<any[]>([]);
+  // Data Loading & Refresh States
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // UI Tabs & Filters
-  const [activeRevenueTab, setActiveRevenueTab] = useState<'7D' | '30D' | '12M'>('7D');
-  const [transactionSearch, setTransactionSearch] = useState('');
-  const [activeSection, setActiveSection] = useState<'transactions' | 'users' | 'income'>('transactions');
-
-  // Quick Action Modal States
-  const [activeModal, setActiveModal] = useState<
-    'addCourse' | 'addLesson' | 'createQuiz' | 'uploadResources' | 'viewUsers' | 'viewTransactions' | null
-  >(null);
-
-  // Quick Action Forms
-  const [courseForm, setCourseForm] = useState({
-    title: '',
-    description: '',
-    level: 'beginner',
-    price: 10,
-    categoryName: 'Blockchain',
+  // Overview Data
+  const [overviewData, setOverviewData] = useState<any>({
+    summary: {
+      totalRegisteredUsers: 0,
+      dailyActiveUsers: 0,
+      monthlyActiveUsers: 0,
+      totalSuccessfulPayments: 0,
+      totalRevenueUSDC: 0,
+      mostUsedApp: 'Learn Anything',
+      totalAiFeatureUsage: 0,
+    },
+    charts: {
+      userGrowth: [],
+      paymentTrends: [],
+      appUsageDistribution: [],
+    },
+    keyAnswers: {
+      q1: { question: '', answer: '' },
+      q2: { question: '', answer: '' },
+      q3: { question: '', answer: '' },
+    },
   });
 
-  const [lessonForm, setLessonForm] = useState({
-    courseId: '',
-    title: '',
-    content: '',
-    duration: 15,
+  // Users State & Profile Slide-over
+  const [usersList, setUsersList] = useState<any[]>([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [selectedUserDetails, setSelectedUserDetails] = useState<any | null>(null);
+  const [loadingUserDetails, setLoadingUserDetails] = useState(false);
+
+  // Payments State
+  const [paymentsData, setPaymentsData] = useState<any>({
+    ledger: [],
+    totals: {
+      verifiedTotal: 0,
+      pendingTotal: 0,
+      failedTotal: 0,
+      sikhoGithubFeeTotal: 0,
+      prismGithubFeeTotal: 0,
+      payPerChapterTotal: 0,
+    },
+    githubSplitDetails: [],
   });
+  const [paymentStatusTab, setPaymentStatusTab] = useState<'all' | 'successful' | 'pending' | 'failed'>('all');
+  const [paymentFeatureFilter, setPaymentFeatureFilter] = useState('all');
+  const [paymentSearch, setPaymentSearch] = useState('');
 
-  const [quizForm, setQuizForm] = useState({
-    lessonId: '',
-    title: '',
-    questions: [
-      {
-        questionText: '',
-        options: ['', '', '', ''],
-        correctAnswerIndex: 0,
-      },
-    ],
+  // Application Usage Analytics State
+  const [appAnalyticsData, setAppAnalyticsData] = useState<any>({
+    applications: [],
+    rankedChart: [],
   });
+  const [analyticsDateRange, setAnalyticsDateRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
 
-  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  // Settings & Activity Logs State
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [maskSensitiveData, setMaskSensitiveData] = useState(false);
 
-  // Fetch Dashboard Data
-  const fetchData = async () => {
+  // Initial Fetch Data
+  const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const statsRes = await adminApi.getStats();
-      if (statsRes.success) setStats(statsRes.data);
+      // 1. Overview
+      const overviewRes = await adminApi.getOverview();
+      if (overviewRes.success) {
+        setOverviewData(overviewRes.data);
+      }
 
-      const analyticsRes = await analyticsApi.getOverview();
-      if (analyticsRes.success) setAnalytics(analyticsRes.data);
-
-      const transRes = await adminApi.getTransactions();
-      if (transRes.success) setTransactions(transRes.data);
-
+      // 2. Users
       const usersRes = await adminApi.getUsers();
-      if (usersRes.success) setUserList(usersRes.data);
+      if (usersRes.success) {
+        setUsersList(usersRes.data.users || []);
+      }
+
+      // 3. Payments
+      const paymentsRes = await adminApi.getPayments();
+      if (paymentsRes.success) {
+        setPaymentsData(paymentsRes.data);
+      }
+
+      // 4. App Analytics
+      const appsRes = await adminApi.getAppAnalytics(analyticsDateRange);
+      if (appsRes.success) {
+        setAppAnalyticsData(appsRes.data);
+      }
+
+      // 5. Activity Logs
+      const logsRes = await adminApi.getActivityLogs();
+      if (logsRes.success) {
+        setActivityLogs(logsRes.data || []);
+      }
     } catch (err: any) {
       console.error(err);
-      enqueueSnackbar('Failed to fetch admin metrics', { variant: 'error' });
+      enqueueSnackbar(err.message || 'Failed to fetch admin metrics', { variant: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
-    const handleRefresh = () => {
-      fetchData();
-    };
-    window.addEventListener('refresh-admin-logs', handleRefresh);
-    return () => {
-      window.removeEventListener('refresh-admin-logs', handleRefresh);
-    };
-  }, []);
+    loadDashboardData();
+  }, [analyticsDateRange]);
 
-  // Handlers
-  const handleAddCourse = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleManualRefresh = async () => {
+    setRefreshing(true);
+    await loadDashboardData();
+    setRefreshing(false);
+    enqueueSnackbar('Dashboard refreshed with latest real-time data', { variant: 'success' });
+  };
+
+  // Fetch individual user details when clicking a user row
+  const handleSelectUser = async (u: any) => {
+    setSelectedUser(u);
+    setLoadingUserDetails(true);
     try {
-      const res = await adminApi.addCourse(courseForm);
+      const res = await adminApi.getUserDetails(u._id);
       if (res.success) {
-        enqueueSnackbar('Course added successfully!', { variant: 'success' });
-        setActiveModal(null);
-        setCourseForm({ title: '', description: '', level: 'beginner', price: 10, categoryName: 'Blockchain' });
-        fetchData();
+        setSelectedUserDetails(res.data);
       }
     } catch (err: any) {
-      enqueueSnackbar(err.message || 'Failed to add course', { variant: 'error' });
+      enqueueSnackbar('Failed to load user profile details', { variant: 'error' });
+    } finally {
+      setLoadingUserDetails(false);
     }
   };
 
-  const handleAddLesson = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await adminApi.addLesson(lessonForm);
-      if (res.success) {
-        enqueueSnackbar('Lesson added successfully!', { variant: 'success' });
-        setActiveModal(null);
-        setLessonForm({ courseId: '', title: '', content: '', duration: 15 });
-        fetchData();
-      }
-    } catch (err: any) {
-      enqueueSnackbar(err.message || 'Failed to add lesson', { variant: 'error' });
-    }
-  };
-
-  const handleCreateQuiz = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await adminApi.createQuiz(quizForm);
-      if (res.success) {
-        enqueueSnackbar('Quiz created successfully!', { variant: 'success' });
-        setActiveModal(null);
-        setQuizForm({
-          lessonId: '',
-          title: '',
-          questions: [{ questionText: '', options: ['', '', '', ''], correctAnswerIndex: 0 }],
-        });
-        fetchData();
-      }
-    } catch (err: any) {
-      enqueueSnackbar(err.message || 'Failed to create quiz', { variant: 'error' });
-    }
-  };
-
-  const handleUploadResources = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fileToUpload) {
-      enqueueSnackbar('Please select a file to upload', { variant: 'warning' });
-      return;
-    }
-    enqueueSnackbar(`Successfully uploaded ${fileToUpload.name}!`, { variant: 'success' });
-    setActiveModal(null);
-    setFileToUpload(null);
-  };
-
-  const learnersOnly = userList.filter((u) => u.role !== 'admin');
-  const completedTransactions = transactions.filter((t) => t.paymentStatus === 'completed' || t.purchaseStatus === 'completed');
-  const calculatedIncome = completedTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
-
-  const filteredTransactions = transactions.filter((t) => {
-    const term = transactionSearch.toLowerCase();
-    const userMatch = t.userId?.fullName?.toLowerCase().includes(term) || t.userId?.email?.toLowerCase().includes(term);
-    const courseMatch = t.courseId?.title?.toLowerCase().includes(term);
-    const hashMatch = t.transactionHash?.toLowerCase().includes(term);
-    return userMatch || courseMatch || hashMatch;
+  // Filtered Users Table
+  const filteredUsers = usersList.filter((u) => {
+    const matchesSearch =
+      u.fullName?.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u._id?.toLowerCase().includes(userSearch.toLowerCase());
+    const matchesStatus =
+      userStatusFilter === 'all'
+        ? true
+        : userStatusFilter === 'active'
+        ? u.isActive
+        : !u.isActive;
+    return matchesSearch && matchesStatus;
   });
 
+  // Filtered Payments Table
+  const filteredPayments = (paymentsData.ledger || []).filter((p: any) => {
+    const matchesStatus =
+      paymentStatusTab === 'all'
+        ? true
+        : paymentStatusTab === 'successful'
+        ? p.status === 'successful' || p.status === 'completed'
+        : p.status === paymentStatusTab;
+    const matchesFeature =
+      paymentFeatureFilter === 'all'
+        ? true
+        : p.featureUsed?.toLowerCase().includes(paymentFeatureFilter.toLowerCase());
+    const matchesSearch =
+      p.userName?.toLowerCase().includes(paymentSearch.toLowerCase()) ||
+      p.userEmail?.toLowerCase().includes(paymentSearch.toLowerCase()) ||
+      p.transactionId?.toLowerCase().includes(paymentSearch.toLowerCase()) ||
+      p.featureUsed?.toLowerCase().includes(paymentSearch.toLowerCase());
+    return matchesStatus && matchesFeature && matchesSearch;
+  });
+
+  // CSV Export Handler
+  const handleExportCsv = async (type: 'users' | 'payments' | 'app-usage') => {
+    try {
+      await adminApi.downloadCsv(type);
+      enqueueSnackbar(`Successfully exported ${type} report to CSV`, { variant: 'success' });
+      await adminApi.createActivityLog({
+        action: 'EXPORT_CSV_REPORT',
+        target: type,
+        details: `Exported ${type} report to CSV`,
+      });
+    } catch (err: any) {
+      enqueueSnackbar('Failed to export CSV report', { variant: 'error' });
+    }
+  };
+
+  // Helper for masking email/wallet if Sensitive PDI toggle is active
+  const maskText = (text: string, isEmail = false) => {
+    if (!maskSensitiveData || !text || text === 'N/A') return text;
+    if (isEmail) {
+      const parts = text.split('@');
+      if (parts.length === 2) {
+        return `${parts[0].substring(0, 2)}***@${parts[1]}`;
+      }
+    }
+    return `${text.substring(0, 4)}...${text.substring(text.length - 4)}`;
+  };
+
   return (
-    <div className="pt-24 min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex transition-colors font-sans antialiased">
 
-        {/* Top Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'Total Learners', val: learnersOnly.length, icon: Users, color: 'text-indigo-500 bg-indigo-500/10' },
-            { label: 'Total Income', val: `$${calculatedIncome}`, icon: DollarSign, color: 'text-green-500 bg-green-500/10' },
-            { label: 'Total Courses', val: stats.totalCourses, icon: BookOpen, color: 'text-amber-500 bg-amber-500/10' },
-            { label: 'Completed Purchases', val: completedTransactions.length, icon: CreditCard, color: 'text-rose-500 bg-rose-500/10' },
-          ].map((item, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-850 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-550 dark:text-slate-400 uppercase tracking-wider">
-                  {item.label}
-                </span>
-                <span className={`p-2 rounded-xl ${item.color}`}>
-                  <item.icon className="w-4 h-4" />
-                </span>
-              </div>
-              <div className="mt-4">
-                <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                  {item.val}
-                </span>
-              </div>
-            </motion.div>
-          ))}
+      {/* SIDEBAR (Desktop Dark Navy) */}
+      <aside className="hidden lg:flex lg:flex-col w-64 bg-slate-900 border-r border-slate-800/80 flex-shrink-0 z-30">
+        
+        {/* Brand Header */}
+        <div className="p-6 flex items-center gap-3 border-b border-slate-800/60">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <Sparkles className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="font-bold text-base text-white tracking-tight leading-none">Sikho AI</h1>
+            <span className="text-[11px] font-medium text-indigo-400 tracking-wider uppercase">Admin Dashboard</span>
+          </div>
         </div>
 
-        {/* Section Navigation Tabs */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 mb-8 gap-2 overflow-x-auto pb-1">
+        {/* Sidebar Navigation */}
+        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
           {[
-            { id: 'transactions', label: 'Transactions', icon: List },
-            { id: 'users', label: 'Users', icon: Users },
-            { id: 'income', label: 'Income', icon: DollarSign },
-          ].map((sec) => (
+            { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+            { id: 'users', label: 'User Management', icon: Users },
+            { id: 'payments', label: 'Payments', icon: CreditCard },
+            { id: 'apps', label: 'Application Usage', icon: BarChart3 },
+            { id: 'settings', label: 'Settings & Security', icon: Settings },
+          ].map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id as any)}
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all ${
+                  isActive
+                    ? 'bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-400' : 'text-slate-400'}`} />
+                <span>{item.label}</span>
+                {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto text-indigo-400" />}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Sidebar Footer Admin Profile & Logout */}
+        <div className="p-4 border-t border-slate-800/80 bg-slate-900/50">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs border border-indigo-500/30">
+              A
+            </div>
+            <div className="overflow-hidden">
+              <p className="text-xs font-bold text-white truncate">Admin Account</p>
+              <p className="text-[10px] text-slate-400 truncate">{maskText(user?.email || 'admin@gmail.com', true)}</p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            onClick={logout}
+            className="w-full justify-start text-xs border-slate-800 text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 py-2 h-auto"
+          >
+            <LogOut className="w-3.5 h-3.5 mr-2" />
+            Sign Out
+          </Button>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950">
+
+        {/* Top Header Bar */}
+        <header className="h-16 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20">
+          <div className="flex items-center gap-3">
             <button
-              key={sec.id}
-              onClick={() => setActiveSection(sec.id as any)}
-              className={`flex items-center gap-2.5 px-4 py-3 border-b-2 font-bold text-sm whitespace-nowrap transition-all ${
-                activeSection === sec.id
-                  ? 'border-indigo-500 text-indigo-650 dark:text-indigo-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
+              onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+              className="lg:hidden p-2 text-slate-400 hover:text-white rounded-lg"
             >
-              <sec.icon className="w-4 h-4" />
-              {sec.label}
+              <LayoutDashboard className="w-5 h-5" />
             </button>
-          ))}
-        </div>
+            <h2 className="text-base font-bold text-white capitalize tracking-tight flex items-center gap-2">
+              {activeTab === 'overview' && 'Dashboard Overview'}
+              {activeTab === 'users' && 'User Management & Profiles'}
+              {activeTab === 'payments' && 'Payments & Fee Split Ledger'}
+              {activeTab === 'apps' && 'Application Usage Analytics'}
+              {activeTab === 'settings' && 'Admin Settings & Access Controls'}
+            </h2>
+          </div>
 
-        {/* Main Content Panels */}
-        <div className="grid grid-cols-1 gap-8">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleManualRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-xl text-xs font-medium transition-all"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-indigo-400' : ''}`} />
+              <span className="hidden sm:inline">Refresh Data</span>
+            </button>
 
-          {/* TRANSACTIONS PANEL */}
-          {activeSection === 'transactions' && (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-850 p-6 shadow-sm">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">Recent Purchases & Ledger Transactions</h2>
-                  <p className="text-xs text-slate-500 mt-1">Real-time details of who paid for which course and how much they paid</p>
+            {/* Quick Export CSV Button */}
+            <button
+              onClick={() => handleExportCsv(activeTab === 'users' ? 'users' : activeTab === 'payments' ? 'payments' : 'app-usage')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Export CSV</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Main Body View Scrollable */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8">
+
+          {/* 1. OVERVIEW TAB */}
+          {activeTab === 'overview' && (
+            <div className="space-y-8">
+
+              {/* EXECUTIVE CALLOUT BANNER - Immediate 3 Questions Answered */}
+              <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-900 border border-indigo-500/30 rounded-3xl p-6 shadow-xl relative overflow-hidden">
+                <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="flex items-center gap-2 text-xs font-bold text-indigo-400 uppercase tracking-wider mb-4">
+                  <ShieldCheck className="w-4 h-4 text-indigo-400" /> Executive Highlights & Core Questions Answered
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Q1 */}
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 backdrop-blur-sm flex flex-col justify-between">
+                    <div>
+                      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">1. User Volume</p>
+                      <p className="text-sm font-bold text-white mt-1">{overviewData.keyAnswers?.q1?.question || 'How many users are using Sikho AI?'}</p>
+                    </div>
+                    <p className="text-xs text-indigo-300 font-medium mt-3 bg-indigo-500/10 p-2.5 rounded-xl border border-indigo-500/20">
+                      {overviewData.keyAnswers?.q1?.answer || `${overviewData.summary?.totalRegisteredUsers} total registered learners.`}
+                    </p>
+                  </div>
+
+                  {/* Q2 */}
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 backdrop-blur-sm flex flex-col justify-between">
+                    <div>
+                      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">2. Payment & Feature Breakdown</p>
+                      <p className="text-sm font-bold text-white mt-1">{overviewData.keyAnswers?.q2?.question || 'Who is paying and for which feature?'}</p>
+                    </div>
+                    <p className="text-xs text-emerald-300 font-medium mt-3 bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20">
+                      {overviewData.keyAnswers?.q2?.answer || `$${overviewData.summary?.totalRevenueUSDC} USDC received.`}
+                    </p>
+                  </div>
+
+                  {/* Q3 */}
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 backdrop-blur-sm flex flex-col justify-between">
+                    <div>
+                      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">3. Top Application Usage</p>
+                      <p className="text-sm font-bold text-white mt-1">{overviewData.keyAnswers?.q3?.question || 'Which applications are used most?'}</p>
+                    </div>
+                    <p className="text-xs text-amber-300 font-medium mt-3 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20">
+                      {overviewData.keyAnswers?.q3?.answer || `"${overviewData.summary?.mostUsedApp}" is the top used application.`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 6 Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                {[
+                  { label: 'Total Registered Users', val: overviewData.summary?.totalRegisteredUsers, icon: Users, color: 'text-indigo-400 bg-indigo-500/10' },
+                  { label: 'Daily / Monthly Active', val: `${overviewData.summary?.dailyActiveUsers} DAU / ${overviewData.summary?.monthlyActiveUsers} MAU`, icon: Activity, color: 'text-sky-400 bg-sky-500/10' },
+                  { label: 'Successful Payments', val: overviewData.summary?.totalSuccessfulPayments, icon: CheckCircle2, color: 'text-emerald-400 bg-emerald-500/10' },
+                  { label: 'Total Revenue (USDC)', val: `$${(overviewData.summary?.totalRevenueUSDC || 0).toFixed(2)}`, icon: DollarSign, color: 'text-green-400 bg-green-500/10' },
+                  { label: 'Most-Used Application', val: overviewData.summary?.mostUsedApp, icon: Sparkles, color: 'text-amber-400 bg-amber-500/10' },
+                  { label: 'Total AI Feature Usage', val: overviewData.summary?.totalAiFeatureUsage, icon: Layers, color: 'text-purple-400 bg-purple-500/10' },
+                ].map((card, idx) => {
+                  const Icon = card.icon;
+                  return (
+                    <div key={idx} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between hover:border-slate-700 transition-all">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">{card.label}</span>
+                        <span className={`p-2 rounded-xl ${card.color}`}>
+                          <Icon className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
+                      <div className="mt-3">
+                        <span className="text-lg font-extrabold text-white tracking-tight">{card.val}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Interactive Charts Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                {/* Chart 1: User Growth */}
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-indigo-400" /> User Growth Trend
+                      </h3>
+                      <p className="text-xs text-slate-400">Cumulative registered learners over the last 7 days</p>
+                    </div>
+                  </div>
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={overviewData.charts?.userGrowth || []}>
+                        <defs>
+                          <linearGradient id="userGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
+                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                        <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
+                        <YAxis stroke="#64748b" fontSize={11} />
+                        <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }} />
+                        <Area type="monotone" dataKey="totalUsers" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#userGrad)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Chart 2: Payment & Revenue Trends */}
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-emerald-400" /> Revenue Trends (USDC)
+                      </h3>
+                      <p className="text-xs text-slate-400">Completed USDC payment amounts over time</p>
+                    </div>
+                  </div>
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={overviewData.charts?.paymentTrends || []}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                        <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
+                        <YAxis stroke="#64748b" fontSize={11} />
+                        <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }} />
+                        <Bar dataKey="revenue" fill="#10b981" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Application Usage Distribution Donut Chart */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-amber-400" /> Application Usage Distribution Across Sikho AI
+                </h3>
+                <p className="text-xs text-slate-400 mb-6">Proportion of usage events across the 7 Sikho AI applications</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={overviewData.charts?.appUsageDistribution || []}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={85}
+                          paddingAngle={4}
+                          dataKey="count"
+                        >
+                          {(overviewData.charts?.appUsageDistribution || []).map((_: any, index: number) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="space-y-2">
+                    {(overviewData.charts?.appUsageDistribution || []).map((app: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-800/60 last:border-none">
+                        <div className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                          <span className="font-semibold text-slate-200">{app.name}</span>
+                        </div>
+                        <span className="font-mono text-slate-400">{app.count} events</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* 2. USERS MANAGEMENT TAB */}
+          {activeTab === 'users' && (
+            <div className="space-y-6">
+
+              {/* Filters & Search */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="relative w-full md:w-80">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <Search className="w-4 h-4" />
-                  </span>
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
-                    value={transactionSearch}
-                    onChange={(e) => setTransactionSearch(e.target.value)}
-                    placeholder="Search by user, course, hash..."
-                    className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-950/50 text-xs focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    placeholder="Search user ID, name, email..."
+                    className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
-              </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left">
-                  <thead className="text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50">
-                    <tr>
-                      <th className="py-3 px-4">Learner</th>
-                      <th className="py-3 px-4">Paid Course</th>
-                      <th className="py-3 px-4">Amount Paid</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4 text-right">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {filteredTransactions.map((tx) => (
-                      <tr key={tx._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30">
-                        <td className="py-3.5 px-4">
-                          <div className="font-semibold text-slate-900 dark:text-white">{tx.userId?.fullName || 'External User'}</div>
-                          <div className="text-[10px] text-slate-450">{tx.userId?.email || 'N/A'}</div>
-                        </td>
-                        <td className="py-3.5 px-4 font-medium">{tx.courseId?.title || 'Unlock Chapter'}</td>
-                        <td className="py-3.5 px-4 font-bold text-indigo-550 dark:text-indigo-400">
-                          ${tx.amount} <span className="text-[10px] font-medium text-slate-400">{tx.currency}</span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            tx.paymentStatus === 'completed' || tx.purchaseStatus === 'completed'
-                              ? 'bg-emerald-500/10 text-emerald-500'
-                              : tx.paymentStatus === 'pending' || tx.purchaseStatus === 'pending'
-                              ? 'bg-amber-500/10 text-amber-500'
-                              : 'bg-rose-500/10 text-rose-500'
-                          }`}>
-                            {tx.paymentStatus || tx.purchaseStatus}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-right text-slate-400">{new Date(tx.createdAt).toLocaleDateString()}</td>
-                      </tr>
-                    ))}
-                    {filteredTransactions.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="py-8 text-center text-slate-400">No matching transactions found.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* USERS PANEL */}
-          {activeSection === 'users' && (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-850 p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Registered Learners</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left">
-                  <thead className="text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50">
-                    <tr>
-                      <th className="py-3 px-4">Learner Name</th>
-                      <th className="py-3 px-4">Email</th>
-                      <th className="py-3 px-4 text-right">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {learnersOnly.map((u) => (
-                      <tr key={u._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30">
-                        <td className="py-3.5 px-4">
-                          <div className="font-semibold text-slate-900 dark:text-white">{u.fullName}</div>
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-550 dark:text-slate-300 font-medium">{u.email}</td>
-                        <td className="py-3.5 px-4 text-right">
-                          <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-bold">
-                            Active
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                    {learnersOnly.length === 0 && (
-                      <tr>
-                        <td colSpan={3} className="py-8 text-center text-slate-400">No learners found.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* INCOME PANEL */}
-          {activeSection === 'income' && (
-            <div className="space-y-8">
-              {/* Total Income Summary Card */}
-              <div className="bg-gradient-to-r from-indigo-500 to-indigo-650 dark:from-indigo-600 dark:to-indigo-800 text-white rounded-3xl p-8 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                <div>
-                  <h3 className="text-sm font-semibold uppercase tracking-wider opacity-80">Total Accumulated Income</h3>
-                  <p className="text-4xl font-extrabold mt-2">${calculatedIncome} USDC</p>
-                  <p className="text-xs mt-1.5 opacity-70">Sum of all successfully completed transactioned amounts</p>
-                </div>
-                <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-md border border-white/10">
-                  <DollarSign className="w-10 h-10 text-white" />
+                <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                  <span className="text-xs text-slate-400 font-medium">Status:</span>
+                  <select
+                    value={userStatusFilter}
+                    onChange={(e) => setUserStatusFilter(e.target.value as any)}
+                    className="bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="active">Active Only</option>
+                    <option value="inactive">Inactive Only</option>
+                  </select>
                 </div>
               </div>
 
-              {/* Income purchases list */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-850 p-6 shadow-sm">
-                <div className="mb-6">
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">Successful Purchases</h2>
-                  <p className="text-xs text-slate-500 mt-1">Detailed list of all earnings from completed purchases</p>
-                </div>
-
+              {/* Users Table */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
-                    <thead className="text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50">
+                    <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider border-b border-slate-800">
                       <tr>
-                        <th className="py-3 px-4">Learner</th>
-                        <th className="py-3 px-4">Purchased Course</th>
-                        <th className="py-3 px-4">Income Earned</th>
-                        <th className="py-3 px-4 text-right">Date</th>
+                        <th className="py-3.5 px-4 font-semibold">User ID</th>
+                        <th className="py-3.5 px-4 font-semibold">Learner Name</th>
+                        <th className="py-3.5 px-4 font-semibold">Email</th>
+                        <th className="py-3.5 px-4 font-semibold">Reg Date</th>
+                        <th className="py-3.5 px-4 font-semibold">Status & Last Active</th>
+                        <th className="py-3.5 px-4 font-semibold">Features Used</th>
+                        <th className="py-3.5 px-4 font-semibold">Total Paid</th>
+                        <th className="py-3.5 px-4 font-semibold text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {completedTransactions.map((tx) => (
-                        <tr key={tx._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30">
+                    <tbody className="divide-y divide-slate-800/60">
+                      {filteredUsers.map((u) => (
+                        <tr key={u._id} className="hover:bg-slate-800/40 transition-all">
+                          <td className="py-3.5 px-4 font-mono text-[11px] text-slate-400">{u._id}</td>
+                          <td className="py-3.5 px-4 font-bold text-white">{u.fullName}</td>
+                          <td className="py-3.5 px-4 text-slate-300 font-medium">{maskText(u.email, true)}</td>
+                          <td className="py-3.5 px-4 text-slate-400">{new Date(u.createdAt).toLocaleDateString()}</td>
                           <td className="py-3.5 px-4">
-                            <div className="font-semibold text-slate-900 dark:text-white">{tx.userId?.fullName || 'External User'}</div>
-                            <div className="text-[10px] text-slate-450">{tx.userId?.email || 'N/A'}</div>
+                            <div className="flex flex-col gap-1">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold w-fit ${u.isActive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                                {u.isActive ? 'Active' : 'Deactivated'}
+                              </span>
+                              <span className="text-[10px] text-slate-500">
+                                {u.lastLogin ? new Date(u.lastLogin).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
+                              </span>
+                            </div>
                           </td>
-                          <td className="py-3.5 px-4 font-medium">{tx.courseId?.title || 'Unlock Chapter'}</td>
-                          <td className="py-3.5 px-4 font-bold text-emerald-600 dark:text-emerald-400">
-                            +${tx.amount} <span className="text-[10px] font-medium text-slate-400">{tx.currency}</span>
+                          <td className="py-3.5 px-4 font-semibold text-indigo-400">{u.featuresUsed} features</td>
+                          <td className="py-3.5 px-4 font-bold text-emerald-400">${u.totalPaymentsMade} USDC</td>
+                          <td className="py-3.5 px-4 text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleSelectUser(u)}
+                              className="text-[11px] h-7 border-slate-800 hover:border-indigo-500/50 text-indigo-400 hover:bg-indigo-950/30"
+                            >
+                              View Profile <ChevronRight className="w-3 h-3 ml-1" />
+                            </Button>
                           </td>
-                          <td className="py-3.5 px-4 text-right text-slate-400">{new Date(tx.createdAt).toLocaleDateString()}</td>
                         </tr>
                       ))}
-                      {completedTransactions.length === 0 && (
+                      {filteredUsers.length === 0 && (
                         <tr>
-                          <td colSpan={4} className="py-8 text-center text-slate-400">No successful purchases yet.</td>
+                          <td colSpan={8} className="py-12 text-center text-slate-500">No matching users found.</td>
                         </tr>
                       )}
                     </tbody>
                   </table>
                 </div>
               </div>
+
             </div>
           )}
 
-        </div>
+          {/* 3. PAYMENTS MANAGEMENT TAB */}
+          {activeTab === 'payments' && (
+            <div className="space-y-8">
 
-      </div>
+              {/* Payment Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Verified Revenue</span>
+                  <p className="text-2xl font-extrabold text-emerald-400 mt-2">${(paymentsData.totals?.verifiedTotal || 0).toFixed(2)} USDC</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Confirmed on Algorand blockchain</p>
+                </div>
 
-      {/* QUICK ACTION MODALS */}
-      <AnimatePresence>
-        {activeModal && (
-          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 w-full max-w-lg p-6 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col"
-            >
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-6">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  {activeModal === 'addCourse' && 'Add New Course Catalog'}
-                  {activeModal === 'addLesson' && 'Add Chapter/Lesson'}
-                  {activeModal === 'createQuiz' && 'Design Interactive Quiz'}
-                  {activeModal === 'uploadResources' && 'Upload Resource Assets'}
-                  {activeModal === 'viewUsers' && 'All Registered Users'}
-                  {activeModal === 'viewTransactions' && 'Financial Ledger'}
-                </h3>
-                <button
-                  onClick={() => setActiveModal(null)}
-                  className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">GitHub Review Sikho Fee</span>
+                  <p className="text-2xl font-extrabold text-indigo-400 mt-2">${(paymentsData.totals?.sikhoGithubFeeTotal || 0).toFixed(2)} USDC</p>
+                  <p className="text-[11px] text-slate-500 mt-1">$0.05 USDC fee per reviewed file</p>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Prism Review Fee</span>
+                  <p className="text-2xl font-extrabold text-purple-400 mt-2">${(paymentsData.totals?.prismGithubFeeTotal || 0).toFixed(2)} USDC</p>
+                  <p className="text-[11px] text-slate-500 mt-1">$0.20 USDC fee per reviewed file</p>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pay-Per-Chapter Unlocks</span>
+                  <p className="text-2xl font-extrabold text-amber-400 mt-2">${(paymentsData.totals?.payPerChapterTotal || 0).toFixed(2)} USDC</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Direct course chapter unlock purchases</p>
+                </div>
               </div>
 
-              <div className="overflow-y-auto flex-1 pr-1">
-                {/* 1. Add Course */}
-                {activeModal === 'addCourse' && (
-                  <form onSubmit={handleAddCourse} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-550 mb-1.5">Course Title</label>
-                      <input
-                        type="text"
-                        required
-                        value={courseForm.title}
-                        onChange={(e) => setCourseForm({ ...courseForm, title: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-550 mb-1.5">Description</label>
-                      <textarea
-                        value={courseForm.description}
-                        onChange={(e) => setCourseForm({ ...courseForm, description: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs focus:ring-2 focus:ring-indigo-500 outline-none h-20"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-550 mb-1.5">Level</label>
-                        <select
-                          value={courseForm.level}
-                          onChange={(e) => setCourseForm({ ...courseForm, level: e.target.value })}
-                          className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                        >
-                          <option value="beginner">Beginner</option>
-                          <option value="intermediate">Intermediate</option>
-                          <option value="advanced">Advanced</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-550 mb-1.5">Price (USDC)</label>
-                        <input
-                          type="number"
-                          required
-                          value={courseForm.price}
-                          onChange={(e) => setCourseForm({ ...courseForm, price: Number(e.target.value) })}
-                          className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                        />
-                      </div>
-                    </div>
-                    <Button type="submit" className="w-full py-2.5 mt-4 rounded-xl">Save & Deploy Course</Button>
-                  </form>
-                )}
+              {/* Sikho-Specific Payment Split Highlight Box */}
+              <div className="bg-slate-900 border border-indigo-500/20 rounded-2xl p-6">
+                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                  <Code2 className="w-4 h-4 text-indigo-400" /> Sikho-Specific Payment Tracking (GitHub Review & Chapter Unlocks)
+                </h3>
+                <p className="text-xs text-slate-400 mb-4">Per-file code review fee separation ($0.05 Sikho vs $0.20 Prism) and chapter unlocks ledger</p>
 
-                {/* 2. Add Lesson */}
-                {activeModal === 'addLesson' && (
-                  <form onSubmit={handleAddLesson} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-550 mb-1.5">Select Course</label>
-                      <select
-                        required
-                        value={lessonForm.courseId}
-                        onChange={(e) => setLessonForm({ ...lessonForm, courseId: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
+                      <tr>
+                        <th className="py-2.5 px-3 font-semibold">File Review ID</th>
+                        <th className="py-2.5 px-3 font-semibold">File Path</th>
+                        <th className="py-2.5 px-3 font-semibold">Sikho Fee ($0.05)</th>
+                        <th className="py-2.5 px-3 font-semibold">Prism Fee ($0.20)</th>
+                        <th className="py-2.5 px-3 font-semibold">Total Fee</th>
+                        <th className="py-2.5 px-3 font-semibold">Algorand Tx Reference</th>
+                        <th className="py-2.5 px-3 font-semibold text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {(paymentsData.githubSplitDetails || []).map((item: any, i: number) => (
+                        <tr key={i} className="hover:bg-slate-800/30">
+                          <td className="py-2.5 px-3 font-mono text-[11px] text-slate-400">{item.fileReviewId}</td>
+                          <td className="py-2.5 px-3 font-semibold text-white">{item.filePath}</td>
+                          <td className="py-2.5 px-3 font-bold text-indigo-400">$0.05 USDC</td>
+                          <td className="py-2.5 px-3 font-bold text-purple-400">$0.20 USDC</td>
+                          <td className="py-2.5 px-3 font-bold text-emerald-400">$0.25 USDC</td>
+                          <td className="py-2.5 px-3 font-mono text-[10px] text-slate-400 truncate max-w-[150px]">
+                            {item.sikhoTxId}
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400">
+                              Verified
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Transactions Ledger Controls */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto">
+                  {(['all', 'successful', 'pending', 'failed'] as const).map((st) => (
+                    <button
+                      key={st}
+                      onClick={() => setPaymentStatusTab(st)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition-all whitespace-nowrap ${
+                        paymentStatusTab === st
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-950 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative w-full md:w-80">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={paymentSearch}
+                    onChange={(e) => setPaymentSearch(e.target.value)}
+                    placeholder="Search by user, transaction hash, feature..."
+                    className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              {/* Main Transactions Table */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider border-b border-slate-800">
+                      <tr>
+                        <th className="py-3.5 px-4 font-semibold">Transaction ID</th>
+                        <th className="py-3.5 px-4 font-semibold">Learner Name</th>
+                        <th className="py-3.5 px-4 font-semibold">Application / Feature</th>
+                        <th className="py-3.5 px-4 font-semibold">Amount & Currency</th>
+                        <th className="py-3.5 px-4 font-semibold">Date & Time</th>
+                        <th className="py-3.5 px-4 font-semibold">Status</th>
+                        <th className="py-3.5 px-4 font-semibold text-right">Algorand Tx Reference</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {filteredPayments.map((p: any) => (
+                        <tr key={p._id} className="hover:bg-slate-800/40 transition-all">
+                          <td className="py-3.5 px-4 font-mono text-[11px] text-slate-400">{p.transactionId}</td>
+                          <td className="py-3.5 px-4 font-bold text-white">{p.userName}</td>
+                          <td className="py-3.5 px-4 text-slate-300 font-medium">{p.featureUsed}</td>
+                          <td className="py-3.5 px-4 font-bold text-emerald-400">${p.amount} {p.currency}</td>
+                          <td className="py-3.5 px-4 text-slate-400">{new Date(p.paymentDate).toLocaleString()}</td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              p.status === 'successful' || p.status === 'completed'
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                : p.status === 'pending'
+                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                            }`}>
+                              {p.status}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <a
+                              href={`https://lora.algokit.io/mainnet/transaction/${p.algorandTxRef}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 font-mono text-[11px] text-indigo-400 hover:text-indigo-300 underline"
+                            >
+                              {p.algorandTxRef ? `${p.algorandTxRef.substring(0, 10)}...` : 'View Tx'} <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredPayments.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="py-12 text-center text-slate-500">No transactions recorded for this filter.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* 4. APPLICATION USAGE ANALYTICS TAB */}
+          {activeTab === 'apps' && (
+            <div className="space-y-8">
+
+              {/* Date Filter & Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white">Sikho AI Applications Usage Breakdown</h3>
+                  <p className="text-xs text-slate-400">Tracking user engagement across all 7 platform applications</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400 font-medium">Time Horizon:</span>
+                  {(['7d', '30d', '90d', 'all'] as const).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setAnalyticsDateRange(r)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase transition-all ${
+                        analyticsDateRange === r
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-950 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 7 Applications Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {(appAnalyticsData.applications || []).map((app: any, idx: number) => {
+                  const Icon = APP_ICONS[app.appName] || Sparkles;
+                  return (
+                    <div key={idx} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-all flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
+                            App #{idx + 1}
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-sm text-white">{app.appName}</h4>
+                        
+                        <div className="mt-4 space-y-2 text-xs">
+                          <div className="flex justify-between py-1 border-b border-slate-800/60">
+                            <span className="text-slate-400">Total Usage Events</span>
+                            <span className="font-bold text-white">{app.totalUsageEvents}</span>
+                          </div>
+                          <div className="flex justify-between py-1 border-b border-slate-800/60">
+                            <span className="text-slate-400">Unique Active Users</span>
+                            <span className="font-semibold text-indigo-300">{app.uniqueActiveUsers}</span>
+                          </div>
+                          <div className="flex justify-between py-1 border-b border-slate-800/60">
+                            <span className="text-slate-400">DAU / WAU / MAU</span>
+                            <span className="font-mono text-slate-300">{app.dailyUsage} / {app.weeklyUsage} / {app.monthlyUsage}</span>
+                          </div>
+                          <div className="flex justify-between py-1">
+                            <span className="text-slate-400">Revenue Generated</span>
+                            <span className="font-bold text-emerald-400">${app.revenueGenerated.toFixed(2)} USDC</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Ranked Applications Bar Chart */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
+                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-indigo-400" /> Ranked Application Usage Count
+                </h3>
+                <p className="text-xs text-slate-400 mb-6">Applications ranked by total telemetry usage events within the selected timeframe ({analyticsDateRange})</p>
+
+                <div className="h-72 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={appAnalyticsData.rankedChart || []} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <XAxis type="number" stroke="#64748b" fontSize={11} />
+                      <YAxis dataKey="appName" type="category" stroke="#94a3b8" fontSize={11} width={140} />
+                      <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }} />
+                      <Bar dataKey="usageCount" fill="#6366f1" radius={[0, 6, 6, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* 5. SETTINGS & ACCESS CONTROL TAB */}
+          {activeTab === 'settings' && (
+            <div className="space-y-8">
+
+              {/* Admin Profile & Role Overview */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <ShieldCheck className="w-6 h-6 text-indigo-400" />
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Admin Authentication & Access Control</h3>
+                    <p className="text-xs text-slate-400">Configured security policy for platform administration</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-800 pt-4 text-xs">
+                  <div>
+                    <span className="text-slate-400">Authenticated Admin Username</span>
+                    <p className="font-bold text-white mt-1">admin@gmail.com</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Role Authority</span>
+                    <p className="font-bold text-indigo-400 mt-1">Platform Super Admin (ADMIN)</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Personal Data Protection (PDI)</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <button
+                        onClick={() => setMaskSensitiveData(!maskSensitiveData)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                          maskSensitiveData ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'
+                        }`}
                       >
-                        <option value="">-- Select Course --</option>
-                        {analytics.courses?.popularCourses?.map((c: any, i: number) => (
-                          <option key={i} value={courseForm.title === c.title ? 'custom-id' : 'mock-course-id'}>{c.title}</option>
+                        {maskSensitiveData ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        {maskSensitiveData ? 'Sensitive PDI Masked' : 'Unmasked View'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Export Reports Section */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-400" /> Export Platform Reports
+                </h3>
+                <p className="text-xs text-slate-400 mb-6">Generate and download official CSV data reports</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                    <div>
+                      <h4 className="font-bold text-xs text-white">Users & Learners Report</h4>
+                      <p className="text-[11px] text-slate-400 mt-1">Export registered users list with status and registration details.</p>
+                    </div>
+                    <Button
+                      onClick={() => handleExportCsv('users')}
+                      className="mt-4 text-xs py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl"
+                    >
+                      <Download className="w-3.5 h-3.5 mr-2" /> Download Users CSV
+                    </Button>
+                  </div>
+
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                    <div>
+                      <h4 className="font-bold text-xs text-white">Payments & Financial Ledger</h4>
+                      <p className="text-[11px] text-slate-400 mt-1">Export complete USDC payment transactions with hashes.</p>
+                    </div>
+                    <Button
+                      onClick={() => handleExportCsv('payments')}
+                      className="mt-4 text-xs py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl"
+                    >
+                      <Download className="w-3.5 h-3.5 mr-2" /> Download Payments CSV
+                    </Button>
+                  </div>
+
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                    <div>
+                      <h4 className="font-bold text-xs text-white">Application Usage Report</h4>
+                      <p className="text-[11px] text-slate-400 mt-1">Export telemetry usage logs across all 7 Sikho AI apps.</p>
+                    </div>
+                    <Button
+                      onClick={() => handleExportCsv('app-usage')}
+                      className="mt-4 text-xs py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl"
+                    >
+                      <Download className="w-3.5 h-3.5 mr-2" /> Download Usage CSV
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Admin Activity Audit Logs Table */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
+                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-amber-400" /> Admin Audit Logs
+                </h3>
+                <p className="text-xs text-slate-400 mb-6">Recent security and administration events</p>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
+                      <tr>
+                        <th className="py-2.5 px-3 font-semibold">Timestamp</th>
+                        <th className="py-2.5 px-3 font-semibold">Admin Account</th>
+                        <th className="py-2.5 px-3 font-semibold">Action</th>
+                        <th className="py-2.5 px-3 font-semibold">Target</th>
+                        <th className="py-2.5 px-3 font-semibold">IP Address</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {activityLogs.map((log: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-slate-800/30">
+                          <td className="py-2.5 px-3 font-mono text-[11px] text-slate-400">{new Date(log.timestamp).toLocaleString()}</td>
+                          <td className="py-2.5 px-3 font-semibold text-indigo-300">{maskText(log.adminEmail, true)}</td>
+                          <td className="py-2.5 px-3 font-bold text-white">{log.action}</td>
+                          <td className="py-2.5 px-3 text-slate-300">{log.target || 'System'}</td>
+                          <td className="py-2.5 px-3 font-mono text-[11px] text-slate-400">{log.ipAddress || '127.0.0.1'}</td>
+                        </tr>
+                      ))}
+                      {activityLogs.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="py-6 text-center text-slate-500">No activity logs recorded.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+        </main>
+      </div>
+
+      {/* INDIVIDUAL USER PROFILE SLIDE-OVER MODAL */}
+      <AnimatePresence>
+        {selectedUser && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex justify-end">
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="w-full max-w-xl bg-slate-900 border-l border-slate-800 h-full overflow-y-auto p-6 space-y-6 shadow-2xl flex flex-col justify-between"
+            >
+              <div className="space-y-6">
+                {/* Header */}
+                <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold text-sm">
+                      {selectedUser.fullName?.charAt(0) || 'U'}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-base text-white">{selectedUser.fullName}</h3>
+                      <p className="text-xs text-slate-400">{maskText(selectedUser.email, true)}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedUser(null);
+                      setSelectedUserDetails(null);
+                    }}
+                    className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {loadingUserDetails ? (
+                  <div className="py-16 text-center text-slate-400 text-xs">Loading learner profile metrics...</div>
+                ) : (
+                  <>
+                    {/* User Overview Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                        <span className="text-[10px] text-slate-400 uppercase font-bold">Total Paid (USDC)</span>
+                        <p className="text-lg font-bold text-emerald-400 mt-1">
+                          ${selectedUserDetails?.stats?.totalAmountPaidUSDC || 0} USDC
+                        </p>
+                      </div>
+
+                      <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                        <span className="text-[10px] text-slate-400 uppercase font-bold">Most-Used Feature</span>
+                        <p className="text-sm font-bold text-amber-400 mt-1 truncate">
+                          {selectedUserDetails?.stats?.mostUsedFeature || 'Learn Anything'}
+                        </p>
+                      </div>
+
+                      <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                        <span className="text-[10px] text-slate-400 uppercase font-bold">Chapters Completed</span>
+                        <p className="text-lg font-bold text-indigo-400 mt-1">
+                          {selectedUserDetails?.stats?.completedChapters || 0} Chapters
+                        </p>
+                      </div>
+
+                      <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                        <span className="text-[10px] text-slate-400 uppercase font-bold">GitHub Reviews</span>
+                        <p className="text-lg font-bold text-purple-400 mt-1">
+                          {selectedUserDetails?.stats?.githubReviews || 0} Reviews
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Applications Frequency Breakdown */}
+                    <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                      <h4 className="text-xs font-bold text-white mb-3">Application Usage Frequency</h4>
+                      <div className="space-y-2 text-xs">
+                        {Object.entries(selectedUserDetails?.appBreakdown || {}).map(([app, count]: any) => (
+                          <div key={app} className="flex items-center justify-between py-1 border-b border-slate-900 last:border-none">
+                            <span className="text-slate-300 font-medium">{app}</span>
+                            <span className="font-mono text-indigo-400 font-bold">{count} sessions</span>
+                          </div>
                         ))}
-                        {/* Fallback to make sure there's at least a valid option */}
-                        <option value="fallback-course-id">Introduction to Algorand Smart Contracts</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-550 mb-1.5">Lesson Title</label>
-                      <input
-                        type="text"
-                        required
-                        value={lessonForm.title}
-                        onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-550 mb-1.5">Content Markdown</label>
-                      <textarea
-                        required
-                        value={lessonForm.content}
-                        onChange={(e) => setLessonForm({ ...lessonForm, content: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs focus:ring-2 focus:ring-indigo-500 outline-none h-24"
-                      />
-                    </div>
-                    <Button type="submit" className="w-full py-2.5 mt-4 rounded-xl">Append Lesson</Button>
-                  </form>
-                )}
-
-                {/* 3. Create Quiz */}
-                {activeModal === 'createQuiz' && (
-                  <form onSubmit={handleCreateQuiz} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-550 mb-1.5">Lesson Context</label>
-                      <select
-                        required
-                        value={quizForm.lessonId}
-                        onChange={(e) => setQuizForm({ ...quizForm, lessonId: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                      >
-                        <option value="">-- Select Lesson --</option>
-                        <option value="fallback-lesson-id">What is Algorand?</option>
-                        <option value="fallback-lesson-id-2">Writing PyTeal Contracts</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-550 mb-1.5">Quiz Title</label>
-                      <input
-                        type="text"
-                        required
-                        value={quizForm.title}
-                        onChange={(e) => setQuizForm({ ...quizForm, title: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-550 mb-1.5">Question Text</label>
-                      <input
-                        type="text"
-                        required
-                        value={quizForm.questions[0].questionText}
-                        onChange={(e) => {
-                          const q = [...quizForm.questions];
-                          q[0].questionText = e.target.value;
-                          setQuizForm({ ...quizForm, questions: q });
-                        }}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                    </div>
-                    <Button type="submit" className="w-full py-2.5 mt-4 rounded-xl">Save & Deploy Quiz</Button>
-                  </form>
-                )}
-
-                {/* 4. Upload Resources */}
-                {activeModal === 'uploadResources' && (
-                  <form onSubmit={handleUploadResources} className="space-y-4">
-                    <div className="border-2 border-dashed border-slate-250 dark:border-slate-800 rounded-2xl p-8 flex flex-col items-center justify-center gap-3">
-                      <FileText className="w-10 h-10 text-slate-400" />
-                      <p className="text-xs text-slate-500 text-center">Drag files here, or click to browse</p>
-                      <input
-                        type="file"
-                        onChange={(e) => setFileToUpload(e.target.files ? e.target.files[0] : null)}
-                        className="w-full text-xs text-slate-500"
-                      />
-                    </div>
-                    <Button type="submit" className="w-full py-2.5 rounded-xl">Upload Selected File</Button>
-                  </form>
-                )}
-
-                {/* 5. View Users list */}
-                {activeModal === 'viewUsers' && (
-                  <div className="space-y-3">
-                    {userList.map((u) => (
-                      <div key={u._id} className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-none text-xs">
-                        <div>
-                          <p className="font-bold text-slate-900 dark:text-white">{u.fullName}</p>
-                          <p className="text-slate-500">{u.email}</p>
-                        </div>
-                        <span className="capitalize px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] self-center">{u.role}</span>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    </div>
 
-                {/* 6. View Transactions list */}
-                {activeModal === 'viewTransactions' && (
-                  <div className="space-y-3">
-                    {transactions.map((tx) => (
-                      <div key={tx._id} className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-none text-xs">
-                        <div>
-                          <p className="font-bold text-slate-900 dark:text-white">{tx.userId?.fullName || 'Learner'}</p>
-                          <p className="text-slate-400 text-[10px]">{tx.transactionHash || 'Pending...'}</p>
-                        </div>
-                        <span className="font-bold text-emerald-500 self-center">${tx.amount}</span>
+                    {/* Recent Activity Timeline */}
+                    <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                      <h4 className="text-xs font-bold text-white mb-3">Recent Activity Timeline</h4>
+                      <div className="space-y-3 text-xs max-h-48 overflow-y-auto pr-1">
+                        {(selectedUserDetails?.activityTimeline || []).map((act: any, i: number) => (
+                          <div key={i} className="flex items-start gap-2.5">
+                            <div className="w-2 h-2 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0" />
+                            <div className="flex-1">
+                              <p className="font-semibold text-slate-200">{act.action}</p>
+                              <p className="text-[10px] text-slate-500">{new Date(act.timestamp).toLocaleString()}</p>
+                            </div>
+                            {act.isPaid && (
+                              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                +${act.amount}
+                              </span>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  </>
                 )}
+              </div>
+
+              <div className="pt-4 border-t border-slate-800">
+                <Button
+                  onClick={() => setSelectedUser(null)}
+                  className="w-full py-2 text-xs rounded-xl bg-slate-800 hover:bg-slate-700 text-white"
+                >
+                  Close Profile
+                </Button>
               </div>
             </motion.div>
           </div>
