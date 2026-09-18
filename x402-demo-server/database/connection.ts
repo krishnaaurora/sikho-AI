@@ -54,9 +54,9 @@ export const connectToDatabase = async () => {
 async function seedDatabase() {
   const User = Models.User;
   
-  // 1. Ensure admin@gmail.com is created
+  // 1. Ensure admin@gmail.com is created & credentials match Admin123
   const targetAdminEmail = "admin@gmail.com";
-  let admin = await User.findOne({ email: targetAdminEmail });
+  let admin = await User.findOne({ email: targetAdminEmail }).select("+password");
   if (!admin) {
     logger.info("Admin user (admin@gmail.com) not found. Seeding admin user...");
     admin = await User.create({
@@ -68,20 +68,34 @@ async function seedDatabase() {
       isActive: true,
     });
     logger.info("Admin user (admin@gmail.com) seeded successfully!");
+  } else {
+    logger.info("Updating existing admin@gmail.com credentials to Admin123...");
+    admin.password = "Admin123";
+    admin.role = UserRole.ADMIN;
+    admin.isActive = true;
+    admin.isVerified = true;
+    await admin.save();
+    logger.info("Admin user (admin@gmail.com) credentials updated!");
   }
 
   // Backup admin email check
   const fallbackAdminEmail = "admin@sikhaoai.com";
-  const fallbackAdmin = await User.findOne({ email: fallbackAdminEmail });
+  let fallbackAdmin = await User.findOne({ email: fallbackAdminEmail }).select("+password");
   if (!fallbackAdmin) {
     await User.create({
       fullName: "SikhoAI Admin Backup",
       email: fallbackAdminEmail,
-      password: "Admin123!",
+      password: "Admin123",
       role: UserRole.ADMIN,
       isVerified: true,
       isActive: true,
     });
+  } else {
+    fallbackAdmin.password = "Admin123";
+    fallbackAdmin.role = UserRole.ADMIN;
+    fallbackAdmin.isActive = true;
+    fallbackAdmin.isVerified = true;
+    await fallbackAdmin.save();
   }
 
   const Category = Models.Category;

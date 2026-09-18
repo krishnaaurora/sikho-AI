@@ -64,7 +64,8 @@ export const generateResetPasswordToken = () => {
 
 // User Service
 export const getUserByEmail = async (email: string): Promise<IUser | null> => {
-  return await User.findOne({ email, isDeleted: false }).select("+password");
+  const cleanEmail = (email || "").toLowerCase().trim();
+  return await User.findOne({ email: cleanEmail, isDeleted: false }).select("+password");
 };
 
 export const getUserById = async (id: string): Promise<IUser | null> => {
