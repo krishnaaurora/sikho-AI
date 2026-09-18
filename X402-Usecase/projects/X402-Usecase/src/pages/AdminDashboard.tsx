@@ -16,8 +16,8 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 
-// Color Palette for Charts & Badges
-const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#3b82f6'];
+// Vibrant Curated Palette for White Theme Charts & Badges
+const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#2563eb'];
 
 const APP_ICONS: Record<string, any> = {
   'Learn Anything': BookOpen,
@@ -231,19 +231,19 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex transition-colors font-sans antialiased">
+    <div className="min-h-screen bg-slate-100/70 text-slate-800 flex transition-colors font-sans antialiased">
 
-      {/* SIDEBAR (Desktop Dark Navy) */}
-      <aside className="hidden lg:flex lg:flex-col w-64 bg-slate-900 border-r border-slate-800/80 flex-shrink-0 z-30">
+      {/* SIDEBAR (Dark Navy for Premium SaaS Contrast) */}
+      <aside className="hidden lg:flex lg:flex-col w-64 bg-[#0f172a] border-r border-slate-800 flex-shrink-0 z-30 shadow-xl">
         
         {/* Brand Header */}
-        <div className="p-6 flex items-center gap-3 border-b border-slate-800/60">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+        <div className="p-6 flex items-center gap-3 border-b border-slate-800/80">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div>
             <h1 className="font-bold text-base text-white tracking-tight leading-none">Sikho AI</h1>
-            <span className="text-[11px] font-medium text-indigo-400 tracking-wider uppercase">Admin Dashboard</span>
+            <span className="text-[11px] font-semibold text-indigo-400 tracking-wider uppercase">Admin Dashboard</span>
           </div>
         </div>
 
@@ -252,7 +252,7 @@ const AdminDashboard: React.FC = () => {
           {[
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'users', label: 'User Management', icon: Users },
-            { id: 'payments', label: 'Payments', icon: CreditCard },
+            { id: 'payments', label: 'Payments & Ledger', icon: CreditCard },
             { id: 'apps', label: 'Application Usage', icon: BarChart3 },
             { id: 'settings', label: 'Settings & Security', icon: Settings },
           ].map((item) => {
@@ -264,20 +264,20 @@ const AdminDashboard: React.FC = () => {
                 onClick={() => setActiveTab(item.id as any)}
                 className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all ${
                   isActive
-                    ? 'bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-400' : 'text-slate-400'}`} />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                 <span>{item.label}</span>
-                {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto text-indigo-400" />}
+                {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto text-white/80" />}
               </button>
             );
           })}
         </nav>
 
         {/* Sidebar Footer Admin Profile & Logout */}
-        <div className="p-4 border-t border-slate-800/80 bg-slate-900/50">
+        <div className="p-4 border-t border-slate-800/80 bg-slate-900/60">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs border border-indigo-500/30">
               A
@@ -290,7 +290,7 @@ const AdminDashboard: React.FC = () => {
           <Button
             variant="outline"
             onClick={logout}
-            className="w-full justify-start text-xs border-slate-800 text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 py-2 h-auto"
+            className="w-full justify-start text-xs border-slate-800 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 py-2 h-auto"
           >
             <LogOut className="w-3.5 h-3.5 mr-2" />
             Sign Out
@@ -298,19 +298,19 @@ const AdminDashboard: React.FC = () => {
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950">
+      {/* MAIN CONTENT AREA (WHITE THEME) */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-100/70">
 
-        {/* Top Header Bar */}
-        <header className="h-16 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20">
+        {/* Top Header Bar (Clean White) */}
+        <header className="h-16 border-b border-slate-200 bg-white shadow-xs px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-              className="lg:hidden p-2 text-slate-400 hover:text-white rounded-lg"
+              className="lg:hidden p-2 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100"
             >
               <LayoutDashboard className="w-5 h-5" />
             </button>
-            <h2 className="text-base font-bold text-white capitalize tracking-tight flex items-center gap-2">
+            <h2 className="text-base font-bold text-slate-900 capitalize tracking-tight flex items-center gap-2">
               {activeTab === 'overview' && 'Dashboard Overview'}
               {activeTab === 'users' && 'User Management & Profiles'}
               {activeTab === 'payments' && 'Payments & Fee Split Ledger'}
@@ -323,16 +323,16 @@ const AdminDashboard: React.FC = () => {
             <button
               onClick={handleManualRefresh}
               disabled={refreshing}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-xl text-xs font-medium transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-medium shadow-xs transition-all"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-indigo-400' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
               <span className="hidden sm:inline">Refresh Data</span>
             </button>
 
             {/* Quick Export CSV Button */}
             <button
               onClick={() => handleExportCsv(activeTab === 'users' ? 'users' : activeTab === 'payments' ? 'payments' : 'app-usage')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Export CSV</span>
@@ -348,69 +348,68 @@ const AdminDashboard: React.FC = () => {
             <div className="space-y-8">
 
               {/* EXECUTIVE CALLOUT BANNER - Immediate 3 Questions Answered */}
-              <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-900 border border-indigo-500/30 rounded-3xl p-6 shadow-xl relative overflow-hidden">
-                <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-                <div className="flex items-center gap-2 text-xs font-bold text-indigo-400 uppercase tracking-wider mb-4">
-                  <ShieldCheck className="w-4 h-4 text-indigo-400" /> Executive Highlights & Core Questions Answered
+              <div className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-slate-900 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden">
+                <div className="flex items-center gap-2 text-xs font-bold text-indigo-200 uppercase tracking-wider mb-4">
+                  <ShieldCheck className="w-4 h-4 text-indigo-300" /> Executive Highlights & Core Questions Answered
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Q1 */}
-                  <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 backdrop-blur-sm flex flex-col justify-between">
+                  <div className="bg-white/10 border border-white/15 rounded-xl p-4 backdrop-blur-md flex flex-col justify-between">
                     <div>
-                      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">1. User Volume</p>
+                      <p className="text-[11px] font-semibold text-indigo-200 uppercase tracking-wider">1. User Volume</p>
                       <p className="text-sm font-bold text-white mt-1">{overviewData.keyAnswers?.q1?.question || 'How many users are using Sikho AI?'}</p>
                     </div>
-                    <p className="text-xs text-indigo-300 font-medium mt-3 bg-indigo-500/10 p-2.5 rounded-xl border border-indigo-500/20">
+                    <p className="text-xs text-white font-medium mt-3 bg-white/15 p-2.5 rounded-lg">
                       {overviewData.keyAnswers?.q1?.answer || `${overviewData.summary?.totalRegisteredUsers} total registered learners.`}
                     </p>
                   </div>
 
                   {/* Q2 */}
-                  <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 backdrop-blur-sm flex flex-col justify-between">
+                  <div className="bg-white/10 border border-white/15 rounded-xl p-4 backdrop-blur-md flex flex-col justify-between">
                     <div>
-                      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">2. Payment & Feature Breakdown</p>
+                      <p className="text-[11px] font-semibold text-indigo-200 uppercase tracking-wider">2. Payment & Feature Breakdown</p>
                       <p className="text-sm font-bold text-white mt-1">{overviewData.keyAnswers?.q2?.question || 'Who is paying and for which feature?'}</p>
                     </div>
-                    <p className="text-xs text-emerald-300 font-medium mt-3 bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20">
+                    <p className="text-xs text-emerald-200 font-medium mt-3 bg-white/15 p-2.5 rounded-lg">
                       {overviewData.keyAnswers?.q2?.answer || `$${overviewData.summary?.totalRevenueUSDC} USDC received.`}
                     </p>
                   </div>
 
                   {/* Q3 */}
-                  <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 backdrop-blur-sm flex flex-col justify-between">
+                  <div className="bg-white/10 border border-white/15 rounded-xl p-4 backdrop-blur-md flex flex-col justify-between">
                     <div>
-                      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">3. Top Application Usage</p>
+                      <p className="text-[11px] font-semibold text-indigo-200 uppercase tracking-wider">3. Top Application Usage</p>
                       <p className="text-sm font-bold text-white mt-1">{overviewData.keyAnswers?.q3?.question || 'Which applications are used most?'}</p>
                     </div>
-                    <p className="text-xs text-amber-300 font-medium mt-3 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20">
+                    <p className="text-xs text-amber-200 font-medium mt-3 bg-white/15 p-2.5 rounded-lg">
                       {overviewData.keyAnswers?.q3?.answer || `"${overviewData.summary?.mostUsedApp}" is the top used application.`}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* 6 Summary Cards */}
+              {/* 6 Summary Cards (Crisp White) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                 {[
-                  { label: 'Total Registered Users', val: overviewData.summary?.totalRegisteredUsers, icon: Users, color: 'text-indigo-400 bg-indigo-500/10' },
-                  { label: 'Daily / Monthly Active', val: `${overviewData.summary?.dailyActiveUsers} DAU / ${overviewData.summary?.monthlyActiveUsers} MAU`, icon: Activity, color: 'text-sky-400 bg-sky-500/10' },
-                  { label: 'Successful Payments', val: overviewData.summary?.totalSuccessfulPayments, icon: CheckCircle2, color: 'text-emerald-400 bg-emerald-500/10' },
-                  { label: 'Total Revenue (USDC)', val: `$${(overviewData.summary?.totalRevenueUSDC || 0).toFixed(2)}`, icon: DollarSign, color: 'text-green-400 bg-green-500/10' },
-                  { label: 'Most-Used Application', val: overviewData.summary?.mostUsedApp, icon: Sparkles, color: 'text-amber-400 bg-amber-500/10' },
-                  { label: 'Total AI Feature Usage', val: overviewData.summary?.totalAiFeatureUsage, icon: Layers, color: 'text-purple-400 bg-purple-500/10' },
+                  { label: 'Total Registered Users', val: overviewData.summary?.totalRegisteredUsers, icon: Users, color: 'text-indigo-600 bg-indigo-50 border-indigo-100' },
+                  { label: 'Daily / Monthly Active', val: `${overviewData.summary?.dailyActiveUsers} DAU / ${overviewData.summary?.monthlyActiveUsers} MAU`, icon: Activity, color: 'text-sky-600 bg-sky-50 border-sky-100' },
+                  { label: 'Successful Payments', val: overviewData.summary?.totalSuccessfulPayments, icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
+                  { label: 'Total Revenue (USDC)', val: `$${(overviewData.summary?.totalRevenueUSDC || 0).toFixed(2)}`, icon: DollarSign, color: 'text-green-600 bg-green-50 border-green-100' },
+                  { label: 'Most-Used Application', val: overviewData.summary?.mostUsedApp, icon: Sparkles, color: 'text-amber-600 bg-amber-50 border-amber-100' },
+                  { label: 'Total AI Feature Usage', val: overviewData.summary?.totalAiFeatureUsage, icon: Layers, color: 'text-purple-600 bg-purple-50 border-purple-100' },
                 ].map((card, idx) => {
                   const Icon = card.icon;
                   return (
-                    <div key={idx} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between hover:border-slate-700 transition-all">
+                    <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">{card.label}</span>
-                        <span className={`p-2 rounded-xl ${card.color}`}>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-tight">{card.label}</span>
+                        <span className={`p-2 rounded-xl border ${card.color}`}>
                           <Icon className="w-3.5 h-3.5" />
                         </span>
                       </div>
                       <div className="mt-3">
-                        <span className="text-lg font-extrabold text-white tracking-tight">{card.val}</span>
+                        <span className="text-lg font-extrabold text-slate-900 tracking-tight">{card.val}</span>
                       </div>
                     </div>
                   );
@@ -421,13 +420,13 @@ const AdminDashboard: React.FC = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 
                 {/* Chart 1: User Growth */}
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-indigo-400" /> User Growth Trend
+                      <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-indigo-600" /> User Growth Trend
                       </h3>
-                      <p className="text-xs text-slate-400">Cumulative registered learners over the last 7 days</p>
+                      <p className="text-xs text-slate-500">Cumulative registered learners over the last 7 days</p>
                     </div>
                   </div>
                   <div className="h-64 w-full">
@@ -435,37 +434,37 @@ const AdminDashboard: React.FC = () => {
                       <AreaChart data={overviewData.charts?.userGrowth || []}>
                         <defs>
                           <linearGradient id="userGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
-                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0} />
+                            <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
                         <YAxis stroke="#64748b" fontSize={11} />
-                        <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }} />
-                        <Area type="monotone" dataKey="totalUsers" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#userGrad)" />
+                        <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', fontSize: '12px', color: '#0f172a' }} />
+                        <Area type="monotone" dataKey="totalUsers" stroke="#4f46e5" strokeWidth={2.5} fillOpacity={1} fill="url(#userGrad)" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
 
                 {/* Chart 2: Payment & Revenue Trends */}
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                        <CreditCard className="w-4 h-4 text-emerald-400" /> Revenue Trends (USDC)
+                      <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-emerald-600" /> Revenue Trends (USDC)
                       </h3>
-                      <p className="text-xs text-slate-400">Completed USDC payment amounts over time</p>
+                      <p className="text-xs text-slate-500">Completed USDC payment amounts over time</p>
                     </div>
                   </div>
                   <div className="h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={overviewData.charts?.paymentTrends || []}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
                         <YAxis stroke="#64748b" fontSize={11} />
-                        <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', fontSize: '12px', color: '#0f172a' }} />
                         <Bar dataKey="revenue" fill="#10b981" radius={[6, 6, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
@@ -475,11 +474,11 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Application Usage Distribution Donut Chart */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-amber-400" /> Application Usage Distribution Across Sikho AI
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+                <h3 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-amber-600" /> Application Usage Distribution Across Sikho AI
                 </h3>
-                <p className="text-xs text-slate-400 mb-6">Proportion of usage events across the 7 Sikho AI applications</p>
+                <p className="text-xs text-slate-500 mb-6">Proportion of usage events across the 7 Sikho AI applications</p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                   <div className="h-64 w-full">
@@ -498,19 +497,19 @@ const AdminDashboard: React.FC = () => {
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', fontSize: '12px' }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {(overviewData.charts?.appUsageDistribution || []).map((app: any, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-800/60 last:border-none">
-                        <div className="flex items-center gap-2">
+                      <div key={idx} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-100 last:border-none">
+                        <div className="flex items-center gap-2.5">
                           <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                          <span className="font-semibold text-slate-200">{app.name}</span>
+                          <span className="font-semibold text-slate-800">{app.name}</span>
                         </div>
-                        <span className="font-mono text-slate-400">{app.count} events</span>
+                        <span className="font-mono text-slate-500 font-bold">{app.count} events</span>
                       </div>
                     ))}
                   </div>
@@ -525,7 +524,7 @@ const AdminDashboard: React.FC = () => {
             <div className="space-y-6">
 
               {/* Filters & Search */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
                 <div className="relative w-full md:w-80">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
@@ -533,16 +532,16 @@ const AdminDashboard: React.FC = () => {
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
                     placeholder="Search user ID, name, email..."
-                    className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-                  <span className="text-xs text-slate-400 font-medium">Status:</span>
+                  <span className="text-xs text-slate-500 font-medium">Status:</span>
                   <select
                     value={userStatusFilter}
                     onChange={(e) => setUserStatusFilter(e.target.value as any)}
-                    className="bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500"
+                    className="bg-slate-50 border border-slate-200 text-xs text-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500"
                   >
                     <option value="all">All Statuses</option>
                     <option value="active">Active Only</option>
@@ -552,10 +551,10 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Users Table */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider border-b border-slate-800">
+                    <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider border-b border-slate-200">
                       <tr>
                         <th className="py-3.5 px-4 font-semibold">User ID</th>
                         <th className="py-3.5 px-4 font-semibold">Learner Name</th>
@@ -567,31 +566,31 @@ const AdminDashboard: React.FC = () => {
                         <th className="py-3.5 px-4 font-semibold text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60">
+                    <tbody className="divide-y divide-slate-100">
                       {filteredUsers.map((u) => (
-                        <tr key={u._id} className="hover:bg-slate-800/40 transition-all">
-                          <td className="py-3.5 px-4 font-mono text-[11px] text-slate-400">{u._id}</td>
-                          <td className="py-3.5 px-4 font-bold text-white">{u.fullName}</td>
-                          <td className="py-3.5 px-4 text-slate-300 font-medium">{maskText(u.email, true)}</td>
-                          <td className="py-3.5 px-4 text-slate-400">{new Date(u.createdAt).toLocaleDateString()}</td>
+                        <tr key={u._id} className="hover:bg-slate-50/80 transition-all">
+                          <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">{u._id}</td>
+                          <td className="py-3.5 px-4 font-bold text-slate-900">{u.fullName}</td>
+                          <td className="py-3.5 px-4 text-slate-600 font-medium">{maskText(u.email, true)}</td>
+                          <td className="py-3.5 px-4 text-slate-500">{new Date(u.createdAt).toLocaleDateString()}</td>
                           <td className="py-3.5 px-4">
                             <div className="flex flex-col gap-1">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold w-fit ${u.isActive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold w-fit ${u.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
                                 {u.isActive ? 'Active' : 'Deactivated'}
                               </span>
-                              <span className="text-[10px] text-slate-500">
+                              <span className="text-[10px] text-slate-400">
                                 {u.lastLogin ? new Date(u.lastLogin).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
                               </span>
                             </div>
                           </td>
-                          <td className="py-3.5 px-4 font-semibold text-indigo-400">{u.featuresUsed} features</td>
-                          <td className="py-3.5 px-4 font-bold text-emerald-400">${u.totalPaymentsMade} USDC</td>
+                          <td className="py-3.5 px-4 font-semibold text-indigo-600">{u.featuresUsed} features</td>
+                          <td className="py-3.5 px-4 font-bold text-emerald-600">${u.totalPaymentsMade} USDC</td>
                           <td className="py-3.5 px-4 text-right">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleSelectUser(u)}
-                              className="text-[11px] h-7 border-slate-800 hover:border-indigo-500/50 text-indigo-400 hover:bg-indigo-950/30"
+                              className="text-[11px] h-7 border-slate-200 hover:border-indigo-500 text-indigo-600 hover:bg-indigo-50"
                             >
                               View Profile <ChevronRight className="w-3 h-3 ml-1" />
                             </Button>
@@ -617,41 +616,41 @@ const AdminDashboard: React.FC = () => {
 
               {/* Payment Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Verified Revenue</span>
-                  <p className="text-2xl font-extrabold text-emerald-400 mt-2">${(paymentsData.totals?.verifiedTotal || 0).toFixed(2)} USDC</p>
-                  <p className="text-[11px] text-slate-500 mt-1">Confirmed on Algorand blockchain</p>
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Verified Revenue</span>
+                  <p className="text-2xl font-extrabold text-emerald-600 mt-2">${(paymentsData.totals?.verifiedTotal || 0).toFixed(2)} USDC</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Confirmed on Algorand blockchain</p>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">GitHub Review Sikho Fee</span>
-                  <p className="text-2xl font-extrabold text-indigo-400 mt-2">${(paymentsData.totals?.sikhoGithubFeeTotal || 0).toFixed(2)} USDC</p>
-                  <p className="text-[11px] text-slate-500 mt-1">$0.05 USDC fee per reviewed file</p>
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">GitHub Review Sikho Fee</span>
+                  <p className="text-2xl font-extrabold text-indigo-600 mt-2">${(paymentsData.totals?.sikhoGithubFeeTotal || 0).toFixed(2)} USDC</p>
+                  <p className="text-[11px] text-slate-400 mt-1">$0.05 USDC fee per reviewed file</p>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Prism Review Fee</span>
-                  <p className="text-2xl font-extrabold text-purple-400 mt-2">${(paymentsData.totals?.prismGithubFeeTotal || 0).toFixed(2)} USDC</p>
-                  <p className="text-[11px] text-slate-500 mt-1">$0.20 USDC fee per reviewed file</p>
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Prism Review Fee</span>
+                  <p className="text-2xl font-extrabold text-purple-600 mt-2">${(paymentsData.totals?.prismGithubFeeTotal || 0).toFixed(2)} USDC</p>
+                  <p className="text-[11px] text-slate-400 mt-1">$0.20 USDC fee per reviewed file</p>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pay-Per-Chapter Unlocks</span>
-                  <p className="text-2xl font-extrabold text-amber-400 mt-2">${(paymentsData.totals?.payPerChapterTotal || 0).toFixed(2)} USDC</p>
-                  <p className="text-[11px] text-slate-500 mt-1">Direct course chapter unlock purchases</p>
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pay-Per-Chapter Unlocks</span>
+                  <p className="text-2xl font-extrabold text-amber-600 mt-2">${(paymentsData.totals?.payPerChapterTotal || 0).toFixed(2)} USDC</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Direct course chapter unlock purchases</p>
                 </div>
               </div>
 
               {/* Sikho-Specific Payment Split Highlight Box */}
-              <div className="bg-slate-900 border border-indigo-500/20 rounded-2xl p-6">
-                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-                  <Code2 className="w-4 h-4 text-indigo-400" /> Sikho-Specific Payment Tracking (GitHub Review & Chapter Unlocks)
+              <div className="bg-white border border-indigo-200 rounded-2xl p-6 shadow-xs">
+                <h3 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
+                  <Code2 className="w-4 h-4 text-indigo-600" /> Sikho-Specific Payment Tracking (GitHub Review & Chapter Unlocks)
                 </h3>
-                <p className="text-xs text-slate-400 mb-4">Per-file code review fee separation ($0.05 Sikho vs $0.20 Prism) and chapter unlocks ledger</p>
+                <p className="text-xs text-slate-500 mb-4">Per-file code review fee separation ($0.05 Sikho vs $0.20 Prism) and chapter unlocks ledger</p>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
+                    <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
                       <tr>
                         <th className="py-2.5 px-3 font-semibold">File Review ID</th>
                         <th className="py-2.5 px-3 font-semibold">File Path</th>
@@ -662,19 +661,19 @@ const AdminDashboard: React.FC = () => {
                         <th className="py-2.5 px-3 font-semibold text-right">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60">
+                    <tbody className="divide-y divide-slate-100">
                       {(paymentsData.githubSplitDetails || []).map((item: any, i: number) => (
-                        <tr key={i} className="hover:bg-slate-800/30">
-                          <td className="py-2.5 px-3 font-mono text-[11px] text-slate-400">{item.fileReviewId}</td>
-                          <td className="py-2.5 px-3 font-semibold text-white">{item.filePath}</td>
-                          <td className="py-2.5 px-3 font-bold text-indigo-400">$0.05 USDC</td>
-                          <td className="py-2.5 px-3 font-bold text-purple-400">$0.20 USDC</td>
-                          <td className="py-2.5 px-3 font-bold text-emerald-400">$0.25 USDC</td>
-                          <td className="py-2.5 px-3 font-mono text-[10px] text-slate-400 truncate max-w-[150px]">
+                        <tr key={i} className="hover:bg-slate-50/80">
+                          <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">{item.fileReviewId}</td>
+                          <td className="py-2.5 px-3 font-semibold text-slate-900">{item.filePath}</td>
+                          <td className="py-2.5 px-3 font-bold text-indigo-600">$0.05 USDC</td>
+                          <td className="py-2.5 px-3 font-bold text-purple-600">$0.20 USDC</td>
+                          <td className="py-2.5 px-3 font-bold text-emerald-600">$0.25 USDC</td>
+                          <td className="py-2.5 px-3 font-mono text-[10px] text-slate-500 truncate max-w-[150px]">
                             {item.sikhoTxId}
                           </td>
                           <td className="py-2.5 px-3 text-right">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
                               Verified
                             </span>
                           </td>
@@ -686,7 +685,7 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Transactions Ledger Controls */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
                 <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto">
                   {(['all', 'successful', 'pending', 'failed'] as const).map((st) => (
                     <button
@@ -694,8 +693,8 @@ const AdminDashboard: React.FC = () => {
                       onClick={() => setPaymentStatusTab(st)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition-all whitespace-nowrap ${
                         paymentStatusTab === st
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-slate-950 text-slate-400 hover:text-white'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       {st}
@@ -710,16 +709,16 @@ const AdminDashboard: React.FC = () => {
                     value={paymentSearch}
                     onChange={(e) => setPaymentSearch(e.target.value)}
                     placeholder="Search by user, transaction hash, feature..."
-                    className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
               </div>
 
               {/* Main Transactions Table */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider border-b border-slate-800">
+                    <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider border-b border-slate-200">
                       <tr>
                         <th className="py-3.5 px-4 font-semibold">Transaction ID</th>
                         <th className="py-3.5 px-4 font-semibold">Learner Name</th>
@@ -730,21 +729,21 @@ const AdminDashboard: React.FC = () => {
                         <th className="py-3.5 px-4 font-semibold text-right">Algorand Tx Reference</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60">
+                    <tbody className="divide-y divide-slate-100">
                       {filteredPayments.map((p: any) => (
-                        <tr key={p._id} className="hover:bg-slate-800/40 transition-all">
-                          <td className="py-3.5 px-4 font-mono text-[11px] text-slate-400">{p.transactionId}</td>
-                          <td className="py-3.5 px-4 font-bold text-white">{p.userName}</td>
-                          <td className="py-3.5 px-4 text-slate-300 font-medium">{p.featureUsed}</td>
-                          <td className="py-3.5 px-4 font-bold text-emerald-400">${p.amount} {p.currency}</td>
-                          <td className="py-3.5 px-4 text-slate-400">{new Date(p.paymentDate).toLocaleString()}</td>
+                        <tr key={p._id} className="hover:bg-slate-50/80 transition-all">
+                          <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">{p.transactionId}</td>
+                          <td className="py-3.5 px-4 font-bold text-slate-900">{p.userName}</td>
+                          <td className="py-3.5 px-4 text-slate-700 font-medium">{p.featureUsed}</td>
+                          <td className="py-3.5 px-4 font-bold text-emerald-600">${p.amount} {p.currency}</td>
+                          <td className="py-3.5 px-4 text-slate-500">{new Date(p.paymentDate).toLocaleString()}</td>
                           <td className="py-3.5 px-4">
                             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                               p.status === 'successful' || p.status === 'completed'
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                ? 'bg-emerald-100 text-emerald-800'
                                 : p.status === 'pending'
-                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-rose-100 text-rose-800'
                             }`}>
                               {p.status}
                             </span>
@@ -754,7 +753,7 @@ const AdminDashboard: React.FC = () => {
                               href={`https://lora.algokit.io/mainnet/transaction/${p.algorandTxRef}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1 font-mono text-[11px] text-indigo-400 hover:text-indigo-300 underline"
+                              className="inline-flex items-center gap-1 font-mono text-[11px] text-indigo-600 hover:text-indigo-800 underline"
                             >
                               {p.algorandTxRef ? `${p.algorandTxRef.substring(0, 10)}...` : 'View Tx'} <ExternalLink className="w-3 h-3" />
                             </a>
@@ -779,21 +778,21 @@ const AdminDashboard: React.FC = () => {
             <div className="space-y-8">
 
               {/* Date Filter & Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-2xl p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
                 <div>
-                  <h3 className="text-sm font-bold text-white">Sikho AI Applications Usage Breakdown</h3>
-                  <p className="text-xs text-slate-400">Tracking user engagement across all 7 platform applications</p>
+                  <h3 className="text-sm font-bold text-slate-900">Sikho AI Applications Usage Breakdown</h3>
+                  <p className="text-xs text-slate-500">Tracking user engagement across all 7 platform applications</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-400 font-medium">Time Horizon:</span>
+                  <span className="text-xs text-slate-500 font-medium">Time Horizon:</span>
                   {(['7d', '30d', '90d', 'all'] as const).map((r) => (
                     <button
                       key={r}
                       onClick={() => setAnalyticsDateRange(r)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase transition-all ${
                         analyticsDateRange === r
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-slate-950 text-slate-400 hover:text-white'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       {r}
@@ -807,34 +806,34 @@ const AdminDashboard: React.FC = () => {
                 {(appAnalyticsData.applications || []).map((app: any, idx: number) => {
                   const Icon = APP_ICONS[app.appName] || Sparkles;
                   return (
-                    <div key={idx} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-all flex flex-col justify-between">
+                    <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all flex flex-col justify-between shadow-xs">
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                          <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
                             <Icon className="w-4 h-4" />
                           </div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
                             App #{idx + 1}
                           </span>
                         </div>
-                        <h4 className="font-bold text-sm text-white">{app.appName}</h4>
+                        <h4 className="font-bold text-sm text-slate-900">{app.appName}</h4>
                         
                         <div className="mt-4 space-y-2 text-xs">
-                          <div className="flex justify-between py-1 border-b border-slate-800/60">
-                            <span className="text-slate-400">Total Usage Events</span>
-                            <span className="font-bold text-white">{app.totalUsageEvents}</span>
+                          <div className="flex justify-between py-1 border-b border-slate-100">
+                            <span className="text-slate-500">Total Usage Events</span>
+                            <span className="font-bold text-slate-900">{app.totalUsageEvents}</span>
                           </div>
-                          <div className="flex justify-between py-1 border-b border-slate-800/60">
-                            <span className="text-slate-400">Unique Active Users</span>
-                            <span className="font-semibold text-indigo-300">{app.uniqueActiveUsers}</span>
+                          <div className="flex justify-between py-1 border-b border-slate-100">
+                            <span className="text-slate-500">Unique Active Users</span>
+                            <span className="font-semibold text-indigo-600">{app.uniqueActiveUsers}</span>
                           </div>
-                          <div className="flex justify-between py-1 border-b border-slate-800/60">
-                            <span className="text-slate-400">DAU / WAU / MAU</span>
-                            <span className="font-mono text-slate-300">{app.dailyUsage} / {app.weeklyUsage} / {app.monthlyUsage}</span>
+                          <div className="flex justify-between py-1 border-b border-slate-100">
+                            <span className="text-slate-500">DAU / WAU / MAU</span>
+                            <span className="font-mono text-slate-700">{app.dailyUsage} / {app.weeklyUsage} / {app.monthlyUsage}</span>
                           </div>
                           <div className="flex justify-between py-1">
-                            <span className="text-slate-400">Revenue Generated</span>
-                            <span className="font-bold text-emerald-400">${app.revenueGenerated.toFixed(2)} USDC</span>
+                            <span className="text-slate-500">Revenue Generated</span>
+                            <span className="font-bold text-emerald-600">${app.revenueGenerated.toFixed(2)} USDC</span>
                           </div>
                         </div>
                       </div>
@@ -844,20 +843,20 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Ranked Applications Bar Chart */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-indigo-400" /> Ranked Application Usage Count
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+                <h3 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-indigo-600" /> Ranked Application Usage Count
                 </h3>
-                <p className="text-xs text-slate-400 mb-6">Applications ranked by total telemetry usage events within the selected timeframe ({analyticsDateRange})</p>
+                <p className="text-xs text-slate-500 mb-6">Applications ranked by total telemetry usage events within the selected timeframe ({analyticsDateRange})</p>
 
                 <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={appAnalyticsData.rankedChart || []} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                       <XAxis type="number" stroke="#64748b" fontSize={11} />
-                      <YAxis dataKey="appName" type="category" stroke="#94a3b8" fontSize={11} width={140} />
-                      <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }} />
-                      <Bar dataKey="usageCount" fill="#6366f1" radius={[0, 6, 6, 0]} />
+                      <YAxis dataKey="appName" type="category" stroke="#475569" fontSize={11} width={140} />
+                      <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', fontSize: '12px' }} />
+                      <Bar dataKey="usageCount" fill="#4f46e5" radius={[0, 6, 6, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -871,31 +870,31 @@ const AdminDashboard: React.FC = () => {
             <div className="space-y-8">
 
               {/* Admin Profile & Role Overview */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
                 <div className="flex items-center gap-3 mb-4">
-                  <ShieldCheck className="w-6 h-6 text-indigo-400" />
+                  <ShieldCheck className="w-6 h-6 text-indigo-600" />
                   <div>
-                    <h3 className="text-sm font-bold text-white">Admin Authentication & Access Control</h3>
-                    <p className="text-xs text-slate-400">Configured security policy for platform administration</p>
+                    <h3 className="text-sm font-bold text-slate-900">Admin Authentication & Access Control</h3>
+                    <p className="text-xs text-slate-500">Configured security policy for platform administration</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-800 pt-4 text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-100 pt-4 text-xs">
                   <div>
-                    <span className="text-slate-400">Authenticated Admin Username</span>
-                    <p className="font-bold text-white mt-1">admin@gmail.com</p>
+                    <span className="text-slate-500">Authenticated Admin Username</span>
+                    <p className="font-bold text-slate-900 mt-1">admin@gmail.com</p>
                   </div>
                   <div>
-                    <span className="text-slate-400">Role Authority</span>
-                    <p className="font-bold text-indigo-400 mt-1">Platform Super Admin (ADMIN)</p>
+                    <span className="text-slate-500">Role Authority</span>
+                    <p className="font-bold text-indigo-600 mt-1">Platform Super Admin (ADMIN)</p>
                   </div>
                   <div>
-                    <span className="text-slate-400">Personal Data Protection (PDI)</span>
+                    <span className="text-slate-500">Personal Data Protection (PDI)</span>
                     <div className="flex items-center gap-2 mt-1">
                       <button
                         onClick={() => setMaskSensitiveData(!maskSensitiveData)}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                          maskSensitiveData ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                          maskSensitiveData ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                         }`}
                       >
                         {maskSensitiveData ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -907,47 +906,47 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Export Reports Section */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-                  <FileSpreadsheet className="w-4 h-4 text-emerald-400" /> Export Platform Reports
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+                <h3 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Export Platform Reports
                 </h3>
-                <p className="text-xs text-slate-400 mb-6">Generate and download official CSV data reports</p>
+                <p className="text-xs text-slate-500 mb-6">Generate and download official CSV data reports</p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col justify-between">
                     <div>
-                      <h4 className="font-bold text-xs text-white">Users & Learners Report</h4>
-                      <p className="text-[11px] text-slate-400 mt-1">Export registered users list with status and registration details.</p>
+                      <h4 className="font-bold text-xs text-slate-900">Users & Learners Report</h4>
+                      <p className="text-[11px] text-slate-500 mt-1">Export registered users list with status and registration details.</p>
                     </div>
                     <Button
                       onClick={() => handleExportCsv('users')}
-                      className="mt-4 text-xs py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl"
+                      className="mt-4 text-xs py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs"
                     >
                       <Download className="w-3.5 h-3.5 mr-2" /> Download Users CSV
                     </Button>
                   </div>
 
-                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col justify-between">
                     <div>
-                      <h4 className="font-bold text-xs text-white">Payments & Financial Ledger</h4>
-                      <p className="text-[11px] text-slate-400 mt-1">Export complete USDC payment transactions with hashes.</p>
+                      <h4 className="font-bold text-xs text-slate-900">Payments & Financial Ledger</h4>
+                      <p className="text-[11px] text-slate-500 mt-1">Export complete USDC payment transactions with hashes.</p>
                     </div>
                     <Button
                       onClick={() => handleExportCsv('payments')}
-                      className="mt-4 text-xs py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl"
+                      className="mt-4 text-xs py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs"
                     >
                       <Download className="w-3.5 h-3.5 mr-2" /> Download Payments CSV
                     </Button>
                   </div>
 
-                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col justify-between">
                     <div>
-                      <h4 className="font-bold text-xs text-white">Application Usage Report</h4>
-                      <p className="text-[11px] text-slate-400 mt-1">Export telemetry usage logs across all 7 Sikho AI apps.</p>
+                      <h4 className="font-bold text-xs text-slate-900">Application Usage Report</h4>
+                      <p className="text-[11px] text-slate-500 mt-1">Export telemetry usage logs across all 7 Sikho AI apps.</p>
                     </div>
                     <Button
                       onClick={() => handleExportCsv('app-usage')}
-                      className="mt-4 text-xs py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl"
+                      className="mt-4 text-xs py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-xs"
                     >
                       <Download className="w-3.5 h-3.5 mr-2" /> Download Usage CSV
                     </Button>
@@ -956,15 +955,15 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Admin Activity Audit Logs Table */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-amber-400" /> Admin Audit Logs
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+                <h3 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-amber-600" /> Admin Audit Logs
                 </h3>
-                <p className="text-xs text-slate-400 mb-6">Recent security and administration events</p>
+                <p className="text-xs text-slate-500 mb-6">Recent security and administration events</p>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
+                    <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
                       <tr>
                         <th className="py-2.5 px-3 font-semibold">Timestamp</th>
                         <th className="py-2.5 px-3 font-semibold">Admin Account</th>
@@ -973,14 +972,14 @@ const AdminDashboard: React.FC = () => {
                         <th className="py-2.5 px-3 font-semibold">IP Address</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60">
+                    <tbody className="divide-y divide-slate-100">
                       {activityLogs.map((log: any, idx: number) => (
-                        <tr key={idx} className="hover:bg-slate-800/30">
-                          <td className="py-2.5 px-3 font-mono text-[11px] text-slate-400">{new Date(log.timestamp).toLocaleString()}</td>
-                          <td className="py-2.5 px-3 font-semibold text-indigo-300">{maskText(log.adminEmail, true)}</td>
-                          <td className="py-2.5 px-3 font-bold text-white">{log.action}</td>
-                          <td className="py-2.5 px-3 text-slate-300">{log.target || 'System'}</td>
-                          <td className="py-2.5 px-3 font-mono text-[11px] text-slate-400">{log.ipAddress || '127.0.0.1'}</td>
+                        <tr key={idx} className="hover:bg-slate-50/80">
+                          <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">{new Date(log.timestamp).toLocaleString()}</td>
+                          <td className="py-2.5 px-3 font-semibold text-indigo-600">{maskText(log.adminEmail, true)}</td>
+                          <td className="py-2.5 px-3 font-bold text-slate-900">{log.action}</td>
+                          <td className="py-2.5 px-3 text-slate-700">{log.target || 'System'}</td>
+                          <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">{log.ipAddress || '127.0.0.1'}</td>
                         </tr>
                       ))}
                       {activityLogs.length === 0 && (
@@ -999,27 +998,27 @@ const AdminDashboard: React.FC = () => {
         </main>
       </div>
 
-      {/* INDIVIDUAL USER PROFILE SLIDE-OVER MODAL */}
+      {/* INDIVIDUAL USER PROFILE SLIDE-OVER MODAL (Clean White Theme) */}
       <AnimatePresence>
         {selectedUser && (
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex justify-end">
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex justify-end">
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="w-full max-w-xl bg-slate-900 border-l border-slate-800 h-full overflow-y-auto p-6 space-y-6 shadow-2xl flex flex-col justify-between"
+              className="w-full max-w-xl bg-white border-l border-slate-200 h-full overflow-y-auto p-6 space-y-6 shadow-2xl flex flex-col justify-between text-slate-800"
             >
               <div className="space-y-6">
                 {/* Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-200">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold text-sm">
+                    <div className="w-10 h-10 rounded-full bg-indigo-100 border border-indigo-200 text-indigo-700 flex items-center justify-center font-bold text-sm">
                       {selectedUser.fullName?.charAt(0) || 'U'}
                     </div>
                     <div>
-                      <h3 className="font-bold text-base text-white">{selectedUser.fullName}</h3>
-                      <p className="text-xs text-slate-400">{maskText(selectedUser.email, true)}</p>
+                      <h3 className="font-bold text-base text-slate-900">{selectedUser.fullName}</h3>
+                      <p className="text-xs text-slate-500">{maskText(selectedUser.email, true)}</p>
                     </div>
                   </div>
                   <button
@@ -1027,73 +1026,73 @@ const AdminDashboard: React.FC = () => {
                       setSelectedUser(null);
                       setSelectedUserDetails(null);
                     }}
-                    className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800"
+                    className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 {loadingUserDetails ? (
-                  <div className="py-16 text-center text-slate-400 text-xs">Loading learner profile metrics...</div>
+                  <div className="py-16 text-center text-slate-500 text-xs">Loading learner profile metrics...</div>
                 ) : (
                   <>
                     {/* User Overview Grid */}
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
-                        <span className="text-[10px] text-slate-400 uppercase font-bold">Total Paid (USDC)</span>
-                        <p className="text-lg font-bold text-emerald-400 mt-1">
+                      <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-500 uppercase font-bold">Total Paid (USDC)</span>
+                        <p className="text-lg font-bold text-emerald-600 mt-1">
                           ${selectedUserDetails?.stats?.totalAmountPaidUSDC || 0} USDC
                         </p>
                       </div>
 
-                      <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
-                        <span className="text-[10px] text-slate-400 uppercase font-bold">Most-Used Feature</span>
-                        <p className="text-sm font-bold text-amber-400 mt-1 truncate">
+                      <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-500 uppercase font-bold">Most-Used Feature</span>
+                        <p className="text-sm font-bold text-amber-600 mt-1 truncate">
                           {selectedUserDetails?.stats?.mostUsedFeature || 'Learn Anything'}
                         </p>
                       </div>
 
-                      <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
-                        <span className="text-[10px] text-slate-400 uppercase font-bold">Chapters Completed</span>
-                        <p className="text-lg font-bold text-indigo-400 mt-1">
+                      <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-500 uppercase font-bold">Chapters Completed</span>
+                        <p className="text-lg font-bold text-indigo-600 mt-1">
                           {selectedUserDetails?.stats?.completedChapters || 0} Chapters
                         </p>
                       </div>
 
-                      <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
-                        <span className="text-[10px] text-slate-400 uppercase font-bold">GitHub Reviews</span>
-                        <p className="text-lg font-bold text-purple-400 mt-1">
+                      <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-500 uppercase font-bold">GitHub Reviews</span>
+                        <p className="text-lg font-bold text-purple-600 mt-1">
                           {selectedUserDetails?.stats?.githubReviews || 0} Reviews
                         </p>
                       </div>
                     </div>
 
                     {/* Applications Frequency Breakdown */}
-                    <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                      <h4 className="text-xs font-bold text-white mb-3">Application Usage Frequency</h4>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                      <h4 className="text-xs font-bold text-slate-900 mb-3">Application Usage Frequency</h4>
                       <div className="space-y-2 text-xs">
                         {Object.entries(selectedUserDetails?.appBreakdown || {}).map(([app, count]: any) => (
-                          <div key={app} className="flex items-center justify-between py-1 border-b border-slate-900 last:border-none">
-                            <span className="text-slate-300 font-medium">{app}</span>
-                            <span className="font-mono text-indigo-400 font-bold">{count} sessions</span>
+                          <div key={app} className="flex items-center justify-between py-1 border-b border-slate-200/60 last:border-none">
+                            <span className="text-slate-700 font-medium">{app}</span>
+                            <span className="font-mono text-indigo-600 font-bold">{count} sessions</span>
                           </div>
                         ))}
                       </div>
                     </div>
 
                     {/* Recent Activity Timeline */}
-                    <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                      <h4 className="text-xs font-bold text-white mb-3">Recent Activity Timeline</h4>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                      <h4 className="text-xs font-bold text-slate-900 mb-3">Recent Activity Timeline</h4>
                       <div className="space-y-3 text-xs max-h-48 overflow-y-auto pr-1">
                         {(selectedUserDetails?.activityTimeline || []).map((act: any, i: number) => (
                           <div key={i} className="flex items-start gap-2.5">
-                            <div className="w-2 h-2 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0" />
+                            <div className="w-2 h-2 rounded-full bg-indigo-600 mt-1.5 flex-shrink-0" />
                             <div className="flex-1">
-                              <p className="font-semibold text-slate-200">{act.action}</p>
+                              <p className="font-semibold text-slate-800">{act.action}</p>
                               <p className="text-[10px] text-slate-500">{new Date(act.timestamp).toLocaleString()}</p>
                             </div>
                             {act.isPaid && (
-                              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
                                 +${act.amount}
                               </span>
                             )}
@@ -1105,10 +1104,10 @@ const AdminDashboard: React.FC = () => {
                 )}
               </div>
 
-              <div className="pt-4 border-t border-slate-800">
+              <div className="pt-4 border-t border-slate-200">
                 <Button
                   onClick={() => setSelectedUser(null)}
-                  className="w-full py-2 text-xs rounded-xl bg-slate-800 hover:bg-slate-700 text-white"
+                  className="w-full py-2 text-xs rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300"
                 >
                   Close Profile
                 </Button>
