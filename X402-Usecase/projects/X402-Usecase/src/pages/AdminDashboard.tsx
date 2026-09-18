@@ -12,7 +12,8 @@ import {
   TrendingUp, Activity, CheckCircle2, Clock, AlertCircle, Search,
   Download, Filter, ChevronRight, Shield, ShieldCheck, FileSpreadsheet,
   ExternalLink, Sparkles, BookOpen, Code2, Briefcase, FileText, Target,
-  MessageSquare, UserCheck, Eye, EyeOff, RefreshCw, X, DollarSign, Layers
+  MessageSquare, UserCheck, Eye, EyeOff, RefreshCw, X, DollarSign, Layers,
+  UserX, UserPlus, Award, Zap
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 
@@ -64,24 +65,37 @@ const AdminDashboard: React.FC = () => {
     },
   });
 
-  // Users State & Profile Slide-over
-  const [usersList, setUsersList] = useState<any[]>([]);
+  // Users State, Summary Tiles & Profile Slide-over
+  const [usersData, setUsersData] = useState<any>({
+    summaryTiles: {
+      totalRegisteredUsers: 0,
+      activeLearners: 0,
+      deactivatedLearners: 0,
+      newUsersLast7Days: 0,
+      onboardingCompletedCount: 0,
+      avgLearningHours: '0',
+    },
+    users: [],
+  });
   const [userSearch, setUserSearch] = useState('');
   const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [selectedUserDetails, setSelectedUserDetails] = useState<any | null>(null);
   const [loadingUserDetails, setLoadingUserDetails] = useState(false);
 
-  // Payments State
+  // Payments State & All Feature Filters
   const [paymentsData, setPaymentsData] = useState<any>({
     ledger: [],
     totals: {
       verifiedTotal: 0,
-      pendingTotal: 0,
-      failedTotal: 0,
+      pendingCount: 0,
+      failedCount: 0,
+      coursePurchasesTotal: 0,
+      payPerChapterTotal: 0,
+      githubReviewTotal: 0,
       sikhoGithubFeeTotal: 0,
       prismGithubFeeTotal: 0,
-      payPerChapterTotal: 0,
+      aiServicesTotal: 0,
     },
     githubSplitDetails: [],
   });
@@ -111,13 +125,17 @@ const AdminDashboard: React.FC = () => {
       }
 
       // 2. Users
-      const usersRes = await adminApi.getUsers();
+      const usersRes = await adminApi.getUsers({ search: userSearch, status: userStatusFilter });
       if (usersRes.success) {
-        setUsersList(usersRes.data.users || []);
+        setUsersData(usersRes.data);
       }
 
       // 3. Payments
-      const paymentsRes = await adminApi.getPayments();
+      const paymentsRes = await adminApi.getPayments({
+        status: paymentStatusTab,
+        feature: paymentFeatureFilter,
+        search: paymentSearch,
+      });
       if (paymentsRes.success) {
         setPaymentsData(paymentsRes.data);
       }
@@ -143,13 +161,27 @@ const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     loadDashboardData();
-  }, [analyticsDateRange]);
+  }, [analyticsDateRange, userStatusFilter, paymentStatusTab, paymentFeatureFilter]);
 
   const handleManualRefresh = async () => {
     setRefreshing(true);
     await loadDashboardData();
     setRefreshing(false);
-    enqueueSnackbar('Dashboard refreshed with latest real-time data', { variant: 'success' });
+    enqueueSnackbar('Dashboard refreshed with latest real-time MongoDB data', { variant: 'success' });
+  };
+
+  // Toggle user active status directly in database
+  const handleToggleUserStatus = async (u: any) => {
+    const newStatus = !u.isActive;
+    try {
+      const res = await adminApi.toggleUserStatus(u._id, newStatus);
+      if (res.success) {
+        enqueueSnackbar(`User ${u.fullName} is now ${newStatus ? 'Active' : 'Deactivated'}`, { variant: 'success' });
+        loadDashboardData();
+      }
+    } catch (err: any) {
+      enqueueSnackbar('Failed to update user status', { variant: 'error' });
+    }
   };
 
   // Fetch individual user details when clicking a user row
@@ -169,7 +201,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   // Filtered Users Table
-  const filteredUsers = usersList.filter((u) => {
+  const filteredUsers = (usersData.users || []).filter((u: any) => {
     const matchesSearch =
       u.fullName?.toLowerCase().includes(userSearch.toLowerCase()) ||
       u.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
@@ -194,7 +226,9 @@ const AdminDashboard: React.FC = () => {
     const matchesFeature =
       paymentFeatureFilter === 'all'
         ? true
-        : p.featureUsed?.toLowerCase().includes(paymentFeatureFilter.toLowerCase());
+        : p.featureUsed?.toLowerCase().includes(paymentFeatureFilter.toLowerCase()) ||
+          p.appName?.toLowerCase().includes(paymentFeatureFilter.toLowerCase()) ||
+          p.type?.toLowerCase().includes(paymentFeatureFilter.toLowerCase());
     const matchesSearch =
       p.userName?.toLowerCase().includes(paymentSearch.toLowerCase()) ||
       p.userEmail?.toLowerCase().includes(paymentSearch.toLowerCase()) ||
@@ -312,8 +346,8 @@ const AdminDashboard: React.FC = () => {
             </button>
             <h2 className="text-base font-bold text-slate-900 capitalize tracking-tight flex items-center gap-2">
               {activeTab === 'overview' && 'Dashboard Overview'}
-              {activeTab === 'users' && 'User Management & Profiles'}
-              {activeTab === 'payments' && 'Payments & Fee Split Ledger'}
+              {activeTab === 'users' && 'User Management & Learner Profiles'}
+              {activeTab === 'payments' && 'Payments & Ledger (All Features)'}
               {activeTab === 'apps' && 'Application Usage Analytics'}
               {activeTab === 'settings' && 'Admin Settings & Access Controls'}
             </h2>
@@ -389,7 +423,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* 6 Summary Cards (Crisp White) */}
+              {/* 6 Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                 {[
                   { label: 'Total Registered Users', val: overviewData.summary?.totalRegisteredUsers, icon: Users, color: 'text-indigo-600 bg-indigo-50 border-indigo-100' },
@@ -531,9 +565,66 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* 2. USERS MANAGEMENT TAB */}
+          {/* 2. USERS MANAGEMENT TAB (ENHANCED TILES & CONTROLS) */}
           {activeTab === 'users' && (
             <div className="space-y-6">
+
+              {/* USER MANAGEMENT TILES (REAL-TIME MONGODB METRICS) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Learners</span>
+                    <Users className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <p className="text-xl font-extrabold text-slate-900">{usersData.summaryTiles?.totalRegisteredUsers || 0}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Registered in MongoDB</p>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Active Learners</span>
+                    <UserCheck className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <p className="text-xl font-extrabold text-emerald-600">{usersData.summaryTiles?.activeLearners || 0}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Account Active</p>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Deactivated</span>
+                    <UserX className="w-4 h-4 text-rose-600" />
+                  </div>
+                  <p className="text-xl font-extrabold text-rose-600">{usersData.summaryTiles?.deactivatedLearners || 0}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Status Deactivated</p>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">New (Last 7D)</span>
+                    <UserPlus className="w-4 h-4 text-sky-600" />
+                  </div>
+                  <p className="text-xl font-extrabold text-sky-600">{usersData.summaryTiles?.newUsersLast7Days || 0}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Joined this week</p>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Onboarding Done</span>
+                    <Award className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <p className="text-xl font-extrabold text-amber-600">{usersData.summaryTiles?.onboardingCompletedCount || 0}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Profile completed</p>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Avg Learning Hrs</span>
+                    <Clock className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <p className="text-xl font-extrabold text-purple-600">{usersData.summaryTiles?.avgLearningHours || 0} hrs</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Per learner average</p>
+                </div>
+              </div>
 
               {/* Filters & Search */}
               <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
@@ -549,7 +640,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-                  <span className="text-xs text-slate-500 font-medium">Status:</span>
+                  <span className="text-xs text-slate-500 font-medium">Status Filter:</span>
                   <select
                     value={userStatusFilter}
                     onChange={(e) => setUserStatusFilter(e.target.value as any)}
@@ -571,28 +662,36 @@ const AdminDashboard: React.FC = () => {
                         <th className="py-3.5 px-4 font-semibold">User ID</th>
                         <th className="py-3.5 px-4 font-semibold">Learner Name</th>
                         <th className="py-3.5 px-4 font-semibold">Email</th>
+                        <th className="py-3.5 px-4 font-semibold">Education / Role</th>
                         <th className="py-3.5 px-4 font-semibold">Reg Date</th>
-                        <th className="py-3.5 px-4 font-semibold">Status & Last Active</th>
+                        <th className="py-3.5 px-4 font-semibold">Status & Toggle</th>
                         <th className="py-3.5 px-4 font-semibold">Features Used</th>
                         <th className="py-3.5 px-4 font-semibold">Total Paid</th>
                         <th className="py-3.5 px-4 font-semibold text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {filteredUsers.map((u) => (
+                      {filteredUsers.map((u: any) => (
                         <tr key={u._id} className="hover:bg-slate-50/80 transition-all">
                           <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">{u._id}</td>
                           <td className="py-3.5 px-4 font-bold text-slate-900">{u.fullName}</td>
                           <td className="py-3.5 px-4 text-slate-600 font-medium">{maskText(u.email, true)}</td>
+                          <td className="py-3.5 px-4">
+                            <p className="font-semibold text-slate-800">{u.educationLevel || 'General'}</p>
+                            <p className="text-[10px] text-slate-400">{u.targetRole || 'Learner'}</p>
+                          </td>
                           <td className="py-3.5 px-4 text-slate-500">{new Date(u.createdAt).toLocaleDateString()}</td>
                           <td className="py-3.5 px-4">
-                            <div className="flex flex-col gap-1">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold w-fit ${u.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${u.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
                                 {u.isActive ? 'Active' : 'Deactivated'}
                               </span>
-                              <span className="text-[10px] text-slate-400">
-                                {u.lastLogin ? new Date(u.lastLogin).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
-                              </span>
+                              <button
+                                onClick={() => handleToggleUserStatus(u)}
+                                className="text-[10px] underline text-slate-500 hover:text-indigo-600"
+                              >
+                                {u.isActive ? 'Deactivate' : 'Activate'}
+                              </button>
                             </div>
                           </td>
                           <td className="py-3.5 px-4 font-semibold text-indigo-600">{u.featuresUsed} features</td>
@@ -611,7 +710,7 @@ const AdminDashboard: React.FC = () => {
                       ))}
                       {filteredUsers.length === 0 && (
                         <tr>
-                          <td colSpan={8} className="py-12 text-center text-slate-500">No matching users found.</td>
+                          <td colSpan={9} className="py-12 text-center text-slate-500">No matching users found.</td>
                         </tr>
                       )}
                     </tbody>
@@ -622,43 +721,55 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* 3. PAYMENTS MANAGEMENT TAB */}
+          {/* 3. PAYMENTS & LEDGER TAB (ALL FEATURES & FILTERS) */}
           {activeTab === 'payments' && (
             <div className="space-y-8">
 
-              {/* Payment Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Verified Revenue</span>
-                  <p className="text-2xl font-extrabold text-emerald-600 mt-2">${(paymentsData.totals?.verifiedTotal || 0).toFixed(2)} USDC</p>
-                  <p className="text-[11px] text-slate-400 mt-1">Confirmed on Algorand blockchain</p>
+              {/* Payment Summary Cards by Feature Category */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Verified Revenue</span>
+                  <p className="text-xl font-extrabold text-emerald-600 mt-1.5">${(paymentsData.totals?.verifiedTotal || 0).toFixed(2)} USDC</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Confirmed on-chain</p>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">GitHub Review Sikho Fee</span>
-                  <p className="text-2xl font-extrabold text-indigo-600 mt-2">${(paymentsData.totals?.sikhoGithubFeeTotal || 0).toFixed(2)} USDC</p>
-                  <p className="text-[11px] text-slate-400 mt-1">$0.05 USDC fee per reviewed file</p>
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Course Purchases</span>
+                  <p className="text-xl font-extrabold text-indigo-600 mt-1.5">${(paymentsData.totals?.coursePurchasesTotal || 0).toFixed(2)} USDC</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Full Course Sales</p>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Prism Review Fee</span>
-                  <p className="text-2xl font-extrabold text-purple-600 mt-2">${(paymentsData.totals?.prismGithubFeeTotal || 0).toFixed(2)} USDC</p>
-                  <p className="text-[11px] text-slate-400 mt-1">$0.20 USDC fee per reviewed file</p>
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Chapter Unlocks</span>
+                  <p className="text-xl font-extrabold text-amber-600 mt-1.5">${(paymentsData.totals?.payPerChapterTotal || 0).toFixed(2)} USDC</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Pay-Per-Chapter</p>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pay-Per-Chapter Unlocks</span>
-                  <p className="text-2xl font-extrabold text-amber-600 mt-2">${(paymentsData.totals?.payPerChapterTotal || 0).toFixed(2)} USDC</p>
-                  <p className="text-[11px] text-slate-400 mt-1">Direct course chapter unlock purchases</p>
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">GitHub Sikho Fee</span>
+                  <p className="text-xl font-extrabold text-sky-600 mt-1.5">${(paymentsData.totals?.sikhoGithubFeeTotal || 0).toFixed(2)} USDC</p>
+                  <p className="text-[10px] text-slate-400 mt-1">$0.05 / file platform fee</p>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">GitHub Prism Fee</span>
+                  <p className="text-xl font-extrabold text-purple-600 mt-1.5">${(paymentsData.totals?.prismGithubFeeTotal || 0).toFixed(2)} USDC</p>
+                  <p className="text-[10px] text-slate-400 mt-1">$0.20 / file review fee</p>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">AI Tools Micro-Payments</span>
+                  <p className="text-xl font-extrabold text-blue-600 mt-1.5">${(paymentsData.totals?.aiServicesTotal || 0).toFixed(2)} USDC</p>
+                  <p className="text-[10px] text-slate-400 mt-1">AI Applications</p>
                 </div>
               </div>
 
               {/* Sikho-Specific Payment Split Highlight Box */}
               <div className="bg-white border border-indigo-200 rounded-2xl p-6 shadow-xs">
                 <h3 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
-                  <Code2 className="w-4 h-4 text-indigo-600" /> Sikho-Specific Payment Tracking (GitHub Review & Chapter Unlocks)
+                  <Code2 className="w-4 h-4 text-indigo-600" /> GitHub Review Split Fee Log ($0.05 Sikho vs $0.20 Prism)
                 </h3>
-                <p className="text-xs text-slate-500 mb-4">Per-file code review fee separation ($0.05 Sikho vs $0.20 Prism) and chapter unlocks ledger</p>
+                <p className="text-xs text-slate-500 mb-4">Per-file code review fee separation and on-chain verification receipts</p>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
@@ -696,8 +807,10 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Transactions Ledger Controls */}
+              {/* Transactions Ledger Controls & All Feature Filters */}
               <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
+                
+                {/* Status Tabs */}
                 <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto">
                   {(['all', 'successful', 'pending', 'failed'] as const).map((st) => (
                     <button
@@ -714,13 +827,33 @@ const AdminDashboard: React.FC = () => {
                   ))}
                 </div>
 
-                <div className="relative w-full md:w-80">
+                {/* Feature Filter Dropdown */}
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                  <span className="text-xs text-slate-500 font-medium">Feature Filter:</span>
+                  <select
+                    value={paymentFeatureFilter}
+                    onChange={(e) => setPaymentFeatureFilter(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 text-xs text-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="all">All Sikho Features & Apps</option>
+                    <option value="course">Course Purchases</option>
+                    <option value="chapter">Learn Anything (Pay-Per-Chapter)</option>
+                    <option value="github_review">GitHub Code Review</option>
+                    <option value="resume">Resume Intelligence</option>
+                    <option value="roadmap">Career Roadmap</option>
+                    <option value="interview">Interview Mission</option>
+                    <option value="job">Job Intelligence</option>
+                    <option value="consultant">Career Consultant</option>
+                  </select>
+                </div>
+
+                <div className="relative w-full md:w-72">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={paymentSearch}
                     onChange={(e) => setPaymentSearch(e.target.value)}
-                    placeholder="Search by user, transaction hash, feature..."
+                    placeholder="Search user, tx hash..."
                     className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -746,7 +879,7 @@ const AdminDashboard: React.FC = () => {
                         <tr key={p._id} className="hover:bg-slate-50/80 transition-all">
                           <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">{p.transactionId}</td>
                           <td className="py-3.5 px-4 font-bold text-slate-900">{p.userName}</td>
-                          <td className="py-3.5 px-4 text-slate-700 font-medium">{p.featureUsed}</td>
+                          <td className="py-3.5 px-4 text-slate-700 font-semibold">{p.featureUsed}</td>
                           <td className="py-3.5 px-4 font-bold text-emerald-600">${p.amount} {p.currency}</td>
                           <td className="py-3.5 px-4 text-slate-500">{new Date(p.paymentDate).toLocaleString()}</td>
                           <td className="py-3.5 px-4">
@@ -1045,9 +1178,25 @@ const AdminDashboard: React.FC = () => {
                 </div>
 
                 {loadingUserDetails ? (
-                  <div className="py-16 text-center text-slate-500 text-xs">Loading learner profile metrics...</div>
+                  <div className="py-16 text-center text-slate-500 text-xs">Loading learner profile metrics from database...</div>
                 ) : (
                   <>
+                    {/* User Profile Info Badges */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Educational Level:</span>
+                        <span className="font-bold text-slate-900">{selectedUserDetails?.profile?.educationLevel}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Target Role:</span>
+                        <span className="font-bold text-indigo-600">{selectedUserDetails?.profile?.targetRole}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Wallet Address:</span>
+                        <span className="font-mono text-slate-700">{maskText(selectedUserDetails?.profile?.walletAddress)}</span>
+                      </div>
+                    </div>
+
                     {/* User Overview Grid */}
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
@@ -1060,7 +1209,7 @@ const AdminDashboard: React.FC = () => {
                       <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                         <span className="text-[10px] text-slate-500 uppercase font-bold">Most-Used Feature</span>
                         <p className="text-sm font-bold text-amber-600 mt-1 truncate">
-                          {selectedUserDetails?.stats?.mostUsedFeature || 'Learn Anything'}
+                          {selectedUserDetails?.stats?.mostUsedFeature || 'None'}
                         </p>
                       </div>
 

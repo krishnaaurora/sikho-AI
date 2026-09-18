@@ -5,6 +5,7 @@ import {
   getTransactions,
   getUsers,
   getUserDetails,
+  toggleUserStatus,
   getAppAnalytics,
   getActivityLogs,
   createActivityLog,
@@ -26,6 +27,7 @@ router.get("/transactions", getTransactions);
 router.get("/payments", getTransactions);
 router.get("/users", getUsers);
 router.get("/users/:userId/details", getUserDetails);
+router.patch("/users/:userId/status", toggleUserStatus);
 router.get("/app-analytics", getAppAnalytics);
 router.get("/activity-logs", getActivityLogs);
 router.post("/activity-logs", createActivityLog);

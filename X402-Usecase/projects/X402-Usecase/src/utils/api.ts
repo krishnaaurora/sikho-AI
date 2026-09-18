@@ -292,6 +292,12 @@ export const adminApi = {
   async getUserDetails(userId: string) {
     return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/users/${userId}/details`);
   },
+  async toggleUserStatus(userId: string, isActive: boolean) {
+    return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/users/${userId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive }),
+    });
+  },
   async getAppAnalytics(range: string = '30d') {
     return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/app-analytics?range=${range}`);
   },
