@@ -1,4 +1,9 @@
 // Sikho AI x402 Server
+import dns from "node:dns";
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder("ipv4first");
+}
+
 import dotenv from "dotenv";
 dotenv.config();
 

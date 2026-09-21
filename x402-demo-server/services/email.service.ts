@@ -1,3 +1,8 @@
+import dns from "node:dns";
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder("ipv4first");
+}
+
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -251,33 +256,22 @@ const createTransporter = () => {
   const user = process.env.SMTP_USER || process.env.GMAIL_USER || "";
   const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || "";
 
-  const isGmail = host.includes("gmail") || user.includes("@gmail.com");
-
-  // For Gmail, using service: "gmail" or port 465 SSL connects immediately
-  // and avoids Render/cloud firewall timeouts on port 587 STARTTLS.
-  if (isGmail && (!process.env.SMTP_HOST || host === "smtp.gmail.com")) {
-    return nodemailer.createTransport({
-      service: "gmail",
-      auth: user && pass ? { user, pass } : undefined,
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
-    });
-  }
-
   const secureEnv = process.env.SMTP_SECURE;
   const isSecure = secureEnv !== undefined ? secureEnv === "true" : port === 465;
 
-  return nodemailer.createTransport({
+  const transportOptions = {
     host,
     port,
     secure: isSecure,
     auth: user && pass ? { user, pass } : undefined,
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
+    family: 4, // CRITICAL: Force IPv4 to prevent Render ENETUNREACH on IPv6 addresses
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
     tls: { rejectUnauthorized: false },
-  });
+  };
+
+  return nodemailer.createTransport(transportOptions as any);
 };
 
 /**
