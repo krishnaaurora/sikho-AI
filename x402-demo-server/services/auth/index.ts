@@ -117,22 +117,32 @@ export const registerService = async (
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
 
-  // Send welcome email asynchronously (non-blocking, duplicate-protected).
-  // Registration must succeed even if email dispatch fails.
+  // Send welcome email synchronously with a timeout guard.
+  // We await it so the email fires before the HTTP response returns,
+  // but a 10-second timeout ensures registration never hangs on SMTP.
   if (!user.welcomeEmailSent) {
-    console.log(`[RegisterService] Triggering welcome email for newly registered user: ${cleanEmail}`);
-    sendWelcomeEmail(cleanEmail, user.fullName)
-      .then(async (sent: boolean) => {
-        if (sent) {
-          await User.findByIdAndUpdate(user._id, { welcomeEmailSent: true });
-          console.log(`[RegisterService] Welcome email confirmed delivered to ${cleanEmail}`);
-        } else {
-          console.warn(`[RegisterService] sendWelcomeEmail returned false for ${cleanEmail}. Check SMTP credentials.`);
-        }
-      })
-      .catch((err: any) => {
-        console.error(`[RegisterService] Error triggering welcome email for ${cleanEmail}:`, err?.message || err);
-      });
+    console.log(`[RegisterService] Sending welcome email to: ${cleanEmail}`);
+    try {
+      const emailTimeout = new Promise<boolean>((resolve) =>
+        setTimeout(() => {
+          console.warn(`[RegisterService] Welcome email timed out for ${cleanEmail} — registration continues.`);
+          resolve(false);
+        }, 10000)
+      );
+      const sent = await Promise.race([
+        sendWelcomeEmail(cleanEmail, user.fullName),
+        emailTimeout,
+      ]);
+      if (sent) {
+        await User.findByIdAndUpdate(user._id, { welcomeEmailSent: true });
+        console.log(`[RegisterService] ✅ Welcome email delivered to ${cleanEmail}`);
+      } else {
+        console.warn(`[RegisterService] ⚠️ Welcome email not delivered to ${cleanEmail}. Will retry on next login if needed.`);
+      }
+    } catch (emailErr: any) {
+      // Never let email failure prevent registration
+      console.error(`[RegisterService] ❌ Welcome email error for ${cleanEmail}:`, emailErr?.message || emailErr);
+    }
   }
 
   return { user: toUserResponse(user), accessToken, refreshToken };

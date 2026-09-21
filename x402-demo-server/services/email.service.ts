@@ -272,10 +272,12 @@ export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
     const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || "";
     
     if (!user || !pass) {
-      console.warn("⚠️ SMTP Credentials missing (SMTP_USER / SMTP_PASS). Skipping email dispatch.");
+      console.warn("⚠️ [Email] SMTP credentials missing (SMTP_USER / SMTP_PASS). Email NOT sent to:", options.to);
+      console.warn("⚠️ [Email] Set SMTP_USER and SMTP_PASS in your environment variables (Render dashboard for production).");
       return false;
     }
 
+    console.log(`📧 [Email] Attempting to send to: ${options.to} | Subject: ${options.subject}`);
     const transporter = createTransporter();
     const fromName = process.env.SMTP_FROM_NAME || process.env.EMAIL_FROM_NAME || "Sikho AI";
     const fromAddress = process.env.SMTP_FROM || process.env.EMAIL_FROM || user;
@@ -289,10 +291,11 @@ export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
       html: options.html,
     });
 
-    console.log(`✉️ Welcome Email sent successfully to ${options.to}. MessageID: ${info.messageId}`);
+    console.log(`✅ [Email] Successfully sent to ${options.to}. MessageID: ${info.messageId} | Response: ${info.response}`);
     return true;
-  } catch (error) {
-    console.error(`❌ Failed to send email to ${options.to}:`, error);
+  } catch (error: any) {
+    console.error(`❌ [Email] Failed to send to ${options.to}:`, error?.message || error);
+    console.error(`❌ [Email] SMTP Error code: ${error?.code} | Response: ${error?.response}`);
     return false;
   }
 };
