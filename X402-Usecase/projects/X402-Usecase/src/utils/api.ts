@@ -92,12 +92,22 @@ async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
     } catch (_) {
       // ignore JSON parsing errors
     }
+    // Friendly overrides for specific status codes
     if (response.status === 401) {
       if (url.includes('/auth/login') || url.includes('/auth/register')) {
         errorMessage = "Wrong password, email, or user not registered.";
       } else {
         errorMessage = "Authentication required or session expired.";
       }
+    } else if (response.status === 409 && url.includes('/auth/register')) {
+      // Keep the server's 409 message as-is — it's already user-friendly
+      // but ensure we never show raw mongo error strings
+      if (!errorMessage || errorMessage.includes('E11000') || errorMessage.includes('dup key') || errorMessage.includes('collection:')) {
+        errorMessage = "An account with this email address already exists. Please log in or use a different email address.";
+      }
+    } else if (response.status >= 500) {
+      // Never expose internal server details to users
+      errorMessage = "Something went wrong on our end. Please try again later.";
     }
     throw new Error(errorMessage);
   }

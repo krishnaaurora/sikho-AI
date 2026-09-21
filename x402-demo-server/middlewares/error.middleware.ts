@@ -27,11 +27,29 @@ export const errorHandler = (
     );
   }
 
+  // Handle MongoDB duplicate key error (E11000) - return clean 409 Conflict
+  if (err.code === 11000 || (err.name === "MongoServerError" && err.code === 11000)) {
+    const field = Object.keys(err.keyPattern || {})[0] || "field";
+    let userMessage = "An account with this email address already exists. Please log in or use a different email address.";
+    if (field !== "email") {
+      userMessage = `A record with this ${field} already exists.`;
+    }
+    logger.warn(`Duplicate key conflict on field '${field}': ${err.message}`);
+    return sendErrorResponse(res, null, userMessage, 409);
+  }
+
+  // Handle Mongoose validation errors
+  if (err.name === "ValidationError" && err.errors) {
+    const messages = Object.values(err.errors).map((e: any) => e.message).join(", ");
+    logger.warn(`Validation error: ${messages}`);
+    return sendErrorResponse(res, null, messages, 400);
+  }
+
   logger.error(err.stack || err);
   return sendErrorResponse(
     res,
     null,
-    error.message as string,
+    "An unexpected error occurred. Please try again.",
     500
   );
 };

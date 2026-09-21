@@ -81,15 +81,31 @@ export const registerService = async (
 ) => {
   const cleanEmail = (email || "").toLowerCase().trim();
 
-  // Check if user already exists
-  const existingUser = await User.findOne({ email: cleanEmail, isDeleted: false });
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+    throw new AppError("Please provide a valid email address.", 400);
+  }
+
+  // Validate name
+  if (!fullName || !fullName.trim()) {
+    throw new AppError("Full name is required.", 400);
+  }
+
+  // Validate password length
+  if (!password || password.length < 6) {
+    throw new AppError("Password must be at least 6 characters long.", 400);
+  }
+
+  // Check if user already exists (including soft-deleted accounts with same email)
+  const existingUser = await User.findOne({ email: cleanEmail });
   if (existingUser) {
-    throw new AppError("User with this email already exists", 409);
+    throw new AppError("An account with this email address already exists. Please log in or use a different email address.", 409);
   }
 
   // Create new user
   const user = await User.create({
-    fullName,
+    fullName: fullName.trim(),
     email: cleanEmail,
     password,
     role: UserRole.LEARNER,
@@ -121,6 +137,7 @@ export const registerService = async (
 
   return { user: toUserResponse(user), accessToken, refreshToken };
 };
+
 
 export const loginService = async (email: string, password: string) => {
   // Find user

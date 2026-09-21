@@ -9,6 +9,7 @@ import {
   Eye, EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSnackbar } from 'notistack';
 import { authApi } from '../utils/api';
 import { InteractiveDotsCanvas } from '../components/ui/InteractiveDotsCanvas';
 import { AuthFeatureNodes } from '../components/ui/AuthFeatureNodes';
@@ -16,9 +17,13 @@ import { AuthFeatureNodes } from '../components/ui/AuthFeatureNodes';
 const RegisterPage: React.FC = () => {
   const { register, user, checkAuth } = useAuth();
   const navigate = useNavigate();
+  const { enqueueSnackbar } = useSnackbar();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [emailError, setEmailError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showEmailSentBanner, setShowEmailSentBanner] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -124,7 +129,16 @@ const RegisterPage: React.FC = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setEmailError('');
     setSuccess('');
+
+    // Client-side email validation
+    const emailTrimmed = registerData.email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailTrimmed || !emailRegex.test(emailTrimmed)) {
+      setEmailError('Please enter a valid email address.');
+      return;
+    }
 
     if (!registerData.password) {
       setError('Password is required');
@@ -147,15 +161,27 @@ const RegisterPage: React.FC = () => {
     try {
       await register({
         fullName: registerData.fullName,
-        email: registerData.email,
+        email: emailTrimmed,
         password: registerData.password,
         confirmPassword: registerData.confirmPassword,
         country: registerData.country
       });
-      // Redirect to login after successful registration
-      navigate('/login');
+      // Show email sent banner notification
+      setRegisteredEmail(emailTrimmed);
+      setShowEmailSentBanner(true);
+      enqueueSnackbar(`🎉 Account created! A welcome email has been sent to ${emailTrimmed}`, { variant: 'success', autoHideDuration: 4000 });
+      // Redirect to login after brief delay so user sees confirmation
+      setTimeout(() => {
+        navigate('/login');
+      }, 2800);
     } catch (err: any) {
-      setError(err.message || 'Registration failed');
+      const msg = err.message || 'Registration failed';
+      // Show email-specific errors near the email field
+      if (msg.toLowerCase().includes('email') || msg.toLowerCase().includes('account') || msg.toLowerCase().includes('already exists')) {
+        setEmailError(msg);
+      } else {
+        setError(msg);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -411,6 +437,17 @@ const RegisterPage: React.FC = () => {
                   <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium mt-1">Start your AI-driven learning journey today</p>
                 </div>
 
+                {showEmailSentBanner && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-3.5 mb-5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold flex items-center gap-2.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>🎉 Account created! A welcome email has been sent to <strong>{registeredEmail}</strong>. Redirecting to login...</span>
+                  </motion.div>
+                )}
+
                 {error && (
                   <div className="p-3.5 mb-5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0 animate-pulse" />
@@ -437,10 +474,23 @@ const RegisterPage: React.FC = () => {
                       type="email"
                       required
                       value={registerData.email}
-                      onChange={e => setRegisterData({ ...registerData, email: e.target.value })}
-                      className="w-full px-3.5 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 text-sm font-semibold outline-none focus:border-indigo-500"
+                      onChange={e => {
+                        setEmailError('');
+                        setRegisterData({ ...registerData, email: e.target.value });
+                      }}
+                      className={`w-full px-3.5 py-2 border rounded-xl bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 text-sm font-semibold outline-none transition-colors ${
+                        emailError
+                          ? 'border-red-400 dark:border-red-500 focus:border-red-500'
+                          : 'border-slate-200 dark:border-slate-800 focus:border-indigo-500'
+                      }`}
                       placeholder="jai@example.com"
                     />
+                    {emailError && (
+                      <p className="mt-1.5 text-xs text-red-600 font-semibold flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                        {emailError}
+                      </p>
+                    )}
                   </div>
 
                   <div>
