@@ -247,9 +247,23 @@ Support: sikhoaiedu@gmail.com`;
 // Create Nodemailer Transporter using Gmail SMTP credentials from backend env
 const createTransporter = () => {
   const host = process.env.SMTP_HOST || "smtp.gmail.com";
-  const port = parseInt(process.env.SMTP_PORT || "587");
+  const port = parseInt(process.env.SMTP_PORT || "465");
   const user = process.env.SMTP_USER || process.env.GMAIL_USER || "";
   const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || "";
+
+  const isGmail = host.includes("gmail") || user.includes("@gmail.com");
+
+  // For Gmail, using service: "gmail" or port 465 SSL connects immediately
+  // and avoids Render/cloud firewall timeouts on port 587 STARTTLS.
+  if (isGmail && (!process.env.SMTP_HOST || host === "smtp.gmail.com")) {
+    return nodemailer.createTransport({
+      service: "gmail",
+      auth: user && pass ? { user, pass } : undefined,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    });
+  }
 
   const secureEnv = process.env.SMTP_SECURE;
   const isSecure = secureEnv !== undefined ? secureEnv === "true" : port === 465;
@@ -259,6 +273,9 @@ const createTransporter = () => {
     port,
     secure: isSecure,
     auth: user && pass ? { user, pass } : undefined,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
     tls: { rejectUnauthorized: false },
   });
 };

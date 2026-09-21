@@ -218,6 +218,7 @@ export const getUsers = async (req: Request, res: Response) => {
           educationLevel: u.educationLevel || "N/A",
           targetRole: u.targetRole || "N/A",
           onboardingCompleted: !!u.onboardingCompleted,
+          welcomeEmailSent: !!u.welcomeEmailSent,
         };
       })
     );
