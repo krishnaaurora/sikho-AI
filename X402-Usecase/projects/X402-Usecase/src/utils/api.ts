@@ -298,6 +298,11 @@ export const adminApi = {
       body: JSON.stringify({ isActive }),
     });
   },
+  async deleteUser(userId: string) {
+    return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/users/${userId}`, {
+      method: 'DELETE',
+    });
+  },
   async getAppAnalytics(range: string = '30d') {
     return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/app-analytics?range=${range}`);
   },

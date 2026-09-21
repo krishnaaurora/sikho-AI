@@ -284,6 +284,44 @@ export const toggleUserStatus = async (req: Request, res: Response) => {
   }
 };
 
+// Delete User Account (Soft delete by setting isDeleted: true and isActive: false)
+export const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    user.isDeleted = true;
+    user.isActive = false;
+    await user.save();
+
+    // Log admin activity
+    const adminUser = (req as any).user;
+    await AdminLog.create({
+      adminId: adminUser?._id,
+      adminEmail: adminUser?.email || "admin@gmail.com",
+      action: "DELETE_USER",
+      target: user.email,
+      details: `User account deleted for ${user.fullName} (${user.email})`,
+      timestamp: new Date(),
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `User ${user.fullName} deleted successfully`,
+      data: {
+        _id: user._id,
+        isDeleted: true,
+      },
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({ success: false, message: error.message });
+  }
+};
+
 // 3. USER DETAILS (Individual User Profile & Activity)
 export const getUserDetails = async (req: Request, res: Response) => {
   try {
