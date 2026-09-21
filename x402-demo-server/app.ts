@@ -183,6 +183,51 @@ app.get("/", (req: Request, res: Response) => {
   return res.send(buildMerchantHtml());
 });
 
+// ---------------------------------------------------------------------------
+// Standard AI Agent & Facilitator Discovery Endpoints
+// ---------------------------------------------------------------------------
+app.get("/.well-known/x402", (req: Request, res: Response) => {
+  res.json({
+    name: MERCHANT.name,
+    description: MERCHANT.description,
+    logo: MERCHANT.logoUrl,
+    site: MERCHANT.siteUrl,
+    x402: {
+      tag: MERCHANT.tag,
+      network: MERCHANT.network,
+      category: MERCHANT.category,
+      discovery: true,
+    },
+    api: `${MERCHANT.siteUrl}${appConfig.apiPrefix}`,
+  });
+});
+
+app.get("/openapi.json", (req: Request, res: Response) => {
+  res.json({
+    openapi: "3.0.0",
+    info: {
+      title: "Sikho AI API",
+      version: "1.0.0",
+      description: MERCHANT.description,
+    },
+    paths: {},
+  });
+});
+
+app.get("/agents.json", (req: Request, res: Response) => {
+  res.json({
+    name: MERCHANT.name,
+    description: MERCHANT.description,
+    version: "1.0.0",
+    url: MERCHANT.siteUrl,
+  });
+});
+
+app.get("/llms.txt", (req: Request, res: Response) => {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.send(`# Sikho AI\n\n${MERCHANT.description}\n\nSite: ${MERCHANT.siteUrl}`);
+});
+
 // API routes
 app.use(appConfig.apiPrefix, routes);
 

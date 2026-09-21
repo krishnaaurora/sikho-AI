@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { Resend } from "resend";
+import axios from "axios";
 import mongoose from "mongoose";
 import EmailTemplate from "../models/EmailTemplate.model";
 
@@ -245,49 +245,54 @@ Team Sikho AI
 Support: sikhoaiedu@gmail.com`;
 
 /**
- * Generic email sending function using official Resend API over HTTPS.
- * Resolves cloud SMTP timeout/firewall/IPv6 issues on Render and provides instant delivery.
+ * Generic email sending function using the Brevo (Sendinblue) REST API over HTTPS.
+ * - Free 300 emails/day forever.
+ * - Sends over HTTPS (port 443) — completely eliminates SMTP socket blocks, timeouts & IPv6 issues on Render.
+ * - Sends to ANY recipient email (e.g. *.edu.in, @gmail.com).
  */
 export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
-  const apiKey = process.env.RESEND_API_KEY;
+  const apiKey = process.env.BREVO_API_KEY;
 
   if (!apiKey) {
-    console.warn("⚠️ [Email/Resend] RESEND_API_KEY is missing. Email NOT sent to:", options.to);
-    console.warn("⚠️ [Email/Resend] Please set RESEND_API_KEY in your Render dashboard environment variables.");
+    console.warn("⚠️ [Email/Brevo] BREVO_API_KEY is missing. Email NOT sent to:", options.to);
+    console.warn("⚠️ [Email/Brevo] Please set BREVO_API_KEY in your Render dashboard environment variables.");
     return false;
   }
 
   try {
-    const resend = new Resend(apiKey);
-    const fromSender =
-      process.env.RESEND_FROM ||
-      process.env.EMAIL_FROM ||
-      "Sikho AI <onboarding@resend.dev>";
+    const senderName = process.env.BREVO_FROM_NAME || process.env.SMTP_FROM_NAME || "Sikho AI";
+    const senderEmail = process.env.BREVO_FROM_EMAIL || process.env.SMTP_FROM || "sikhoaiedu@gmail.com";
 
-    console.log(`📧 [Email/Resend] Attempting to send to: ${options.to} | From: ${fromSender} | Subject: ${options.subject}`);
+    console.log(`📧 [Email/Brevo] Sending to: ${options.to} | From: ${senderName} <${senderEmail}> | Subject: ${options.subject}`);
 
-    const { data, error } = await resend.emails.send({
-      from: fromSender,
-      to: [options.to],
+    const payload: any = {
+      sender: { name: senderName, email: senderEmail },
+      to: [{ email: options.to }],
       subject: options.subject,
-      text: options.text || "",
-      html: options.html || "",
-    });
+    };
 
-    if (error) {
-      console.error(`❌ [Email/Resend] Error sending to ${options.to}:`, error.message || error);
-      if (error.name === "validation_error" || (error as any).statusCode === 403) {
-        console.warn(
-          `💡 [Email/Resend] Domain verification note: When using default 'onboarding@resend.dev', Resend only allows testing delivery to the registered account owner email. To send to any user/student email, add and verify your custom domain at https://resend.com/domains and set RESEND_FROM="Sikho AI <welcome@yourdomain.com>".`
-        );
-      }
-      return false;
+    if (options.html) {
+      payload.htmlContent = options.html;
+    }
+    if (options.text) {
+      payload.textContent = options.text;
     }
 
-    console.log(`✅ [Email/Resend] Successfully delivered to ${options.to}. Resend Email ID: ${data?.id}`);
+    const response = await axios.post("https://api.brevo.com/v3/smtp/email", payload, {
+      headers: {
+        "api-key": apiKey,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      timeout: 10000,
+    });
+
+    const messageId = response.data?.messageId || response.data?.messageIds?.[0] || "OK";
+    console.log(`✅ [Email/Brevo] Successfully delivered to ${options.to}. Brevo Message ID: ${messageId}`);
     return true;
   } catch (error: any) {
-    console.error(`❌ [Email/Resend] Exception sending to ${options.to}:`, error?.message || error);
+    const errorDetails = error?.response?.data || error?.message || error;
+    console.error(`❌ [Email/Brevo] Failed sending to ${options.to}:`, errorDetails);
     return false;
   }
 };
