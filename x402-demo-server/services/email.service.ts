@@ -249,9 +249,35 @@ Happy Learning! 🌱
 Team Sikho AI
 Support: sikhoaiedu@gmail.com`;
 
+/**
+ * Resolves a hostname directly to its IPv4 address to guarantee that cloud platforms
+ * like Render (which do not have IPv6 outbound routing) never fail with ENETUNREACH.
+ */
+const resolveIPv4Address = async (host: string): Promise<string> => {
+  // If it's already an IP address, return it
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(host)) {
+    return host;
+  }
+  return new Promise((resolve) => {
+    dns.resolve4(host, (err, addresses) => {
+      if (!err && addresses && addresses.length > 0) {
+        resolve(addresses[0]);
+      } else {
+        dns.lookup(host, { family: 4 }, (err2, address) => {
+          if (!err2 && address) {
+            resolve(address);
+          } else {
+            resolve(host);
+          }
+        });
+      }
+    });
+  });
+};
+
 // Create Nodemailer Transporter using Gmail SMTP credentials from backend env
-const createTransporter = () => {
-  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+const createTransporter = async () => {
+  const rawHost = process.env.SMTP_HOST || "smtp.gmail.com";
   const port = parseInt(process.env.SMTP_PORT || "465");
   const user = process.env.SMTP_USER || process.env.GMAIL_USER || "";
   const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || "";
@@ -259,16 +285,21 @@ const createTransporter = () => {
   const secureEnv = process.env.SMTP_SECURE;
   const isSecure = secureEnv !== undefined ? secureEnv === "true" : port === 465;
 
+  // Explicitly resolve to IPv4 address to eliminate Render IPv6 ENETUNREACH
+  const ipv4Host = await resolveIPv4Address(rawHost);
+
   const transportOptions = {
-    host,
+    host: ipv4Host,
     port,
     secure: isSecure,
     auth: user && pass ? { user, pass } : undefined,
-    family: 4, // CRITICAL: Force IPv4 to prevent Render ENETUNREACH on IPv6 addresses
     connectionTimeout: 15000,
     greetingTimeout: 15000,
     socketTimeout: 20000,
-    tls: { rejectUnauthorized: false },
+    tls: {
+      servername: rawHost, // SNI ensures TLS matches Google certificate
+      rejectUnauthorized: false,
+    },
   };
 
   return nodemailer.createTransport(transportOptions as any);
@@ -289,7 +320,7 @@ export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
     }
 
     console.log(`📧 [Email] Attempting to send to: ${options.to} | Subject: ${options.subject}`);
-    const transporter = createTransporter();
+    const transporter = await createTransporter();
     const fromName = process.env.SMTP_FROM_NAME || process.env.EMAIL_FROM_NAME || "Sikho AI";
     const fromAddress = process.env.SMTP_FROM || process.env.EMAIL_FROM || user;
     const from = `"${fromName}" <${fromAddress}>`;
