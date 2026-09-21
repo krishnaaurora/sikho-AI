@@ -13,6 +13,9 @@ import {
   addCourse,
   addLesson,
   createQuiz,
+  getWelcomeEmailTemplateController,
+  updateWelcomeEmailTemplateController,
+  sendTestWelcomeEmailController,
 } from "../controllers/admin/admin.controller";
 import { authenticate, requireAdmin } from "../middlewares/auth.middleware";
 
@@ -36,5 +39,10 @@ router.get("/export-csv", exportCsv);
 router.post("/courses", addCourse);
 router.post("/lessons", addLesson);
 router.post("/quizzes", createQuiz);
+
+// Email Template Management routes
+router.get("/email-templates/welcome", getWelcomeEmailTemplateController);
+router.put("/email-templates/welcome", updateWelcomeEmailTemplateController);
+router.post("/email-templates/test-welcome", sendTestWelcomeEmailController);
 
 export default router;

@@ -344,6 +344,29 @@ export const adminApi = {
       body: JSON.stringify(data),
     });
   },
+  async getWelcomeEmailTemplate() {
+    return fetchAPI<ApiResponse<{
+      templateKey: string;
+      subject: string;
+      bodyHtml: string;
+      bodyText: string;
+      variables: string[];
+      updatedBy?: string;
+      updatedAt?: string;
+    }>>(`${API_BASE_URL}/admin/email-templates/welcome`);
+  },
+  async updateWelcomeEmailTemplate(data: { subject: string; bodyHtml: string; bodyText: string }) {
+    return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/email-templates/welcome`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  async sendTestWelcomeEmail(data: { recipientEmail?: string; recipientName?: string }) {
+    return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/email-templates/test-welcome`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 export const analyticsApi = {

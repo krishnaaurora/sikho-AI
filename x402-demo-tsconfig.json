@@ -14,8 +14,8 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "ignoreDeprecations": "6.0"
+    "ignoreDeprecations": "5.0"
   },
-  "include": ["**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["x402-demo-server/**/*.ts"],
+  "exclude": ["node_modules", "dist", "X402-Usecase", "interview_pro", "402-demo-client"]
 }

@@ -13,7 +13,7 @@ import {
   Download, Filter, ChevronRight, Shield, ShieldCheck, FileSpreadsheet,
   ExternalLink, Sparkles, BookOpen, Code2, Briefcase, FileText, Target,
   MessageSquare, UserCheck, Eye, EyeOff, RefreshCw, X, DollarSign, Layers,
-  UserX, UserPlus, Award, Zap
+  UserX, UserPlus, Award, Zap, Mail, Send, Check, Code, FileCode
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 
@@ -35,7 +35,8 @@ const AdminDashboard: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
 
   // Active Navigation Tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'payments' | 'apps' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'payments' | 'apps' | 'email' | 'settings'>('overview');
+
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Data Loading & Refresh States
@@ -114,6 +115,18 @@ const AdminDashboard: React.FC = () => {
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [maskSensitiveData, setMaskSensitiveData] = useState(false);
 
+  // Email Template State & Controls
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBodyHtml, setEmailBodyHtml] = useState('');
+  const [emailBodyText, setEmailBodyText] = useState('');
+  const [emailUpdatedBy, setEmailUpdatedBy] = useState('system');
+  const [emailUpdatedAt, setEmailUpdatedAt] = useState('');
+  const [savingEmailTemplate, setSavingEmailTemplate] = useState(false);
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
+  const [testEmailRecipient, setTestEmailRecipient] = useState('');
+  const [testEmailModalOpen, setTestEmailModalOpen] = useState(false);
+  const [emailViewMode, setEmailViewMode] = useState<'editor' | 'preview' | 'plaintext'>('editor');
+
   // Initial Fetch Data
   const loadDashboardData = async () => {
     setLoading(true);
@@ -151,6 +164,16 @@ const AdminDashboard: React.FC = () => {
       if (logsRes.success) {
         setActivityLogs(logsRes.data || []);
       }
+
+      // 6. Welcome Email Template
+      const emailRes = await adminApi.getWelcomeEmailTemplate();
+      if (emailRes.success && emailRes.data) {
+        setEmailSubject(emailRes.data.subject || '');
+        setEmailBodyHtml(emailRes.data.bodyHtml || '');
+        setEmailBodyText(emailRes.data.bodyText || '');
+        setEmailUpdatedBy(emailRes.data.updatedBy || 'system');
+        setEmailUpdatedAt(emailRes.data.updatedAt || '');
+      }
     } catch (err: any) {
       console.error(err);
       enqueueSnackbar(err.message || 'Failed to fetch admin metrics', { variant: 'error' });
@@ -162,6 +185,57 @@ const AdminDashboard: React.FC = () => {
   useEffect(() => {
     loadDashboardData();
   }, [analyticsDateRange, userStatusFilter, paymentStatusTab, paymentFeatureFilter]);
+
+  // Save Welcome Email Template Handler
+  const handleSaveEmailTemplate = async () => {
+    setSavingEmailTemplate(true);
+    try {
+      const res = await adminApi.updateWelcomeEmailTemplate({
+        subject: emailSubject,
+        bodyHtml: emailBodyHtml,
+        bodyText: emailBodyText,
+      });
+      if (res.success) {
+        enqueueSnackbar('Welcome Email template updated and saved successfully!', { variant: 'success' });
+        if (res.data) {
+          setEmailUpdatedBy(res.data.updatedBy || 'admin');
+          setEmailUpdatedAt(res.data.updatedAt || new Date().toISOString());
+        }
+        await adminApi.createActivityLog({
+          action: 'UPDATE_EMAIL_TEMPLATE',
+          target: 'welcome_email',
+          details: 'Updated welcome email subject line and content template',
+        });
+      }
+    } catch (err: any) {
+      enqueueSnackbar(err.message || 'Failed to save email template', { variant: 'error' });
+    } finally {
+      setSavingEmailTemplate(false);
+    }
+  };
+
+  // Send Test Welcome Email Handler
+  const handleSendTestEmail = async () => {
+    setSendingTestEmail(true);
+    try {
+      const targetEmail = testEmailRecipient || user?.email || 'admin@gmail.com';
+      const res = await adminApi.sendTestWelcomeEmail({
+        recipientEmail: targetEmail,
+        recipientName: 'Test Learner',
+      });
+      if (res.success) {
+        enqueueSnackbar(res.message || `Test email dispatched to ${targetEmail}`, { variant: 'success' });
+        setTestEmailModalOpen(false);
+      } else {
+        enqueueSnackbar(res.message || 'Failed to dispatch test email', { variant: 'warning' });
+      }
+    } catch (err: any) {
+      enqueueSnackbar(err.message || 'Failed to dispatch test email', { variant: 'error' });
+    } finally {
+      setSendingTestEmail(false);
+    }
+  };
+
 
   const handleManualRefresh = async () => {
     setRefreshing(true);
@@ -288,6 +362,7 @@ const AdminDashboard: React.FC = () => {
             { id: 'users', label: 'User Management', icon: Users },
             { id: 'payments', label: 'Payments & Ledger', icon: CreditCard },
             { id: 'apps', label: 'Application Usage', icon: BarChart3 },
+            { id: 'email', label: 'Email Templates', icon: Mail },
             { id: 'settings', label: 'Settings & Security', icon: Settings },
           ].map((item) => {
             const Icon = item.icon;
@@ -349,9 +424,11 @@ const AdminDashboard: React.FC = () => {
               {activeTab === 'users' && 'User Management & Learner Profiles'}
               {activeTab === 'payments' && 'Payments & Ledger (All Features)'}
               {activeTab === 'apps' && 'Application Usage Analytics'}
+              {activeTab === 'email' && 'Welcome Email Template & Auto-Dispatch'}
               {activeTab === 'settings' && 'Admin Settings & Access Controls'}
             </h2>
           </div>
+
 
           <div className="flex items-center gap-3">
             <button
@@ -1140,8 +1217,211 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
 
+          {/* 6. EMAIL TEMPLATES MANAGEMENT TAB */}
+          {activeTab === 'email' && (
+            <div className="space-y-6">
+
+              {/* Banner & Information */}
+              <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <span className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                      <Mail className="w-4 h-4 text-indigo-400" /> Automated Communication System
+                    </span>
+                    <h3 className="text-lg font-bold text-white tracking-tight">Welcome Email Template Editor</h3>
+                    <p className="text-xs text-indigo-200 mt-1 max-w-xl">
+                      Customize the welcome email sent automatically to every newly registered user. Use dynamic variables to personalize the email.
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setTestEmailModalOpen(true)}
+                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-2 transition-all"
+                    >
+                      <Send className="w-3.5 h-3.5" /> Send Test Email
+                    </button>
+                    <button
+                      onClick={handleSaveEmailTemplate}
+                      disabled={savingEmailTemplate}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-2 transition-all disabled:opacity-50"
+                    >
+                      <Check className="w-3.5 h-3.5" /> {savingEmailTemplate ? 'Saving...' : 'Save & Update'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Variable Helper Chips */}
+                <div className="mt-6 pt-4 border-t border-white/10 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-indigo-200 font-medium mr-2">Available Dynamic Placeholders:</span>
+                  <button
+                    onClick={() => setEmailSubject((prev) => prev + ' {{name}}')}
+                    className="px-2.5 py-1 bg-white/15 hover:bg-white/25 rounded-lg text-white font-mono text-[11px] flex items-center gap-1 border border-white/20 transition-all"
+                    title="Click to insert {{name}}"
+                  >
+                    <span>&#123;&#123;name&#125;&#125;</span> <span className="text-[10px] text-indigo-300">(User's Full Name)</span>
+                  </button>
+                  <button
+                    onClick={() => setEmailSubject((prev) => prev + ' {{email}}')}
+                    className="px-2.5 py-1 bg-white/15 hover:bg-white/25 rounded-lg text-white font-mono text-[11px] flex items-center gap-1 border border-white/20 transition-all"
+                    title="Click to insert {{email}}"
+                  >
+                    <span>&#123;&#123;email&#125;&#125;</span> <span className="text-[10px] text-indigo-300">(Registered Email ID)</span>
+                  </button>
+                  {emailUpdatedAt && (
+                    <span className="ml-auto text-[11px] text-indigo-300 italic">
+                      Last Updated: {new Date(emailUpdatedAt).toLocaleString()} by {emailUpdatedBy}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Subject Line Editor */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-2">
+                <label className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-indigo-600" /> Email Subject Line
+                </label>
+                <input
+                  type="text"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  placeholder="e.g. Welcome to Sikho AI 🚀"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                />
+              </div>
+
+              {/* Main Content View Tabs (HTML Code vs Live Preview vs Plain Text) */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setEmailViewMode('editor')}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+                        emailViewMode === 'editor'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Code className="w-3.5 h-3.5" /> HTML Body Editor
+                    </button>
+                    <button
+                      onClick={() => setEmailViewMode('preview')}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+                        emailViewMode === 'preview'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Eye className="w-3.5 h-3.5" /> Real-Time Live Preview
+                    </button>
+                    <button
+                      onClick={() => setEmailViewMode('plaintext')}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+                        emailViewMode === 'plaintext'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <FileCode className="w-3.5 h-3.5" /> Plain Text Fallback
+                    </button>
+                  </div>
+
+                  <span className="text-xs text-slate-500">
+                    Auto-sends to user's registered inbox upon sign-up.
+                  </span>
+                </div>
+
+                {/* Mode 1: HTML Body Code Editor */}
+                {emailViewMode === 'editor' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-700">HTML Code Editor (Responsive HTML Markup)</span>
+                      <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                        <span>Insert Helper:</span>
+                        <button
+                          onClick={() => setEmailBodyHtml((prev) => prev + ' {{name}}')}
+                          className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-indigo-700 font-mono rounded border border-slate-200"
+                        >
+                          + &#123;&#123;name&#125;&#125;
+                        </button>
+                        <button
+                          onClick={() => setEmailBodyHtml((prev) => prev + ' {{email}}')}
+                          className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-indigo-700 font-mono rounded border border-slate-200"
+                        >
+                          + &#123;&#123;email&#125;&#125;
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      value={emailBodyHtml}
+                      onChange={(e) => setEmailBodyHtml(e.target.value)}
+                      rows={18}
+                      className="w-full p-4 bg-slate-900 text-slate-100 font-mono text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed shadow-inner"
+                    />
+                  </div>
+                )}
+
+                {/* Mode 2: Real-Time Live Rendered HTML Sandbox */}
+                {emailViewMode === 'preview' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span>Live Render Preview (Simulating user: <strong>Alex Demo &lt;alex@gmail.com&gt;</strong>)</span>
+                      <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> HTML Render OK
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-200 p-6 rounded-2xl border border-slate-300 overflow-y-auto max-h-[550px] shadow-inner">
+                      <div
+                        className="bg-white p-6 rounded-xl shadow-md max-w-xl mx-auto border border-slate-200"
+                        dangerouslySetInnerHTML={{
+                          __html: emailBodyHtml
+                            .replace(/\{\{\s*name\s*\}\}/gi, 'Alex Demo')
+                            .replace(/\{\{\s*email\s*\}\}/gi, 'alex@gmail.com'),
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Mode 3: Plain Text Version */}
+                {emailViewMode === 'plaintext' && (
+                  <div className="space-y-3">
+                    <span className="text-xs font-semibold text-slate-700">Plain Text Version (Fallback for non-HTML mail clients)</span>
+                    <textarea
+                      value={emailBodyText}
+                      onChange={(e) => setEmailBodyText(e.target.value)}
+                      rows={16}
+                      className="w-full p-4 bg-slate-50 border border-slate-200 text-slate-800 font-mono text-xs rounded-xl focus:outline-none focus:border-indigo-500 leading-relaxed"
+                    />
+                  </div>
+                )}
+
+                {/* Bottom Action Footer */}
+                <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
+                  <button
+                    onClick={() => setTestEmailModalOpen(true)}
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center gap-2 transition-all border border-slate-300"
+                  >
+                    <Send className="w-4 h-4 text-emerald-600" /> Dispatch Preview Test Email
+                  </button>
+
+                  <button
+                    onClick={handleSaveEmailTemplate}
+                    disabled={savingEmailTemplate}
+                    className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 flex items-center gap-2 transition-all disabled:opacity-50"
+                  >
+                    <Check className="w-4 h-4" /> {savingEmailTemplate ? 'Saving Changes...' : 'Save Welcome Email Template'}
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          )}
+
         </main>
       </div>
+
 
       {/* INDIVIDUAL USER PROFILE SLIDE-OVER MODAL (Clean White Theme) */}
       <AnimatePresence>
@@ -1278,8 +1558,67 @@ const AdminDashboard: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {/* TEST EMAIL DISPATCH MODAL */}
+      <AnimatePresence>
+        {testEmailModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                  <Send className="w-4 h-4 text-indigo-600" /> Send Test Welcome Email
+                </h3>
+                <button
+                  onClick={() => setTestEmailModalOpen(false)}
+                  className="p-1 text-slate-400 hover:text-slate-700 rounded-lg"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-500">
+                Dispatch a live preview of the welcome email to test delivery and inspect formatting in your real inbox.
+              </p>
+
+              <div className="space-y-2 text-xs">
+                <label className="font-bold text-slate-700">Recipient Email Address:</label>
+                <input
+                  type="email"
+                  value={testEmailRecipient}
+                  onChange={(e) => setTestEmailRecipient(e.target.value)}
+                  placeholder={user?.email || 'admin@gmail.com'}
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 flex justify-end gap-2 text-xs">
+                <Button
+                  variant="outline"
+                  onClick={() => setTestEmailModalOpen(false)}
+                  className="py-2 text-xs border-slate-200 text-slate-700"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSendTestEmail}
+                  disabled={sendingTestEmail}
+                  className="py-2 text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  {sendingTestEmail ? 'Dispatching...' : 'Send Test Email Now'}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };
 
 export default AdminDashboard;
+

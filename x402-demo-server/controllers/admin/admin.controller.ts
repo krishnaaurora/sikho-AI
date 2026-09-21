@@ -13,6 +13,12 @@ import RepositoryFileReview from "../../models/RepositoryFileReview.model";
 import AppUsageEvent, { SikhoAppType } from "../../models/AppUsageEvent.model";
 import AdminLog from "../../models/AdminLog.model";
 import { AppError } from "../../utils/errors";
+import {
+  getWelcomeEmailTemplate,
+  updateWelcomeEmailTemplate,
+  sendTestWelcomeEmail,
+} from "../../services/email.service";
+
 
 // 1. DASHBOARD OVERVIEW (100% Real MongoDB Data)
 export const getOverview = async (req: Request, res: Response) => {
@@ -799,3 +805,75 @@ export const createQuiz = async (req: Request, res: Response) => {
     res.status(error.statusCode || 500).json({ success: false, message: error.message });
   }
 };
+
+// 8. EMAIL TEMPLATES MANAGEMENT
+export const getWelcomeEmailTemplateController = async (req: Request, res: Response) => {
+  try {
+    const template = await getWelcomeEmailTemplate();
+    res.status(200).json({
+      success: true,
+      data: template,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateWelcomeEmailTemplateController = async (req: Request, res: Response) => {
+  try {
+    const { subject, bodyHtml, bodyText } = req.body;
+
+    if (!subject || !bodyHtml || !bodyText) {
+      throw new AppError("Subject, HTML body, and Plain Text body are required", 400);
+    }
+
+    const adminUser = (req as any).user;
+    const adminEmail = adminUser?.email || "admin@gmail.com";
+
+    const updatedTemplate = await updateWelcomeEmailTemplate(subject, bodyHtml, bodyText, adminEmail);
+
+    // Log admin audit action
+    await AdminLog.create({
+      adminId: adminUser?._id,
+      adminEmail,
+      action: "UPDATE_EMAIL_TEMPLATE",
+      target: "welcome_email",
+      details: `Welcome Email template updated by ${adminEmail}`,
+      ipAddress: req.ip || "127.0.0.1",
+      timestamp: new Date(),
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Welcome Email Template updated successfully",
+      data: updatedTemplate,
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({ success: false, message: error.message });
+  }
+};
+
+export const sendTestWelcomeEmailController = async (req: Request, res: Response) => {
+  try {
+    const adminUser = (req as any).user;
+    const targetEmail = req.body.recipientEmail || adminUser?.email || "admin@gmail.com";
+    const targetName = req.body.recipientName || adminUser?.fullName || "Admin Preview";
+
+    const sent = await sendTestWelcomeEmail(targetEmail, targetName);
+
+    if (sent) {
+      res.status(200).json({
+        success: true,
+        message: `Test welcome email sent successfully to ${targetEmail}`,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: `Failed to send test welcome email to ${targetEmail}. Please verify your SMTP settings in environment configuration.`,
+      });
+    }
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+

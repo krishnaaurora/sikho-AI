@@ -49,4 +49,7 @@ export { default as AdminLog } from "./AdminLog.model";
 export * from "./AdminLog.model";
 export { default as AppUsageEvent } from "./AppUsageEvent.model";
 export * from "./AppUsageEvent.model";
+export { default as EmailTemplate } from "./EmailTemplate.model";
+export * from "./EmailTemplate.model";
+
 
