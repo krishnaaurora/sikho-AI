@@ -79,8 +79,10 @@ export const registerService = async (
   password: string,
   extraOnboarding: any = {}
 ) => {
+  const cleanEmail = (email || "").toLowerCase().trim();
+
   // Check if user already exists
-  const existingUser = await User.findOne({ email, isDeleted: false });
+  const existingUser = await User.findOne({ email: cleanEmail, isDeleted: false });
   if (existingUser) {
     throw new AppError("User with this email already exists", 409);
   }
@@ -88,7 +90,7 @@ export const registerService = async (
   // Create new user
   const user = await User.create({
     fullName,
-    email,
+    email: cleanEmail,
     password,
     role: UserRole.LEARNER,
     welcomeEmailSent: false,
@@ -102,15 +104,18 @@ export const registerService = async (
   // Send welcome email asynchronously (non-blocking, duplicate-protected).
   // Registration must succeed even if email dispatch fails.
   if (!user.welcomeEmailSent) {
-    sendWelcomeEmail(user.email, user.fullName)
+    console.log(`[RegisterService] Triggering welcome email for newly registered user: ${cleanEmail}`);
+    sendWelcomeEmail(cleanEmail, user.fullName)
       .then(async (sent: boolean) => {
         if (sent) {
           await User.findByIdAndUpdate(user._id, { welcomeEmailSent: true });
-          console.log(`[RegisterService] Welcome email delivered to ${user.email}`);
+          console.log(`[RegisterService] Welcome email confirmed delivered to ${cleanEmail}`);
+        } else {
+          console.warn(`[RegisterService] sendWelcomeEmail returned false for ${cleanEmail}. Check SMTP credentials.`);
         }
       })
       .catch((err: any) => {
-        console.error(`[RegisterService] Failed to send welcome email to ${user.email}:`, err?.message || err);
+        console.error(`[RegisterService] Error triggering welcome email for ${cleanEmail}:`, err?.message || err);
       });
   }
 

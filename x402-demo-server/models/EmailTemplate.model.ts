@@ -43,6 +43,7 @@ const EmailTemplateSchema: Schema = new Schema(
   },
   {
     timestamps: true,
+    bufferCommands: false,
   }
 );
 
