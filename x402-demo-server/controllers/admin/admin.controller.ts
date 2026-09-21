@@ -908,7 +908,7 @@ export const sendTestWelcomeEmailController = async (req: Request, res: Response
     } else {
       res.status(500).json({
         success: false,
-        message: `Failed to send test welcome email to ${targetEmail}. Please verify your SMTP settings in environment configuration.`,
+        message: `Failed to send test welcome email to ${targetEmail}. Please verify your RESEND_API_KEY and sender domain settings in environment configuration.`,
       });
     }
   } catch (error: any) {

@@ -110,4 +110,7 @@ export const env = {
   PRISM_ENDPOINT: process.env.PRISM_ENDPOINT || "https://prism-99h2.onrender.com/code-review-accurate",
   PRISM_PAYTO: process.env.PRISM_PAYTO || "FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE",
   PRISM_PRICE_MICRO_USDC: parseInt(process.env.PRISM_PRICE_MICRO_USDC || "200000", 10),
+  // ─── Resend Email Configuration ──────────────────────────────
+  RESEND_API_KEY: process.env.RESEND_API_KEY || "",
+  RESEND_FROM: process.env.RESEND_FROM || "Sikho AI <onboarding@resend.dev>",
 };

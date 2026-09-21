@@ -1,12 +1,7 @@
-import dns from "node:dns";
-if (dns.setDefaultResultOrder) {
-  dns.setDefaultResultOrder("ipv4first");
-}
-
 import dotenv from "dotenv";
 dotenv.config();
 
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import mongoose from "mongoose";
 import EmailTemplate from "../models/EmailTemplate.model";
 
@@ -250,94 +245,49 @@ Team Sikho AI
 Support: sikhoaiedu@gmail.com`;
 
 /**
- * Resolves a hostname directly to its IPv4 address to guarantee that cloud platforms
- * like Render (which do not have IPv6 outbound routing) never fail with ENETUNREACH.
- */
-const resolveIPv4Address = async (host: string): Promise<string> => {
-  // If it's already an IP address, return it
-  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(host)) {
-    return host;
-  }
-  return new Promise((resolve) => {
-    dns.resolve4(host, (err, addresses) => {
-      if (!err && addresses && addresses.length > 0) {
-        resolve(addresses[0]);
-      } else {
-        dns.lookup(host, { family: 4 }, (err2, address) => {
-          if (!err2 && address) {
-            resolve(address);
-          } else {
-            resolve(host);
-          }
-        });
-      }
-    });
-  });
-};
-
-// Create Nodemailer Transporter using Gmail SMTP credentials from backend env
-const createTransporter = async () => {
-  const rawHost = process.env.SMTP_HOST || "smtp.gmail.com";
-  const port = parseInt(process.env.SMTP_PORT || "465");
-  const user = process.env.SMTP_USER || process.env.GMAIL_USER || "";
-  const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || "";
-
-  const secureEnv = process.env.SMTP_SECURE;
-  const isSecure = secureEnv !== undefined ? secureEnv === "true" : port === 465;
-
-  // Explicitly resolve to IPv4 address to eliminate Render IPv6 ENETUNREACH
-  const ipv4Host = await resolveIPv4Address(rawHost);
-
-  const transportOptions = {
-    host: ipv4Host,
-    port,
-    secure: isSecure,
-    auth: user && pass ? { user, pass } : undefined,
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 20000,
-    tls: {
-      servername: rawHost, // SNI ensures TLS matches Google certificate
-      rejectUnauthorized: false,
-    },
-  };
-
-  return nodemailer.createTransport(transportOptions as any);
-};
-
-/**
- * Generic email sending function.
+ * Generic email sending function using official Resend API over HTTPS.
+ * Resolves cloud SMTP timeout/firewall/IPv6 issues on Render and provides instant delivery.
  */
 export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (!apiKey) {
+    console.warn("⚠️ [Email/Resend] RESEND_API_KEY is missing. Email NOT sent to:", options.to);
+    console.warn("⚠️ [Email/Resend] Please set RESEND_API_KEY in your Render dashboard environment variables.");
+    return false;
+  }
+
   try {
-    const user = process.env.SMTP_USER || process.env.GMAIL_USER || "";
-    const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || "";
-    
-    if (!user || !pass) {
-      console.warn("⚠️ [Email] SMTP credentials missing (SMTP_USER / SMTP_PASS). Email NOT sent to:", options.to);
-      console.warn("⚠️ [Email] Set SMTP_USER and SMTP_PASS in your environment variables (Render dashboard for production).");
+    const resend = new Resend(apiKey);
+    const fromSender =
+      process.env.RESEND_FROM ||
+      process.env.EMAIL_FROM ||
+      "Sikho AI <onboarding@resend.dev>";
+
+    console.log(`📧 [Email/Resend] Attempting to send to: ${options.to} | From: ${fromSender} | Subject: ${options.subject}`);
+
+    const { data, error } = await resend.emails.send({
+      from: fromSender,
+      to: [options.to],
+      subject: options.subject,
+      text: options.text || "",
+      html: options.html || "",
+    });
+
+    if (error) {
+      console.error(`❌ [Email/Resend] Error sending to ${options.to}:`, error.message || error);
+      if (error.name === "validation_error" || (error as any).statusCode === 403) {
+        console.warn(
+          `💡 [Email/Resend] Domain verification note: When using default 'onboarding@resend.dev', Resend only allows testing delivery to the registered account owner email. To send to any user/student email, add and verify your custom domain at https://resend.com/domains and set RESEND_FROM="Sikho AI <welcome@yourdomain.com>".`
+        );
+      }
       return false;
     }
 
-    console.log(`📧 [Email] Attempting to send to: ${options.to} | Subject: ${options.subject}`);
-    const transporter = await createTransporter();
-    const fromName = process.env.SMTP_FROM_NAME || process.env.EMAIL_FROM_NAME || "Sikho AI";
-    const fromAddress = process.env.SMTP_FROM || process.env.EMAIL_FROM || user;
-    const from = `"${fromName}" <${fromAddress}>`;
-
-    const info = await transporter.sendMail({
-      from,
-      to: options.to,
-      subject: options.subject,
-      text: options.text,
-      html: options.html,
-    });
-
-    console.log(`✅ [Email] Successfully sent to ${options.to}. MessageID: ${info.messageId} | Response: ${info.response}`);
+    console.log(`✅ [Email/Resend] Successfully delivered to ${options.to}. Resend Email ID: ${data?.id}`);
     return true;
   } catch (error: any) {
-    console.error(`❌ [Email] Failed to send to ${options.to}:`, error?.message || error);
-    console.error(`❌ [Email] SMTP Error code: ${error?.code} | Response: ${error?.response}`);
+    console.error(`❌ [Email/Resend] Exception sending to ${options.to}:`, error?.message || error);
     return false;
   }
 };
