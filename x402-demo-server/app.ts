@@ -26,10 +26,15 @@ const MERCHANT = {
   siteName: "Sikho AI",
   description:
     "AI-powered micro-payment learning platform — unlock premium course chapters with USDC on Algorand via x402.",
-  /** Logo served from the backend domain — fallback to site URL */
+  /** Full banner logo served from the backend domain */
   get logoUrl() {
     const baseUrl = env.PUBLIC_BACKEND_URL || env.PUBLIC_SITE_URL;
     return `${baseUrl}/logo.png`;
+  },
+  /** Square icon symbol served from the backend domain */
+  get iconUrl() {
+    const baseUrl = env.PUBLIC_BACKEND_URL || env.PUBLIC_SITE_URL;
+    return `${baseUrl}/icon.png`;
   },
   /** Canonical site URL — driven by PUBLIC_SITE_URL env var */
   get siteUrl() { return env.PUBLIC_SITE_URL; },
@@ -55,9 +60,9 @@ function buildMerchantHtml(): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Favicon and Icon definitions for GoPlausible facilitator & browser crawlers -->
-  <link rel="icon" type="image/png" href="${MERCHANT.logoUrl}" />
-  <link rel="shortcut icon" href="${MERCHANT.logoUrl}" />
-  <link rel="apple-touch-icon" href="${MERCHANT.logoUrl}" />
+  <link rel="icon" type="image/png" href="${MERCHANT.iconUrl}" />
+  <link rel="shortcut icon" href="${MERCHANT.iconUrl}" />
+  <link rel="apple-touch-icon" href="${MERCHANT.iconUrl}" />
 
   <!-- Primary merchant identity — read by GoPlausible x402 facilitator -->
   <title>${MERCHANT.name}</title>
@@ -111,13 +116,13 @@ app.set("trust proxy", 1);
 app.use(helmet());
 
 // ---------------------------------------------------------------------------
-// Static assets — serves /logo.png (and any other files in public/) directly.
-// Required so that `backend_url/logo.png` returns HTTP 200 for GoPlausible
+// Static assets — serves /logo.png, /icon.png (and any other files in public/) directly.
+// Required so that `backend_url/logo.png` and `backend_url/icon.png` return HTTP 200 for GoPlausible
 // merchant enrichment verification.
 // ---------------------------------------------------------------------------
 app.use(
   express.static(publicDir, {
-    // Allow logo to be fetched cross-origin (scrapers, dashboards, browsers)
+    // Allow logo/icon to be fetched cross-origin (scrapers, dashboards, browsers)
     setHeaders(res) {
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Cache-Control", "public, max-age=86400");
@@ -125,8 +130,19 @@ app.use(
   })
 );
 
-// Explicit route handlers for favicon & logo requests (prevents 404s when crawlers probe these paths)
-app.get(["/favicon.ico", "/favicon.png", "/apple-touch-icon.png", "/logo.png"], (req: Request, res: Response) => {
+// Explicit route handlers for favicon & square icon requests (prevents 404s when crawlers probe these paths)
+app.get(["/favicon.ico", "/favicon.png", "/apple-touch-icon.png", "/icon.png", "/logo-icon.png"], (req: Request, res: Response) => {
+  const iconPath = path.join(publicDir, "icon.png");
+  if (fs.existsSync(iconPath)) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.setHeader("Content-Type", "image/png");
+    return res.sendFile(iconPath);
+  }
+  return res.status(404).end();
+});
+
+app.get("/logo.png", (req: Request, res: Response) => {
   const logoPath = path.join(publicDir, "logo.png");
   if (fs.existsSync(logoPath)) {
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -196,6 +212,7 @@ app.get("/", (req: Request, res: Response) => {
       name: MERCHANT.name,
       description: MERCHANT.description,
       logo: MERCHANT.logoUrl,
+      icon: MERCHANT.iconUrl,
       site: MERCHANT.siteUrl,
       x402: {
         tag: MERCHANT.tag,
@@ -220,6 +237,7 @@ app.get("/.well-known/x402", (req: Request, res: Response) => {
     name: MERCHANT.name,
     description: MERCHANT.description,
     logo: MERCHANT.logoUrl,
+    icon: MERCHANT.iconUrl,
     site: MERCHANT.siteUrl,
     x402: {
       tag: MERCHANT.tag,
