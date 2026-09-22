@@ -84,7 +84,7 @@ function buildMerchantHtml(): string {
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Inter',system-ui,sans-serif;background:#0a0a0f;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center}
     .card{text-align:center;padding:3rem 4rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:1.5rem;backdrop-filter:blur(12px)}
-    img.logo{width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:1.5rem;border:3px solid rgba(99,102,241,.6)}
+    img.logo{max-width:220px;max-height:70px;object-fit:contain;margin-bottom:1.5rem;border-radius:.75rem;padding:.4rem 1rem;background:rgba(255,255,255,.06);border:1px solid rgba(99,102,241,.3)}
     h1{font-size:2rem;font-weight:700;background:linear-gradient(135deg,#818cf8,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.75rem}
     p{color:#94a3b8;max-width:480px;line-height:1.6;margin-bottom:1.5rem}
     .badge{display:inline-flex;align-items:center;gap:.5rem;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:2rem;padding:.35rem 1rem;font-size:.8rem;color:#818cf8}
