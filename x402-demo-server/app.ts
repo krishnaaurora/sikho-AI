@@ -112,8 +112,13 @@ const app = express();
 // x402 challenge advertises a probeable public resource URL.
 app.set("trust proxy", 1);
 
-// Security and configuration middleware
-app.use(helmet());
+// Security and configuration middleware — allow images to be loaded cross-origin by GoPlausible dashboard
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
 // ---------------------------------------------------------------------------
 // Static assets — serves /logo.png, /icon.png (and any other files in public/) directly.
@@ -125,6 +130,7 @@ app.use(
     // Allow logo/icon to be fetched cross-origin (scrapers, dashboards, browsers)
     setHeaders(res) {
       res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
       res.setHeader("Cache-Control", "public, max-age=86400");
     },
   })
@@ -135,6 +141,7 @@ app.get(["/favicon.ico", "/favicon.png", "/apple-touch-icon.png", "/icon.png", "
   const iconPath = path.join(publicDir, "icon.png");
   if (fs.existsSync(iconPath)) {
     res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     res.setHeader("Cache-Control", "public, max-age=86400");
     res.setHeader("Content-Type", "image/png");
     return res.sendFile(iconPath);
@@ -146,6 +153,7 @@ app.get("/logo.png", (req: Request, res: Response) => {
   const logoPath = path.join(publicDir, "logo.png");
   if (fs.existsSync(logoPath)) {
     res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     res.setHeader("Cache-Control", "public, max-age=86400");
     res.setHeader("Content-Type", "image/png");
     return res.sendFile(logoPath);
