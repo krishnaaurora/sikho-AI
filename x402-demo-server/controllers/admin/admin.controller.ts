@@ -399,6 +399,43 @@ export const deleteUser = async (req: Request, res: Response) => {
   }
 };
 
+// Reset User Password by Admin
+export const resetUserPassword = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const { newPassword } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      throw new AppError("New password must be at least 6 characters", 400);
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    const adminUser = (req as any).user;
+    await AdminLog.create({
+      adminId: adminUser?._id,
+      adminEmail: adminUser?.email || "admin@gmail.com",
+      action: "RESET_USER_PASSWORD",
+      target: user.email,
+      details: `Password reset by admin for ${user.fullName} (${user.email})`,
+      timestamp: new Date(),
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Password reset successfully for ${user.fullName}`,
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({ success: false, message: error.message });
+  }
+};
+
 // 3. USER DETAILS (Individual User Profile & Activity)
 export const getUserDetails = async (req: Request, res: Response) => {
   try {

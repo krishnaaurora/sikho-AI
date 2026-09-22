@@ -313,6 +313,12 @@ export const adminApi = {
       method: 'DELETE',
     });
   },
+  async resetUserPassword(userId: string, newPassword: string) {
+    return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/users/${userId}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ newPassword }),
+    });
+  },
   async getAppAnalytics(range: string = '30d') {
     return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/app-analytics?range=${range}`);
   },

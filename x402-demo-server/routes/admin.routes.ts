@@ -7,6 +7,7 @@ import {
   getUserDetails,
   toggleUserStatus,
   deleteUser,
+  resetUserPassword,
   getAppAnalytics,
   getActivityLogs,
   createActivityLog,
@@ -33,6 +34,7 @@ router.get("/users", getUsers);
 router.get("/users/:userId/details", getUserDetails);
 router.patch("/users/:userId/status", toggleUserStatus);
 router.delete("/users/:userId", deleteUser);
+router.post("/users/:userId/reset-password", resetUserPassword);
 router.get("/app-analytics", getAppAnalytics);
 router.get("/activity-logs", getActivityLogs);
 router.post("/activity-logs", createActivityLog);

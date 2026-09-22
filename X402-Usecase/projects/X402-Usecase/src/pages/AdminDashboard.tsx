@@ -13,7 +13,7 @@ import {
   Download, Filter, ChevronRight, ChevronLeft, PanelLeftClose, PanelLeftOpen, Shield, ShieldCheck, FileSpreadsheet,
   ExternalLink, Sparkles, BookOpen, Code2, Briefcase, FileText, Target,
   MessageSquare, UserCheck, Eye, EyeOff, RefreshCw, X, DollarSign, Layers,
-  UserX, UserPlus, Award, Zap, Mail, Send, Check, Code, FileCode, Trash2
+  UserX, UserPlus, Award, Zap, Mail, Send, Check, Code, FileCode, Trash2, Key, Copy, Lock
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 
@@ -129,6 +129,12 @@ const AdminDashboard: React.FC = () => {
   const [testEmailRecipient, setTestEmailRecipient] = useState('');
   const [testEmailModalOpen, setTestEmailModalOpen] = useState(false);
   const [emailViewMode, setEmailViewMode] = useState<'editor' | 'preview' | 'plaintext'>('editor');
+
+  // Admin Reset Password State
+  const [resetPasswordModalOpen, setResetPasswordModalOpen] = useState(false);
+  const [userToResetPassword, setUserToResetPassword] = useState<any>(null);
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   // Initial Fetch Data
   const loadDashboardData = async () => {
@@ -267,6 +273,27 @@ const AdminDashboard: React.FC = () => {
       enqueueSnackbar(err.message || 'Failed to delete user account', { variant: 'error' });
     } finally {
       setDeletingUser(false);
+    }
+  };
+
+  const handleAdminResetPassword = async () => {
+    if (!userToResetPassword || !newAdminPassword || newAdminPassword.length < 6) {
+      enqueueSnackbar('Password must be at least 6 characters long', { variant: 'warning' });
+      return;
+    }
+    setResettingPassword(true);
+    try {
+      const res = await adminApi.resetUserPassword(userToResetPassword._id, newAdminPassword);
+      if (res.success) {
+        enqueueSnackbar(`Password updated successfully for ${userToResetPassword.fullName || userToResetPassword.email}`, { variant: 'success' });
+        setResetPasswordModalOpen(false);
+        setUserToResetPassword(null);
+        setNewAdminPassword('');
+      }
+    } catch (err: any) {
+      enqueueSnackbar(err.message || 'Failed to update user password', { variant: 'error' });
+    } finally {
+      setResettingPassword(false);
     }
   };
 

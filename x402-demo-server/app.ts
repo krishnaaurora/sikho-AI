@@ -3,12 +3,18 @@ import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import path from "path";
+import fs from "fs";
 import { morganMiddleware } from "./config/logger.config";
 import routes from "./routes";
 import { notFoundHandler } from "./middlewares/notFound.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
 import { appConfig } from "./config/app.config";
 import { env } from "./config/env";
+
+// Safely resolve the public directory (handles ts-node in dev and dist/ in production build)
+const publicDir = fs.existsSync(path.join(__dirname, "public"))
+  ? path.join(__dirname, "public")
+  : path.resolve(process.cwd(), "public");
 
 // ---------------------------------------------------------------------------
 // Merchant branding constants for GoPlausible x402 dashboard enrichment.
@@ -20,9 +26,12 @@ const MERCHANT = {
   siteName: "Sikho AI",
   description:
     "AI-powered micro-payment learning platform — unlock premium course chapters with USDC on Algorand via x402.",
-  /** Logo served from the Vercel deployment — driven by PUBLIC_SITE_URL env var */
-  get logoUrl() { return `${env.PUBLIC_SITE_URL}/logo.png`; },
-  /** Canonical site URL — driven by PUBLIC_SITE_URL env var (set to Vercel domain) */
+  /** Logo served from the backend domain — fallback to site URL */
+  get logoUrl() {
+    const baseUrl = env.PUBLIC_BACKEND_URL || env.PUBLIC_SITE_URL;
+    return `${baseUrl}/logo.png`;
+  },
+  /** Canonical site URL — driven by PUBLIC_SITE_URL env var */
   get siteUrl() { return env.PUBLIC_SITE_URL; },
   /** x402 discovery tags */
   tag: "x402-global-challenge",
@@ -45,6 +54,11 @@ function buildMerchantHtml(): string {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+  <!-- Favicon and Icon definitions for GoPlausible facilitator & browser crawlers -->
+  <link rel="icon" type="image/png" href="${MERCHANT.logoUrl}" />
+  <link rel="shortcut icon" href="${MERCHANT.logoUrl}" />
+  <link rel="apple-touch-icon" href="${MERCHANT.logoUrl}" />
+
   <!-- Primary merchant identity — read by GoPlausible x402 facilitator -->
   <title>${MERCHANT.name}</title>
   <meta name="description" content="${MERCHANT.description}" />
@@ -54,8 +68,11 @@ function buildMerchantHtml(): string {
   <meta property="og:title"     content="${MERCHANT.name}" />
   <meta property="og:description" content="${MERCHANT.description}" />
   <meta property="og:image"     content="${MERCHANT.logoUrl}" />
+  <meta property="og:image:secure_url" content="${MERCHANT.logoUrl}" />
   <meta property="og:url"       content="${MERCHANT.siteUrl}" />
   <meta property="og:type"      content="website" />
+  <meta name="twitter:card"     content="summary_large_image" />
+  <meta name="twitter:image"    content="${MERCHANT.logoUrl}" />
 
   <!-- x402 / Algorand Global Challenge discovery signals -->
   <meta name="x402:tag"      content="${MERCHANT.tag}" />
@@ -99,7 +116,7 @@ app.use(helmet());
 // merchant enrichment verification.
 // ---------------------------------------------------------------------------
 app.use(
-  express.static(path.join(__dirname, "public"), {
+  express.static(publicDir, {
     // Allow logo to be fetched cross-origin (scrapers, dashboards, browsers)
     setHeaders(res) {
       res.setHeader("Access-Control-Allow-Origin", "*");
@@ -107,6 +124,18 @@ app.use(
     },
   })
 );
+
+// Explicit route handlers for favicon & logo requests (prevents 404s when crawlers probe these paths)
+app.get(["/favicon.ico", "/favicon.png", "/apple-touch-icon.png", "/logo.png"], (req: Request, res: Response) => {
+  const logoPath = path.join(publicDir, "logo.png");
+  if (fs.existsSync(logoPath)) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.setHeader("Content-Type", "image/png");
+    return res.sendFile(logoPath);
+  }
+  return res.status(404).end();
+});
 
 // ---------------------------------------------------------------------------
 // Static serving of uploaded files (resumes, images, documents)

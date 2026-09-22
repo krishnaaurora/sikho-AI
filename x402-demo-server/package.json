@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon",
-    "build": "tsc",
+    "build": "tsc && node -e \"const fs=require('fs'); if(!fs.existsSync('dist/public')){fs.mkdirSync('dist/public',{recursive:true});} fs.cpSync('public','dist/public',{recursive:true});\"",
     "start": "node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
