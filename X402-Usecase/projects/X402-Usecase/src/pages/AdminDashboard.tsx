@@ -10,7 +10,7 @@ import {
 import {
   LayoutDashboard, Users, CreditCard, BarChart3, Settings, LogOut,
   TrendingUp, Activity, CheckCircle2, Clock, AlertCircle, Search,
-  Download, Filter, ChevronRight, Shield, ShieldCheck, FileSpreadsheet,
+  Download, Filter, ChevronRight, ChevronLeft, Shield, ShieldCheck, FileSpreadsheet,
   ExternalLink, Sparkles, BookOpen, Code2, Briefcase, FileText, Target,
   MessageSquare, UserCheck, Eye, EyeOff, RefreshCw, X, DollarSign, Layers,
   UserX, UserPlus, Award, Zap, Mail, Send, Check, Code, FileCode, Trash2
@@ -38,6 +38,7 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'payments' | 'apps' | 'email' | 'settings'>('overview');
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Data Loading & Refresh States
   const [loading, setLoading] = useState(true);
@@ -346,22 +347,34 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-800 flex transition-colors font-sans antialiased">
 
-      {/* SIDEBAR (Dark Navy for Premium SaaS Contrast) */}
-      <aside className="hidden lg:flex lg:flex-col w-64 bg-[#0f172a] border-r border-slate-800 flex-shrink-0 z-30 shadow-xl">
+      {/* SIDEBAR (Dark Navy Collapsible Sidebar) */}
+      <aside className={`hidden lg:flex lg:flex-col ${sidebarCollapsed ? 'w-20' : 'w-64'} bg-[#0f172a] border-r border-slate-800 flex-shrink-0 z-30 shadow-xl transition-all duration-300 ease-in-out`}>
         
-        {/* Brand Header */}
-        <div className="p-6 flex items-center gap-3 border-b border-slate-800/80">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-            <Sparkles className="w-5 h-5 text-white" />
+        {/* Brand Header & Toggle Button */}
+        <div className={`p-4 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} border-b border-slate-800/80 min-h-[65px]`}>
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            {!sidebarCollapsed && (
+              <div className="overflow-hidden">
+                <h1 className="font-bold text-base text-white tracking-tight leading-none truncate">Sikho AI</h1>
+                <span className="text-[10px] font-semibold text-indigo-400 tracking-wider uppercase truncate block mt-0.5">Admin Portal</span>
+              </div>
+            )}
           </div>
-          <div>
-            <h1 className="font-bold text-base text-white tracking-tight leading-none">Sikho AI</h1>
-            <span className="text-[11px] font-semibold text-indigo-400 tracking-wider uppercase">Admin Dashboard</span>
-          </div>
+          
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all"
+            title={sidebarCollapsed ? "Expand Side Nav" : "Collapse Side Nav"}
+          >
+            {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
         </div>
 
-        {/* Sidebar Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+        {/* Sidebar Navigation Items */}
+        <nav className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto">
           {[
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'users', label: 'User Management', icon: Users },
@@ -376,38 +389,42 @@ const AdminDashboard: React.FC = () => {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id as any)}
-                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all ${
+                title={sidebarCollapsed ? item.label : undefined}
+                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-3' : 'gap-3 px-3.5 py-3'} rounded-xl text-xs font-semibold transition-all ${
                   isActive
                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
                     : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                <span>{item.label}</span>
-                {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto text-white/80" />}
+                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                {!sidebarCollapsed && isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto text-white/80 shrink-0" />}
               </button>
             );
           })}
         </nav>
 
         {/* Sidebar Footer Admin Profile & Logout */}
-        <div className="p-4 border-t border-slate-800/80 bg-slate-900/60">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs border border-indigo-500/30">
+        <div className="p-3 border-t border-slate-800/80 bg-slate-900/60">
+          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} mb-3`}>
+            <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs border border-indigo-500/30 shrink-0">
               A
             </div>
-            <div className="overflow-hidden">
-              <p className="text-xs font-bold text-white truncate">Admin Account</p>
-              <p className="text-[10px] text-slate-400 truncate">{maskText(user?.email || 'admin@gmail.com', true)}</p>
-            </div>
+            {!sidebarCollapsed && (
+              <div className="overflow-hidden">
+                <p className="text-xs font-bold text-white truncate">Admin Account</p>
+                <p className="text-[10px] text-slate-400 truncate">{maskText(user?.email || 'admin@gmail.com', true)}</p>
+              </div>
+            )}
           </div>
           <Button
             variant="outline"
             onClick={logout}
-            className="w-full justify-start text-xs border-slate-800 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 py-2 h-auto"
+            title={sidebarCollapsed ? "Sign Out" : undefined}
+            className={`w-full ${sidebarCollapsed ? 'justify-center px-0' : 'justify-start'} text-xs border-slate-800 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 py-2 h-auto`}
           >
-            <LogOut className="w-3.5 h-3.5 mr-2" />
-            Sign Out
+            <LogOut className={`w-3.5 h-3.5 ${sidebarCollapsed ? '' : 'mr-2'} shrink-0`} />
+            {!sidebarCollapsed && 'Sign Out'}
           </Button>
         </div>
       </aside>
@@ -415,7 +432,7 @@ const AdminDashboard: React.FC = () => {
       {/* MAIN CONTENT AREA (WHITE THEME) */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-100/70">
 
-        {/* Top Header Bar (Clean White) */}
+        {/* Top Header Bar */}
         <header className="h-16 border-b border-slate-200 bg-white shadow-xs px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <button
@@ -424,6 +441,16 @@ const AdminDashboard: React.FC = () => {
             >
               <LayoutDashboard className="w-5 h-5" />
             </button>
+
+            {/* Desktop Side Nav Toggle Button in Header */}
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="hidden lg:flex items-center justify-center p-2 text-slate-500 hover:text-slate-900 rounded-xl hover:bg-slate-100 border border-slate-200 transition-all"
+              title={sidebarCollapsed ? "Expand Side Navigation" : "Collapse Side Navigation"}
+            >
+              {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            </button>
+
             <h2 className="text-base font-bold text-slate-900 capitalize tracking-tight flex items-center gap-2">
               {activeTab === 'overview' && 'Dashboard Overview'}
               {activeTab === 'users' && 'User Management & Learner Profiles'}
@@ -537,28 +564,43 @@ const AdminDashboard: React.FC = () => {
                 
                 {/* Chart 1: User Growth */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
                     <div>
                       <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                         <TrendingUp className="w-4 h-4 text-indigo-600" /> User Growth Trend
                       </h3>
                       <p className="text-xs text-slate-500">Cumulative registered learners over the last 7 days</p>
                     </div>
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      {overviewData.summary?.totalRegisteredUsers || 0} Total Learners
+                    </span>
                   </div>
                   <div className="h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={overviewData.charts?.userGrowth || []}>
+                      <AreaChart data={overviewData.charts?.userGrowth || []} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                         <defs>
                           <linearGradient id="userGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.0} />
+                            <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.35} />
+                            <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.02} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
-                        <YAxis stroke="#64748b" fontSize={11} />
-                        <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', fontSize: '12px', color: '#0f172a' }} />
-                        <Area type="monotone" dataKey="totalUsers" stroke="#4f46e5" strokeWidth={2.5} fillOpacity={1} fill="url(#userGrad)" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                        <XAxis dataKey="date" stroke="#64748b" fontSize={11} tickLine={false} />
+                        <YAxis stroke="#64748b" fontSize={11} tickLine={false} allowDecimals={false} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', fontSize: '12px', color: '#0f172a', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                          formatter={(val: any) => [`${val} Learners`, 'Registered Users']}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="totalUsers"
+                          stroke="#4f46e5"
+                          strokeWidth={2.5}
+                          fillOpacity={1}
+                          fill="url(#userGrad)"
+                          dot={{ r: 4, fill: '#4f46e5', strokeWidth: 2, stroke: '#ffffff' }}
+                          activeDot={{ r: 6, fill: '#4f46e5', strokeWidth: 2, stroke: '#ffffff' }}
+                        />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -566,34 +608,61 @@ const AdminDashboard: React.FC = () => {
 
                 {/* Chart 2: Payment & Revenue Trends */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                     <div>
                       <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                         <CreditCard className="w-4 h-4 text-emerald-600" /> Revenue Trends (USDC)
                       </h3>
                       <p className="text-xs text-slate-500">Daily USDC revenue breakdown over the last 7 days</p>
                     </div>
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                      ${(overviewData.charts?.paymentTrends || []).reduce((acc: number, cur: any) => acc + (cur.revenue || 0), 0).toFixed(2)} USDC (7D)
+                    </span>
                   </div>
                   <div className="h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={overviewData.charts?.paymentTrends || []} margin={{ top: 20, right: 10, left: -10, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
-                        <YAxis stroke="#64748b" fontSize={11} />
-                        <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', fontSize: '12px', color: '#0f172a' }} />
-                        <Bar dataKey="revenue" fill="#10b981" radius={[6, 6, 0, 0]}>
-                          <LabelList dataKey="revenue" position="top" formatter={(val: any) => `$${val}`} style={{ fontSize: '11px', fontWeight: 'bold', fill: '#059669' }} />
-                        </Bar>
-                      </BarChart>
+                      <AreaChart data={overviewData.charts?.paymentTrends || []} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                        <XAxis dataKey="date" stroke="#64748b" fontSize={11} tickLine={false} />
+                        <YAxis stroke="#64748b" fontSize={11} tickLine={false} unit="$" />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', fontSize: '12px', color: '#0f172a', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                          formatter={(val: any, _name: any, item: any) => [
+                            `$${Number(val || 0).toFixed(2)} USDC (${item.payload.count || 0} payments)`,
+                            'Daily Revenue'
+                          ]}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="revenue"
+                          stroke="#10b981"
+                          strokeWidth={2.5}
+                          fillOpacity={1}
+                          fill="url(#revGrad)"
+                          dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#ffffff' }}
+                          activeDot={{ r: 6, fill: '#059669', strokeWidth: 2, stroke: '#ffffff' }}
+                        />
+                      </AreaChart>
                     </ResponsiveContainer>
                   </div>
 
-                  {/* Always Visible Daily Revenue Breakdown List Below Chart */}
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-1.5 overflow-x-auto">
+                  {/* Always Visible Daily Revenue Breakdown Grid (All 7 Days Guaranteed Fit) */}
+                  <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-7 gap-1 sm:gap-1.5">
                     {(overviewData.charts?.paymentTrends || []).map((item: any, idx: number) => (
-                      <div key={idx} className="bg-emerald-50/70 border border-emerald-200/60 rounded-xl px-2.5 py-1.5 text-center flex-1 min-w-[65px]">
-                        <p className="text-[10px] text-slate-500 font-semibold">{item.date}</p>
-                        <p className="text-xs font-extrabold text-emerald-700">${item.revenue} <span className="text-[9px] font-medium text-slate-400">USDC</span></p>
+                      <div
+                        key={idx}
+                        className="bg-emerald-50/70 border border-emerald-200/70 rounded-xl px-1 py-1.5 text-center flex flex-col items-center justify-center transition-all hover:bg-emerald-100/60 hover:border-emerald-300"
+                        title={`${item.date}: $${item.revenue} USDC (${item.count || 0} transactions)`}
+                      >
+                        <p className="text-[10px] text-slate-500 font-bold truncate w-full">{item.date}</p>
+                        <p className="text-xs font-black text-emerald-800 tracking-tight leading-tight mt-0.5">${item.revenue}</p>
+                        <span className="text-[8px] font-semibold text-emerald-600/80 uppercase">USDC</span>
                       </div>
                     ))}
                   </div>
@@ -603,45 +672,78 @@ const AdminDashboard: React.FC = () => {
 
               {/* Application Usage Distribution Donut Chart */}
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
-                <h3 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-amber-600" /> Application Usage Distribution Across Sikho AI
-                </h3>
-                <p className="text-xs text-slate-500 mb-6">Proportion of usage events across the 7 Sikho AI applications</p>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                  <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={overviewData.charts?.appUsageDistribution || []}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={85}
-                          paddingAngle={4}
-                          dataKey="count"
-                        >
-                          {(overviewData.charts?.appUsageDistribution || []).map((_: any, index: number) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', fontSize: '12px' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-amber-600" /> Application Usage Distribution Across Sikho AI
+                    </h3>
+                    <p className="text-xs text-slate-500">Proportion of telemetry events across the 7 Sikho AI applications</p>
                   </div>
-
-                  <div className="space-y-2.5">
-                    {(overviewData.charts?.appUsageDistribution || []).map((app: any, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-100 last:border-none">
-                        <div className="flex items-center gap-2.5">
-                          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                          <span className="font-semibold text-slate-800">{app.name}</span>
-                        </div>
-                        <span className="font-mono text-slate-500 font-bold">{app.count} events</span>
-                      </div>
-                    ))}
-                  </div>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                    {(overviewData.charts?.appUsageDistribution || []).reduce((acc: number, cur: any) => acc + (cur.count || 0), 0)} Total Events
+                  </span>
                 </div>
+
+                {(() => {
+                  const totalEvents = (overviewData.charts?.appUsageDistribution || []).reduce((acc: number, cur: any) => acc + (cur.count || 0), 0);
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                      <div className="h-64 w-full flex items-center justify-center">
+                        {totalEvents > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={overviewData.charts?.appUsageDistribution || []}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={60}
+                                outerRadius={85}
+                                paddingAngle={4}
+                                dataKey="count"
+                              >
+                                {(overviewData.charts?.appUsageDistribution || []).map((_: any, index: number) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip
+                                contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                                formatter={(val: any, name: any) => [`${val} events (${((val / totalEvents) * 100).toFixed(1)}%)`, name]}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center text-center p-6 bg-slate-50/80 rounded-2xl border border-dashed border-slate-200 w-full h-full">
+                            <div className="w-14 h-14 rounded-2xl bg-amber-100/70 border border-amber-200 flex items-center justify-center mb-3 text-amber-700 shadow-xs">
+                              <BarChart3 className="w-7 h-7" />
+                            </div>
+                            <p className="text-xs font-bold text-slate-800">No Application Telemetry Recorded</p>
+                            <p className="text-[11px] text-slate-400 mt-1 max-w-[240px] leading-relaxed">
+                              Interactive pie chart will populate automatically as learners engage with Sikho AI modules.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        {(overviewData.charts?.appUsageDistribution || []).map((app: any, idx: number) => {
+                          const IconComp = APP_ICONS[app.name] || Layers;
+                          return (
+                            <div key={idx} className="flex items-center justify-between text-xs py-2 px-3 rounded-xl bg-slate-50/60 border border-slate-100 hover:bg-slate-100/60 transition-colors">
+                              <div className="flex items-center gap-2.5">
+                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                                <IconComp className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                                <span className="font-semibold text-slate-800">{app.name}</span>
+                              </div>
+                              <span className="font-mono text-slate-600 font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200/80 text-[11px]">
+                                {app.count} events
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
             </div>
@@ -982,21 +1084,23 @@ const AdminDashboard: React.FC = () => {
             <div className="space-y-8">
 
               {/* Date Filter & Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">Sikho AI Applications Usage Breakdown</h3>
-                  <p className="text-xs text-slate-500">Tracking user engagement across all 7 platform applications</p>
+                  <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-indigo-600" /> Sikho AI Applications Usage Breakdown
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Tracking real-time user engagement, DAU/WAU/MAU, and monetization across all 7 platform applications</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500 font-medium">Time Horizon:</span>
+                  <span className="text-xs text-slate-500 font-bold">Timeframe:</span>
                   {(['7d', '30d', '90d', 'all'] as const).map((r) => (
                     <button
                       key={r}
                       onClick={() => setAnalyticsDateRange(r)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase transition-all ${
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
                         analyticsDateRange === r
                           ? 'bg-indigo-600 text-white shadow-xs'
-                          : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
                       }`}
                     >
                       {r}
@@ -1005,39 +1109,51 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* 7 Applications Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {/* 7 Applications Grid with High-Contrast Clear Statistics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                 {(appAnalyticsData.applications || []).map((app: any, idx: number) => {
                   const Icon = APP_ICONS[app.appName] || Sparkles;
                   return (
-                    <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all flex flex-col justify-between shadow-xs">
+                    <div
+                      key={idx}
+                      className="bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-md hover:border-indigo-200 transition-all flex flex-col justify-between shadow-xs"
+                    >
                       <div>
+                        {/* Header: Icon & App Index */}
                         <div className="flex items-center justify-between mb-3">
                           <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
-                            <Icon className="w-4 h-4" />
+                            <Icon className="w-5 h-5" />
                           </div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-700 bg-indigo-50/80 px-2.5 py-1 rounded-full border border-indigo-100">
                             App #{idx + 1}
                           </span>
                         </div>
-                        <h4 className="font-bold text-sm text-slate-900">{app.appName}</h4>
+
+                        {/* Title & Total Events Headline */}
+                        <h4 className="font-extrabold text-base text-slate-900">{app.appName}</h4>
                         
-                        <div className="mt-4 space-y-2 text-xs">
-                          <div className="flex justify-between py-1 border-b border-slate-100">
-                            <span className="text-slate-500">Total Usage Events</span>
-                            <span className="font-bold text-slate-900">{app.totalUsageEvents}</span>
+                        <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                          <span className="text-xs font-semibold text-slate-600">Total Usage Events</span>
+                          <span className="text-base font-black text-indigo-600">{app.totalUsageEvents}</span>
+                        </div>
+                        
+                        {/* Breakdown Metrics */}
+                        <div className="mt-3 space-y-2 text-xs">
+                          <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
+                            <span className="text-slate-500 font-medium">Unique Active Users</span>
+                            <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">{app.uniqueActiveUsers}</span>
                           </div>
-                          <div className="flex justify-between py-1 border-b border-slate-100">
-                            <span className="text-slate-500">Unique Active Users</span>
-                            <span className="font-semibold text-indigo-600">{app.uniqueActiveUsers}</span>
+                          <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
+                            <span className="text-slate-500 font-medium">DAU / WAU / MAU</span>
+                            <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md text-[11px]">
+                              {app.dailyUsage} / {app.weeklyUsage} / {app.monthlyUsage}
+                            </span>
                           </div>
-                          <div className="flex justify-between py-1 border-b border-slate-100">
-                            <span className="text-slate-500">DAU / WAU / MAU</span>
-                            <span className="font-mono text-slate-700">{app.dailyUsage} / {app.weeklyUsage} / {app.monthlyUsage}</span>
-                          </div>
-                          <div className="flex justify-between py-1">
-                            <span className="text-slate-500">Revenue Generated</span>
-                            <span className="font-bold text-emerald-600">${app.revenueGenerated.toFixed(2)} USDC</span>
+                          <div className="flex justify-between items-center py-1.5">
+                            <span className="text-slate-500 font-medium">Revenue Generated</span>
+                            <span className="font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md">
+                              ${Number(app.revenueGenerated || 0).toFixed(2)} USDC
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -1046,24 +1162,56 @@ const AdminDashboard: React.FC = () => {
                 })}
               </div>
 
-              {/* Ranked Applications Bar Chart */}
+              {/* Ranked Applications Bar Chart & Ranking Table */}
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
-                <h3 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-indigo-600" /> Ranked Application Usage Count
-                </h3>
-                <p className="text-xs text-slate-500 mb-6">Applications ranked by total telemetry usage events within the selected timeframe ({analyticsDateRange})</p>
-
-                <div className="h-72 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={appAnalyticsData.rankedChart || []} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis type="number" stroke="#64748b" fontSize={11} />
-                      <YAxis dataKey="appName" type="category" stroke="#475569" fontSize={11} width={140} />
-                      <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', fontSize: '12px' }} />
-                      <Bar dataKey="usageCount" fill="#4f46e5" radius={[0, 6, 6, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-indigo-600" /> Ranked Application Usage Statistics
+                    </h3>
+                    <p className="text-xs text-slate-500">Telemetry comparison ranked by total events within ({analyticsDateRange})</p>
+                  </div>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    {(appAnalyticsData.rankedChart || []).reduce((acc: number, cur: any) => acc + (cur.usageCount || 0), 0)} Events Total
+                  </span>
                 </div>
+
+                {(() => {
+                  const totalRankedEvents = (appAnalyticsData.rankedChart || []).reduce((acc: number, cur: any) => acc + (cur.usageCount || 0), 0);
+                  
+                  if (totalRankedEvents === 0) {
+                    return (
+                      <div className="p-8 text-center bg-slate-50/70 rounded-2xl border border-dashed border-slate-200 my-2">
+                        <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center mx-auto mb-3">
+                          <BarChart3 className="w-7 h-7" />
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-800">No Telemetry Events Recorded for {analyticsDateRange.toUpperCase()}</h4>
+                        <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                          Application usage counters and ranking chart will update in real-time as registered learners use the AI tools.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="h-72 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={appAnalyticsData.rankedChart || []} layout="vertical" margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                          <XAxis type="number" stroke="#64748b" fontSize={11} tickLine={false} />
+                          <YAxis dataKey="appName" type="category" stroke="#334155" fontSize={11} width={140} tickLine={false} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                            formatter={(val: any) => [`${val} usage events`, 'Telemetry Usage']}
+                          />
+                          <Bar dataKey="usageCount" fill="#4f46e5" radius={[0, 6, 6, 0]}>
+                            <LabelList dataKey="usageCount" position="right" style={{ fontSize: '11px', fontWeight: 'bold', fill: '#4f46e5' }} />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  );
+                })()}
               </div>
 
             </div>
