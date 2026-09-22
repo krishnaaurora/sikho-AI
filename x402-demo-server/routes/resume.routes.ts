@@ -84,11 +84,27 @@ router.get("/:resumeId/status", optionalAuthenticate, getResumeStatus);
 // GET   /api/v1/resume/:resumeId/extraction — Full extracted data for Extraction Engine UI
 router.get("/:resumeId/extraction", optionalAuthenticate, getResumeExtraction);
 
-// POST  /api/v1/resume/:resumeId/unlock      — Unlock Resume Intelligence pass (Paid $0.30)
-router.post(
-  "/:resumeId/unlock",
+// POST & GET /api/v1/resume/unlock & /:resumeId/unlock — Unlock Resume Intelligence pass (Paid $0.30)
+router.all(
+  ["/unlock", "/:resumeId/unlock"],
   optionalAuthenticate,
-  enforceWorkspacePayment({ priceUsd: 0.30, description: "Resume Intelligence Pass" }),
+  enforceWorkspacePayment({
+    priceUsd: 0.30,
+    description: "Sikho AI Resume Intelligence Pass",
+    mimeType: "application/json",
+    discoveryInput: { resumeId: "65cb765f0123456789abcdef" },
+    discoveryInputSchema: {
+      type: "object",
+      properties: {
+        resumeId: { type: "string", description: "Candidate resume ID" },
+      },
+    },
+    discoveryOutputExample: {
+      success: true,
+      data: { resumeId: "65cb765f0123456789abcdef", status: "READY", unlocked: true },
+      message: "Resume Intelligence pass unlocked successfully.",
+    },
+  }),
   unlockResumePass
 );
 
@@ -135,13 +151,13 @@ router.all(
 router.get(["/career-fit", "/:resumeId/career-fit"], optionalAuthenticate, getCareerFit);
 
 // POST  /api/v1/resume/:resumeId/skill-gap   — Trigger skill gap analysis
-router.post("/:resumeId/skill-gap", optionalAuthenticate, runSkillGap);
+router.all(["/skill-gap", "/:resumeId/skill-gap"], optionalAuthenticate, runSkillGap);
 
 // POST  /api/v1/resume/:resumeId/intent        — Extract target career parameters from prompt
-router.post("/:resumeId/intent", optionalAuthenticate, extractIntent);
+router.all(["/intent", "/:resumeId/intent"], optionalAuthenticate, extractIntent);
 
 // POST  /api/v1/resume/:resumeId/discover-jobs — Real-time job discovery (free — no payment gate)
-router.post("/:resumeId/discover-jobs", optionalAuthenticate, discoverJobs);
+router.all(["/discover-jobs", "/:resumeId/discover-jobs"], optionalAuthenticate, discoverJobs);
 
 // GET & POST /api/v1/resume/find-jobs — Personalised job discovery (x402 $0.30)
 //   Returns 402 Payment Required if no payment header provided
@@ -279,9 +295,10 @@ router.post(
 );
 
 // GET   /api/v1/resume/:resumeId/job-discovery/status — Free poll after payment
-router.get("/:resumeId/job-discovery/status", optionalAuthenticate, async (req: any, res: Response) => {
-  const count = await ResumeJobMatch.countDocuments({ resumeId: req.params.resumeId });
-  return sendSuccessResponse(res, { resumeId: req.params.resumeId, matchCount: count, status: count > 0 ? "ready" : "processing" }, "Status fetched");
+router.get(["/job-discovery/status", "/:resumeId/job-discovery/status"], optionalAuthenticate, async (req: any, res: Response) => {
+  const resumeId = req.params.resumeId || "65cb765f0123456789abcdef";
+  const count = await ResumeJobMatch.countDocuments({ resumeId });
+  return sendSuccessResponse(res, { resumeId, matchCount: count, status: count > 0 ? "ready" : "processing" }, "Status fetched");
 });
 
 // POST  /api/v1/resume/webhook/apify          — Apify webhook callback receiver
@@ -295,45 +312,50 @@ router.get("/jobs", listJobs);
 router.post("/jobs/backfill-intelligence", backfillIntelligence);
 
 // POST  /api/v1/resume/jobs/:jobId/analyze         — Analyze single job
-router.post("/jobs/:jobId/analyze", optionalAuthenticate, enforceWorkspacePayment({ priceUsd: 0.30, description: "Job-Specific Resume Analysis" }), analyzeJob);
+router.all(
+  ["/jobs/analyze", "/jobs/:jobId/analyze"],
+  optionalAuthenticate,
+  enforceWorkspacePayment({ priceUsd: 0.30, description: "Job-Specific Resume Analysis" }),
+  analyzeJob
+);
 
 // GET   /api/v1/resume/jobs/:jobId/intelligence    — Fetch job intelligence
-router.get("/jobs/:jobId/intelligence", getJobIntelligence);
+router.get(["/jobs/intelligence", "/jobs/:jobId/intelligence"], getJobIntelligence);
 
 // ─── Resume ↔ Job Matching Routes (Phase 9) ──────────────────────
 // GET   /api/v1/resume/:resumeId/matches              — All matches for a resume (paginated)
-router.get("/:resumeId/matches", optionalAuthenticate, getResumeMatches);
+router.get(["/matches", "/:resumeId/matches"], optionalAuthenticate, getResumeMatches);
 
 // GET   /api/v1/resume/:resumeId/match-distribution   — Tier distribution for donut chart
-router.get("/:resumeId/match-distribution", optionalAuthenticate, getDistribution);
+router.get(["/match-distribution", "/:resumeId/match-distribution"], optionalAuthenticate, getDistribution);
 
 // POST  /api/v1/resume/:resumeId/match-all            — Batch match against all DB jobs
-router.post("/:resumeId/match-all", optionalAuthenticate, matchAllJobs);
+router.all(["/match-all", "/:resumeId/match-all"], optionalAuthenticate, matchAllJobs);
 
 // POST  /api/v1/resume/:resumeId/match/:jobId         — Match against a specific job
-router.post("/:resumeId/match/:jobId", optionalAuthenticate, matchSingleJob);
+router.all(["/match", "/:resumeId/match", "/:resumeId/match/:jobId"], optionalAuthenticate, matchSingleJob);
 
 // GET   /api/v1/resume/:resumeId/match/:jobId         — Fetch existing match result
-router.get("/:resumeId/match/:jobId", optionalAuthenticate, getMatch);
+router.get(["/match", "/:resumeId/match", "/:resumeId/match/:jobId"], optionalAuthenticate, getMatch);
 
 // ─── Resume Improvement Routes (Phase 11) ─────────────────────────
 // POST  /api/v1/resume/:resumeId/improvements/analyze  — Trigger improvement gap calculations
-router.post("/:resumeId/improvements/analyze", optionalAuthenticate, analyzeResumeImprovements);
+router.all(["/improvements/analyze", "/:resumeId/improvements/analyze"], optionalAuthenticate, analyzeResumeImprovements);
 
 // GET   /api/v1/resume/:resumeId/improvements          — Get market & job-specific tips
-router.get("/:resumeId/improvements", optionalAuthenticate, getResumeImprovements);
+router.get(["/improvements", "/:resumeId/improvements"], optionalAuthenticate, getResumeImprovements);
 
 // POST  /api/v1/resume/:resumeId/improvements/apply       — Live dynamic resume improvements (Paid $0.30)
-router.post(
-  "/:resumeId/improvements/apply",
+router.all(
+  ["/improvements/apply", "/:resumeId/improvements/apply"],
   optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.30, description: "Resume Improvement AI" }),
   applyResumeImprovements
 );
 
 // POST  /api/v1/resume/:resumeId/projects/generate        — Live dynamic project recommendations (Paid $0.30)
-router.post(
-  "/:resumeId/projects/generate",
+router.all(
+  ["/projects/generate", "/:resumeId/projects/generate"],
   optionalAuthenticate,
   enforceWorkspacePayment({ priceUsd: 0.30, description: "Project Generation AI" }),
   generateProjectPlan
