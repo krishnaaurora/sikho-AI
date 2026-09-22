@@ -10,7 +10,7 @@ import {
 import {
   LayoutDashboard, Users, CreditCard, BarChart3, Settings, LogOut,
   TrendingUp, Activity, CheckCircle2, Clock, AlertCircle, Search,
-  Download, Filter, ChevronRight, ChevronLeft, Shield, ShieldCheck, FileSpreadsheet,
+  Download, Filter, ChevronRight, ChevronLeft, PanelLeftClose, PanelLeftOpen, Shield, ShieldCheck, FileSpreadsheet,
   ExternalLink, Sparkles, BookOpen, Code2, Briefcase, FileText, Target,
   MessageSquare, UserCheck, Eye, EyeOff, RefreshCw, X, DollarSign, Layers,
   UserX, UserPlus, Award, Zap, Mail, Send, Check, Code, FileCode, Trash2
@@ -598,9 +598,11 @@ const AdminDashboard: React.FC = () => {
                           strokeWidth={2.5}
                           fillOpacity={1}
                           fill="url(#userGrad)"
-                          dot={{ r: 4, fill: '#4f46e5', strokeWidth: 2, stroke: '#ffffff' }}
-                          activeDot={{ r: 6, fill: '#4f46e5', strokeWidth: 2, stroke: '#ffffff' }}
-                        />
+                          dot={{ r: 5, fill: '#4f46e5', strokeWidth: 2, stroke: '#ffffff' }}
+                          activeDot={{ r: 7, fill: '#4f46e5', strokeWidth: 2, stroke: '#ffffff' }}
+                        >
+                          <LabelList dataKey="totalUsers" position="top" style={{ fontSize: '11px', fontWeight: 'bold', fill: '#4f46e5' }} />
+                        </Area>
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -621,7 +623,7 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   <div className="h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={overviewData.charts?.paymentTrends || []} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                      <AreaChart data={overviewData.charts?.paymentTrends || []} margin={{ top: 20, right: 10, left: -10, bottom: 0 }}>
                         <defs>
                           <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
@@ -645,9 +647,11 @@ const AdminDashboard: React.FC = () => {
                           strokeWidth={2.5}
                           fillOpacity={1}
                           fill="url(#revGrad)"
-                          dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#ffffff' }}
-                          activeDot={{ r: 6, fill: '#059669', strokeWidth: 2, stroke: '#ffffff' }}
-                        />
+                          dot={{ r: 5, fill: '#10b981', strokeWidth: 2, stroke: '#ffffff' }}
+                          activeDot={{ r: 7, fill: '#059669', strokeWidth: 2, stroke: '#ffffff' }}
+                        >
+                          <LabelList dataKey="revenue" position="top" formatter={(val: any) => `$${val}`} style={{ fontSize: '11px', fontWeight: 'extrabold', fill: '#059669' }} />
+                        </Area>
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
