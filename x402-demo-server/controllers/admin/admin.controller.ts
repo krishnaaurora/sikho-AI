@@ -12,20 +12,21 @@ import PlatformFeeTransaction from "../../models/PlatformFeeTransaction.model";
 import RepositoryFileReview from "../../models/RepositoryFileReview.model";
 import AppUsageEvent, { SikhoAppType } from "../../models/AppUsageEvent.model";
 import AdminLog from "../../models/AdminLog.model";
+import X402Transaction from "../../models/X402Transaction.model";
 import { AppError } from "../../utils/errors";
 import {
   getWelcomeEmailTemplate,
   updateWelcomeEmailTemplate,
   sendTestWelcomeEmail,
 } from "../../services/email.service";
+import { syncOnchainTransactions } from "../../services/onchainSync.service";
 
-
-// Seed realistic telemetry events and payment transactions if database is empty
+// Seed realistic telemetry events if database is empty
 const ensureDemoData = async () => {
   try {
     const eventCount = await AppUsageEvent.countDocuments();
     if (eventCount === 0) {
-      const learners = await User.find({ role: UserRole.LEARNER });
+      const learners = await User.find({ role: { $ne: UserRole.ADMIN } });
       const apps = Object.values(SikhoAppType);
       const eventsToInsert = [];
       const now = Date.now();
@@ -54,51 +55,21 @@ const ensureDemoData = async () => {
       }
       await AppUsageEvent.insertMany(eventsToInsert);
     }
-
-    const paymentCount = await Payment.countDocuments({ paymentStatus: PaymentStatus.COMPLETED });
-    if (paymentCount === 0) {
-      const learners = await User.find({ role: UserRole.LEARNER });
-      const paymentsToInsert = [];
-      const now = Date.now();
-
-      for (let i = 6; i >= 0; i--) {
-        const dayTime = new Date(now - i * 24 * 60 * 60 * 1000);
-        const dailyTxCount = Math.floor(Math.random() * 3) + 1;
-        for (let j = 0; j < dailyTxCount; j++) {
-          const randomUser = learners.length > 0 ? learners[Math.floor(Math.random() * learners.length)] : null;
-          if (randomUser) {
-            paymentsToInsert.push({
-              userId: randomUser._id,
-              courseId: randomUser._id,
-              amount: [5.0, 10.0, 15.0, 20.0, 25.0][Math.floor(Math.random() * 5)],
-              currency: "USDC",
-              blockchain: "Algorand",
-              transactionHash: `TX_HASH_${i}_${j}_${Math.random().toString(36).substring(2, 10)}`,
-              paymentMethod: "x402",
-              paymentStatus: PaymentStatus.COMPLETED,
-              paidAt: dayTime,
-              createdAt: dayTime,
-            });
-          }
-        }
-      }
-      if (paymentsToInsert.length > 0) {
-        await Payment.insertMany(paymentsToInsert);
-      }
-    }
   } catch (err) {
-    console.error("[ensureDemoData] Error seeding telemetry/payments:", err);
+    console.error("[ensureDemoData] Error seeding telemetry:", err);
   }
 };
 
-// 1. DASHBOARD OVERVIEW (100% Real MongoDB Data)
+// 1. DASHBOARD OVERVIEW (100% Real MongoDB Data + On-chain Sync)
 export const getOverview = async (req: Request, res: Response) => {
   try {
     await ensureDemoData();
+    // Real-time synchronization of on-chain Algorand Mainnet / Testnet transactions
+    await syncOnchainTransactions();
 
-    const totalUsers = await User.countDocuments({ role: UserRole.LEARNER, isDeleted: false });
-    const activeUsers = await User.countDocuments({ role: UserRole.LEARNER, isActive: true, isDeleted: false });
-    const deactivatedUsers = await User.countDocuments({ role: UserRole.LEARNER, isActive: false, isDeleted: false });
+    const totalUsers = await User.countDocuments({ role: { $ne: UserRole.ADMIN }, isDeleted: { $ne: true } });
+    const activeUsers = await User.countDocuments({ role: { $ne: UserRole.ADMIN }, isActive: { $ne: false }, isDeleted: { $ne: true } });
+    const deactivatedUsers = await User.countDocuments({ role: { $ne: UserRole.ADMIN }, isActive: false, isDeleted: { $ne: true } });
 
     // DAU & MAU from actual database lastLogin timestamps
     const now = new Date();
@@ -106,15 +77,15 @@ export const getOverview = async (req: Request, res: Response) => {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     const dauCount = await User.countDocuments({
-      role: UserRole.LEARNER,
+      role: { $ne: UserRole.ADMIN },
       lastLogin: { $gte: startOfToday },
-      isDeleted: false,
+      isDeleted: { $ne: true },
     });
     
     const mauCount = await User.countDocuments({
-      role: UserRole.LEARNER,
+      role: { $ne: UserRole.ADMIN },
       lastLogin: { $gte: thirtyDaysAgo },
-      isDeleted: false,
+      isDeleted: { $ne: true },
     });
 
     const successfulPaymentsCount = await Payment.countDocuments({
@@ -144,9 +115,9 @@ export const getOverview = async (req: Request, res: Response) => {
       const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
       const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
       const count = await User.countDocuments({
-        role: UserRole.LEARNER,
+        role: { $ne: UserRole.ADMIN },
         createdAt: { $lte: dayEnd },
-        isDeleted: false,
+        isDeleted: { $ne: true },
       });
       userGrowthChart.push({ date: dayName, totalUsers: count });
     }
@@ -167,7 +138,7 @@ export const getOverview = async (req: Request, res: Response) => {
       const dayRev = dayPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
       paymentTrendsChart.push({
         date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-        revenue: dayRev,
+        revenue: parseFloat(dayRev.toFixed(2)),
         count: dayPayments.length,
       });
     }
@@ -229,8 +200,8 @@ export const getStats = getOverview;
 // 2. USER MANAGEMENT (With DB Summary Tiles & Filtering)
 export const getUsers = async (req: Request, res: Response) => {
   try {
-    const { search, status, page = 1, limit = 20 } = req.query;
-    const query: any = { role: UserRole.LEARNER, isDeleted: false };
+    const { search, status, page = 1, limit = 50 } = req.query;
+    const query: any = { role: { $ne: UserRole.ADMIN }, isDeleted: { $ne: true } };
 
     if (search) {
       query.$or = [
@@ -239,7 +210,7 @@ export const getUsers = async (req: Request, res: Response) => {
       ];
     }
 
-    if (status === "active") query.isActive = true;
+    if (status === "active") query.isActive = { $ne: false };
     if (status === "inactive") query.isActive = false;
 
     const skip = (Number(page) - 1) * Number(limit);
@@ -251,25 +222,25 @@ export const getUsers = async (req: Request, res: Response) => {
     const total = await User.countDocuments(query);
 
     // Summary Tiles Stats calculated dynamically from DB
-    const totalRegisteredUsers = await User.countDocuments({ role: UserRole.LEARNER, isDeleted: false });
-    const activeLearners = await User.countDocuments({ role: UserRole.LEARNER, isActive: true, isDeleted: false });
-    const deactivatedLearners = await User.countDocuments({ role: UserRole.LEARNER, isActive: false, isDeleted: false });
+    const totalRegisteredUsers = await User.countDocuments({ role: { $ne: UserRole.ADMIN }, isDeleted: { $ne: true } });
+    const activeLearners = await User.countDocuments({ role: { $ne: UserRole.ADMIN }, isActive: { $ne: false }, isDeleted: { $ne: true } });
+    const deactivatedLearners = await User.countDocuments({ role: { $ne: UserRole.ADMIN }, isActive: false, isDeleted: { $ne: true } });
     
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const newUsersLast7Days = await User.countDocuments({
-      role: UserRole.LEARNER,
+      role: { $ne: UserRole.ADMIN },
       createdAt: { $gte: sevenDaysAgo },
-      isDeleted: false,
+      isDeleted: { $ne: true },
     });
 
     const onboardingCompletedCount = await User.countDocuments({
-      role: UserRole.LEARNER,
+      role: { $ne: UserRole.ADMIN },
       onboardingCompleted: true,
-      isDeleted: false,
+      isDeleted: { $ne: true },
     });
 
     // Average learning hours calculated from User model
-    const learners = await User.find({ role: UserRole.LEARNER, isDeleted: false });
+    const learners = await User.find({ role: { $ne: UserRole.ADMIN }, isDeleted: { $ne: true } });
     const totalLearningHoursSum = learners.reduce((sum, u) => sum + (u.totalLearningHours || 0), 0);
     const avgLearningHours = totalRegisteredUsers > 0 ? (totalLearningHoursSum / totalRegisteredUsers).toFixed(1) : "0";
 
@@ -545,6 +516,8 @@ export const getUserDetails = async (req: Request, res: Response) => {
 // 4. PAYMENTS & LEDGER (With All Feature Filters & DB Breakdown Tiles)
 export const getTransactions = async (req: Request, res: Response) => {
   try {
+    await syncOnchainTransactions();
+
     const { status, feature, search, dateRange = "all" } = req.query;
 
     let dateLimit = new Date(0);
@@ -560,21 +533,38 @@ export const getTransactions = async (req: Request, res: Response) => {
     const platformFeeTxs = await PlatformFeeTransaction.find({ timestamp: { $gte: dateLimit } }).sort({ timestamp: -1 });
     const repoFileReviews = await RepositoryFileReview.find({ createdAt: { $gte: dateLimit } }).sort({ createdAt: -1 });
     const paidAppEvents = await AppUsageEvent.find({ isPaid: true, timestamp: { $gte: dateLimit } }).sort({ timestamp: -1 });
+    const x402Txs = await X402Transaction.find({
+      $or: [
+        { timestamp: { $gte: dateLimit } },
+        { createdAt: { $gte: dateLimit } },
+      ],
+    }).sort({ timestamp: -1 }).limit(1000);
 
     // Build unified ledger list strictly from DB records
     let ledger: any[] = [];
+    const seenTxIds = new Set<string>();
 
-    // 1. Course Purchases & Chapter Unlocks
+    // 1. Course Purchases, Chapter Unlocks, and Live x402 On-Chain Micropayments
     payments.forEach((p) => {
+      const txId = p.transactionHash || p.x402Reference || p._id.toString();
+      if (seenTxIds.has(txId)) return;
+      seenTxIds.add(txId);
+
       const isCourse = !!(p.courseId as any)?.title;
+      let appName = isCourse ? "Course Catalog" : "x402 Live Settlement";
+      if (p.x402Reference?.includes("Resume")) appName = "Resume Intelligence";
+      else if (p.x402Reference?.includes("GitHub") || p.x402Reference?.includes("Prism")) appName = "GitHub Review";
+      else if (p.x402Reference?.includes("Interview")) appName = "Interview Mission";
+      else if (p.x402Reference?.includes("Explain")) appName = "Learn Anything";
+
       ledger.push({
         _id: p._id,
-        transactionId: p.transactionHash || p.x402Reference || p._id.toString(),
+        transactionId: txId,
         userId: (p.userId as any)?._id || "N/A",
-        userName: (p.userId as any)?.fullName || "Learner",
-        userEmail: (p.userId as any)?.email || "N/A",
-        appName: isCourse ? "Course Catalog" : "Learn Anything",
-        featureUsed: isCourse ? `Course: ${(p.courseId as any).title}` : "Pay-Per-Chapter Unlock",
+        userName: (p.userId as any)?.fullName || "Verified Learner",
+        userEmail: (p.userId as any)?.email || (p.transactionHash ? `algo:${p.transactionHash.substring(0, 8)}...` : "learner@sikho.ai"),
+        appName,
+        featureUsed: p.x402Reference || (isCourse ? `Course: ${(p.courseId as any).title}` : "Pay-Per-Chapter Unlock"),
         amount: p.amount || 0,
         currency: p.currency || "USDC",
         paymentDate: p.paidAt || (p as any).createdAt,
@@ -584,11 +574,46 @@ export const getTransactions = async (req: Request, res: Response) => {
       });
     });
 
-    // 2. GitHub Review Split Payments ($0.05 Sikho Platform Fee vs $0.20 Prism Review Fee)
+    // 2. Direct x402 Model Micro-transactions
+    x402Txs.forEach((tx) => {
+      const txId = tx.txHash || `TX_${tx._id}`;
+      if (seenTxIds.has(txId) || seenTxIds.has(tx._id.toString())) return;
+      seenTxIds.add(txId);
+
+      let appName = "x402 Micropayment";
+      const sId = (tx.serviceId || "").toLowerCase();
+      if (sId.includes("resume") || sId.includes("job")) appName = "Resume Intelligence";
+      else if (sId.includes("interview")) appName = "Interview Mission";
+      else if (sId.includes("study") || sId.includes("learning")) appName = "Learn Anything";
+      else if (sId.includes("visual")) appName = "AI Visual Explainer";
+      else if (sId.includes("github")) appName = "GitHub Review";
+
+      ledger.push({
+        _id: tx._id,
+        transactionId: txId,
+        userId: tx.userId || "user_01",
+        userName: "Verified Learner",
+        userEmail: tx.walletAddress ? `algo:${tx.walletAddress.substring(0, 8)}...` : "learner@sikho.ai",
+        appName,
+        featureUsed: tx.serviceId || tx.resourceId || "Micro-Payment",
+        amount: tx.amount || 0,
+        currency: tx.currency || "USDC",
+        paymentDate: tx.timestamp || (tx as any).createdAt,
+        status: tx.status?.toLowerCase() === "success" || tx.status?.toLowerCase() === "completed" ? "successful" : tx.status?.toLowerCase() || "successful",
+        algorandTxRef: tx.txHash || "N/A",
+        type: "x402_micropayment",
+      });
+    });
+
+    // 3. GitHub Review Split Payments ($0.05 Sikho Platform Fee vs $0.20 Prism Review Fee)
     repoFileReviews.forEach((rev) => {
+      const txId = rev.sikhoPaymentTxId || rev.fileReviewId || rev._id.toString();
+      if (seenTxIds.has(txId)) return;
+      seenTxIds.add(txId);
+
       ledger.push({
         _id: rev._id,
-        transactionId: rev.sikhoPaymentTxId || rev.fileReviewId,
+        transactionId: txId,
         userId: "N/A",
         userName: "Developer User",
         userEmail: "dev@github.com",
@@ -605,12 +630,16 @@ export const getTransactions = async (req: Request, res: Response) => {
       });
     });
 
-    // 3. AI Features Paid Micro-transactions
+    // 4. AI Features Paid Micro-transactions
     paidAppEvents.forEach((evt) => {
+      const txId = `TX_${evt._id.toString().substring(0, 12)}`;
+      if (seenTxIds.has(txId)) return;
+      seenTxIds.add(txId);
+
       if (evt.appName !== "GitHub Review" && evt.paymentAmount && evt.paymentAmount > 0) {
         ledger.push({
           _id: evt._id,
-          transactionId: `TX_${evt._id.toString().substring(0, 12)}`,
+          transactionId: txId,
           userId: evt.userId || "N/A",
           userName: evt.userName || "Learner",
           userEmail: evt.userEmail || "N/A",
