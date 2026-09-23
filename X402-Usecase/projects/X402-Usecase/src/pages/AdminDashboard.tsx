@@ -677,25 +677,38 @@ const AdminDashboard: React.FC = () => {
                           dot={{ r: 5, fill: '#10b981', strokeWidth: 2, stroke: '#ffffff' }}
                           activeDot={{ r: 7, fill: '#059669', strokeWidth: 2, stroke: '#ffffff' }}
                         >
-                          <LabelList dataKey="revenue" position="top" formatter={(val: any) => `$${val}`} style={{ fontSize: '11px', fontWeight: 'extrabold', fill: '#059669' }} />
+                          <LabelList
+                            dataKey="revenue"
+                            position="top"
+                            formatter={(val: any) => {
+                              const num = Number(val || 0);
+                              if (num === 0) return '$0';
+                              return num % 1 === 0 ? `$${num}` : `$${num.toFixed(2)}`;
+                            }}
+                            style={{ fontSize: '11px', fontWeight: 'extrabold', fill: '#059669' }}
+                          />
                         </Area>
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
 
                   {/* Always Visible Daily Revenue Breakdown Grid (All 7 Days Guaranteed Fit) */}
-                  <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-7 gap-1 sm:gap-1.5">
-                    {(overviewData.charts?.paymentTrends || []).map((item: any, idx: number) => (
-                      <div
-                        key={idx}
-                        className="bg-emerald-50/70 border border-emerald-200/70 rounded-xl px-1 py-1.5 text-center flex flex-col items-center justify-center transition-all hover:bg-emerald-100/60 hover:border-emerald-300"
-                        title={`${item.date}: $${item.revenue} USDC (${item.count || 0} transactions)`}
-                      >
-                        <p className="text-[10px] text-slate-500 font-bold truncate w-full">{item.date}</p>
-                        <p className="text-xs font-black text-emerald-800 tracking-tight leading-tight mt-0.5">${item.revenue}</p>
-                        <span className="text-[8px] font-semibold text-emerald-600/80 uppercase">USDC</span>
-                      </div>
-                    ))}
+                  <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-7 gap-1 sm:gap-2">
+                    {(overviewData.charts?.paymentTrends || []).map((item: any, idx: number) => {
+                      const revNum = Number(item.revenue || 0);
+                      const formattedRev = revNum === 0 ? '$0' : revNum % 1 === 0 ? `$${revNum}` : `$${revNum.toFixed(2)}`;
+                      return (
+                        <div
+                          key={idx}
+                          className="bg-emerald-50/70 border border-emerald-200/70 rounded-xl px-1 py-1.5 text-center flex flex-col items-center justify-center transition-all hover:bg-emerald-100/60 hover:border-emerald-300 min-w-0 overflow-hidden"
+                          title={`${item.date}: $${revNum.toFixed(2)} USDC (${item.count || 0} transactions)`}
+                        >
+                          <p className="text-[10px] text-slate-500 font-bold truncate w-full">{item.date}</p>
+                          <p className="text-xs font-black text-emerald-800 tracking-tight leading-tight mt-0.5 truncate w-full">{formattedRev}</p>
+                          <span className="text-[8px] font-semibold text-emerald-600/80 uppercase">USDC</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
