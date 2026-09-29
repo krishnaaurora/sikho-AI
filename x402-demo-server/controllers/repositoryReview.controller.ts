@@ -170,9 +170,20 @@ export const handleGitRepoAnalyserEndpoint = asyncHandler(async (req: Request, r
 
   const currentMethod = (req.method || "POST").toUpperCase();
 
+  const merchantIdentity = {
+    name: "Sikho AI",
+    site: env.PUBLIC_SITE_URL,
+    backend: env.PUBLIC_BACKEND_URL,
+    logo: `${env.PUBLIC_BACKEND_URL}/logo.png`,
+    icon: `${env.PUBLIC_BACKEND_URL}/icon.png`,
+    description: "AI-powered micro-payment learning platform — unlock premium course chapters with USDC on Algorand via x402.",
+    category: "education",
+  };
+
   const challenge = {
     x402Version: 2,
     error: "Payment required",
+    merchant: merchantIdentity,
     resource: {
       url: requestUrl,
       description: "Git Repo Analyser: Sikho AI platform fee ($0.05 USDC) for multi-file repository audit and code review coordination.",
@@ -190,6 +201,7 @@ export const handleGitRepoAnalyserEndpoint = asyncHandler(async (req: Request, r
           asset: 31566704,
           tag: "x402-sikho-git-repo-analyser",
           decimals: 6,
+          merchant: merchantIdentity,
         },
       },
     ],

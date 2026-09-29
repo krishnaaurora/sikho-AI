@@ -96,9 +96,20 @@ export function buildWorkspacePaymentRequired(
     upper
   );
 
+  const merchantIdentity = {
+    name: "Sikho AI",
+    site: env.PUBLIC_SITE_URL,
+    backend: env.PUBLIC_BACKEND_URL,
+    logo: `${env.PUBLIC_BACKEND_URL}/logo.png`,
+    icon: `${env.PUBLIC_BACKEND_URL}/icon.png`,
+    description: "AI-powered micro-payment learning platform — unlock premium course chapters with USDC on Algorand via x402.",
+    category: "education",
+  };
+
   return {
     x402Version: 2,
     error: "Payment Required",
+    merchant: merchantIdentity,
     resource: {
       url: requestUrl,
       description: `${description} for $${formattedPrice} USDC`,
@@ -119,6 +130,7 @@ export function buildWorkspacePaymentRequired(
           discovery: true,
           category: "education",
           feePayer: "ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA",
+          merchant: merchantIdentity,
         },
         description: `${description} for $${formattedPrice} USDC`,
         maxTimeoutSeconds: 300,

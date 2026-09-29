@@ -53,6 +53,34 @@ const MERCHANT = {
  *   og:image       → Merchant logo (must be a public HTTPS URL)
  */
 function buildMerchantHtml(): string {
+  const jsonLd = JSON.stringify({
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${MERCHANT.siteUrl}/#organization`,
+        "name": MERCHANT.name,
+        "url": MERCHANT.siteUrl,
+        "logo": {
+          "@type": "ImageObject",
+          "url": MERCHANT.logoUrl,
+          "contentUrl": MERCHANT.logoUrl,
+          "caption": `${MERCHANT.name} Logo`
+        },
+        "image": MERCHANT.logoUrl,
+        "description": MERCHANT.description
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${MERCHANT.siteUrl}/#website`,
+        "url": MERCHANT.siteUrl,
+        "name": MERCHANT.name,
+        "description": MERCHANT.description,
+        "publisher": { "@id": `${MERCHANT.siteUrl}/#organization` }
+      }
+    ]
+  });
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -63,10 +91,13 @@ function buildMerchantHtml(): string {
   <link rel="icon" type="image/png" href="${MERCHANT.iconUrl}" />
   <link rel="shortcut icon" href="${MERCHANT.iconUrl}" />
   <link rel="apple-touch-icon" href="${MERCHANT.iconUrl}" />
+  <link rel="image_src" href="${MERCHANT.logoUrl}" />
 
   <!-- Primary merchant identity — read by GoPlausible x402 facilitator -->
   <title>${MERCHANT.name}</title>
   <meta name="description" content="${MERCHANT.description}" />
+  <meta name="logo" content="${MERCHANT.logoUrl}" />
+  <meta name="image" content="${MERCHANT.logoUrl}" />
 
   <!-- Open Graph tags (merchant enrichment source for GoPlausible dashboard) -->
   <meta property="og:site_name" content="${MERCHANT.siteName}" />
@@ -74,16 +105,34 @@ function buildMerchantHtml(): string {
   <meta property="og:description" content="${MERCHANT.description}" />
   <meta property="og:image"     content="${MERCHANT.logoUrl}" />
   <meta property="og:image:secure_url" content="${MERCHANT.logoUrl}" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="${MERCHANT.name} Logo" />
   <meta property="og:url"       content="${MERCHANT.siteUrl}" />
   <meta property="og:type"      content="website" />
+
+  <!-- Twitter Card tags -->
   <meta name="twitter:card"     content="summary_large_image" />
+  <meta name="twitter:title"    content="${MERCHANT.name}" />
+  <meta name="twitter:description" content="${MERCHANT.description}" />
   <meta name="twitter:image"    content="${MERCHANT.logoUrl}" />
+  <meta name="twitter:image:alt" content="${MERCHANT.name} Logo" />
 
   <!-- x402 / Algorand Global Challenge discovery signals -->
   <meta name="x402:tag"      content="${MERCHANT.tag}" />
   <meta name="x402:network"  content="${MERCHANT.network}" />
   <meta name="x402:category" content="${MERCHANT.category}" />
   <meta name="x402:discovery" content="true" />
+  <meta name="x402:merchant:name" content="${MERCHANT.name}" />
+  <meta name="x402:merchant:site" content="${MERCHANT.siteUrl}" />
+  <meta name="x402:merchant:logo" content="${MERCHANT.logoUrl}" />
+  <meta name="x402:merchant:icon" content="${MERCHANT.iconUrl}" />
+
+  <!-- Schema.org JSON-LD Structured Data for Crawlers & Facilitators -->
+  <script type="application/ld+json">
+    ${jsonLd}
+  </script>
 
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
@@ -278,16 +327,26 @@ app.get("/", (req: Request, res: Response) => {
     return res.json({
       name: MERCHANT.name,
       description: MERCHANT.description,
+      site: MERCHANT.siteUrl,
+      backend: env.PUBLIC_BACKEND_URL,
       logo: MERCHANT.logoUrl,
       icon: MERCHANT.iconUrl,
-      site: MERCHANT.siteUrl,
+      merchant: {
+        name: MERCHANT.name,
+        site: MERCHANT.siteUrl,
+        backend: env.PUBLIC_BACKEND_URL,
+        logo: MERCHANT.logoUrl,
+        icon: MERCHANT.iconUrl,
+        description: MERCHANT.description,
+        category: MERCHANT.category,
+      },
       x402: {
         tag: MERCHANT.tag,
         network: MERCHANT.network,
         category: MERCHANT.category,
         discovery: true,
       },
-      api: `${MERCHANT.siteUrl}${appConfig.apiPrefix}`,
+      api: `${env.PUBLIC_BACKEND_URL}${appConfig.apiPrefix}`,
     });
   }
 
@@ -303,10 +362,19 @@ const discoveryHandler = (req: Request, res: Response) => {
   res.json({
     name: MERCHANT.name,
     description: MERCHANT.description,
-    logo: MERCHANT.logoUrl,
-    icon: MERCHANT.iconUrl,
     site: MERCHANT.siteUrl,
     backend: env.PUBLIC_BACKEND_URL,
+    logo: MERCHANT.logoUrl,
+    icon: MERCHANT.iconUrl,
+    merchant: {
+      name: MERCHANT.name,
+      site: MERCHANT.siteUrl,
+      backend: env.PUBLIC_BACKEND_URL,
+      logo: MERCHANT.logoUrl,
+      icon: MERCHANT.iconUrl,
+      description: MERCHANT.description,
+      category: MERCHANT.category,
+    },
     x402: {
       tag: MERCHANT.tag,
       network: MERCHANT.network,
