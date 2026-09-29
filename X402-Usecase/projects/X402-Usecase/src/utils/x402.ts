@@ -83,33 +83,31 @@ export async function createX402Fetch(walletSigner: any) {
   // Custom fetch interceptor to strip illegal response-only header "Access-Control-Expose-Headers"
   // injected into outgoing Request objects by @x402-avm/fetch
   const cleanFetch: typeof fetch = async (input, init) => {
-    if (input instanceof Request) {
-      try {
-        input.headers.delete('access-control-expose-headers');
-        input.headers.delete('Access-Control-Expose-Headers');
-      } catch {
-        // Headers might be immutable on some browser implementations
-      }
-      return fetch(input);
-    }
+    let reqInput = input;
+    let reqInit = init;
 
-    if (init && init.headers) {
-      if (init.headers instanceof Headers) {
-        init.headers.delete('access-control-expose-headers');
-        init.headers.delete('Access-Control-Expose-Headers');
-      } else if (Array.isArray(init.headers)) {
-        init.headers = init.headers.filter(
+    if (input instanceof Request) {
+      const cleanHeaders = new Headers(input.headers);
+      cleanHeaders.delete('access-control-expose-headers');
+      cleanHeaders.delete('Access-Control-Expose-Headers');
+      reqInput = new Request(input, { headers: cleanHeaders });
+    } else if (reqInit && reqInit.headers) {
+      if (reqInit.headers instanceof Headers) {
+        reqInit.headers.delete('access-control-expose-headers');
+        reqInit.headers.delete('Access-Control-Expose-Headers');
+      } else if (Array.isArray(reqInit.headers)) {
+        reqInit.headers = reqInit.headers.filter(
           ([k]) => k.toLowerCase() !== 'access-control-expose-headers'
         );
-      } else if (typeof init.headers === 'object') {
-        const h = { ...init.headers } as Record<string, any>;
+      } else if (typeof reqInit.headers === 'object') {
+        const h = { ...reqInit.headers } as Record<string, any>;
         delete h['access-control-expose-headers'];
         delete h['Access-Control-Expose-Headers'];
-        init.headers = h;
+        reqInit = { ...reqInit, headers: h };
       }
     }
 
-    return fetch(input, init);
+    return fetch(reqInput, reqInit);
   };
 
   return wrapFetchWithPayment(cleanFetch, client);
