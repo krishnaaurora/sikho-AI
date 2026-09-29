@@ -5434,7 +5434,7 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
                                 if (res.status === 402) {
                                   if (!activeAddress) {
                                     setJobDiscoveryPaymentStep(null);
-                                    alert('Please connect your Pera wallet first from the top navigation to pay $0.06 USDC.');
+                                    alert('Please connect your Algorand wallet first from the top navigation to pay $0.30 USDC.');
                                     return;
                                   }
                                   setJobDiscoveryPaymentStep('402');
@@ -5456,7 +5456,8 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
 
                                   if (!paidRes.ok) {
                                     const errData = await paidRes.json().catch(() => ({}));
-                                    throw new Error(errData.message || `Payment failed with status ${paidRes.status}`);
+                                    const errMsg = errData.reason || errData.error || errData.message || (paidRes.status === 402 ? 'Payment signature was cancelled or rejected in wallet.' : `Payment failed with status ${paidRes.status}`);
+                                    throw new Error(errMsg);
                                   }
 
                                   setJobDiscoveryPaymentStep('verifying');
@@ -5468,26 +5469,26 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
                                   fetchLiveJobs();
                                 } else {
                                   const errData = await res.json().catch(() => ({}));
-                                  throw new Error(errData.message || `HTTP ${res.status}`);
+                                  throw new Error(errData.reason || errData.error || errData.message || `HTTP ${res.status}`);
                                 }
                               } catch (payErr: any) {
                                 console.error('Job discovery payment failed:', payErr);
                                 setJobDiscoveryPaymentStep(null);
-                                alert(payErr?.message || 'Payment failed. Please ensure your Pera wallet is connected and funded with USDC.');
+                                alert(payErr?.message || 'Payment failed. Please ensure your Algorand wallet is connected and funded with USDC.');
                               }
                             }}
                             className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-black px-7 py-3.5 rounded-xl shadow-lg shadow-indigo-200 hover:opacity-95 transition-all active:scale-[0.99]"
                           >
-                            🔒 Unlock Live Jobs — $0.06 USDC
+                            🔒 Unlock Live Jobs — $0.30 USDC
                           </button>
                           <div className="flex items-center justify-center gap-3 text-[10px] text-slate-400 font-semibold">
                             <span>• Algorand x402 Protocol</span>
-                            <span>• $0.06 USDC</span>
+                            <span>• $0.30 USDC</span>
                             <span>• Instant Verification</span>
                           </div>
                           {!activeAddress && (
                             <p className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-200 rounded-lg p-2">
-                              ⚠️ Connect your Pera wallet from the top right to sign the $0.06 transaction.
+                              ⚠️ Connect your Algorand wallet from the top right to sign the $0.30 transaction.
                             </p>
                           )}
                         </div>
