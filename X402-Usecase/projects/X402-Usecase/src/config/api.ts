@@ -1,4 +1,7 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:4021/api/v1';
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.PROD ? 'https://sikho-ai-im1v.onrender.com/api/v1' : 'https://sikho-ai-im1v.onrender.com/api/v1');
 
 export const API_ENDPOINTS = {
   COURSES: `${API_BASE_URL}/courses`,
