@@ -64,7 +64,7 @@ export const unlockChapterX402 = asyncHandler(async (req: Request, res: Response
   const forwardedProto = String(req.headers["x-forwarded-proto"] || req.protocol || "http");
   const forwardedHost = String(req.headers["x-forwarded-host"] || req.get("host") || "");
   const isLocal = !forwardedHost || forwardedHost.includes("localhost") || forwardedHost.includes("127.0.0.1");
-  const publicOrigin = env.PUBLIC_BACKEND_URL || "https://sikho-ai.onrender.com";
+  const publicOrigin = env.PUBLIC_BACKEND_URL || "https://sikho-ai-im1v.onrender.com";
   const baseOrigin = isLocal ? publicOrigin : `${forwardedProto}://${forwardedHost}`;
   
   // Use static base URL for GoPlausible cataloging to prevent endpoint multiplication

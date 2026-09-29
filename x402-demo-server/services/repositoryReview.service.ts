@@ -326,7 +326,7 @@ export async function getSikhoChallengeForFile(
   const amountMicro = 50000;
   const assetId = "31566704";
   const network = "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
-  const publicOrigin = env.PUBLIC_BACKEND_URL || "https://sikho-ai.onrender.com";
+  const publicOrigin = env.PUBLIC_BACKEND_URL || "https://sikho-ai-im1v.onrender.com";
   const endpointUrl = `${publicOrigin}/api/v1/services/github-review/sikho-x402`;
 
   return {

@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const BASE_URL = process.env.TARGET_API_URL || "https://sikho-ai.onrender.com";
+const BASE_URL = process.env.TARGET_API_URL || "https://sikho-ai-im1v.onrender.com";
 
 interface EndpointTarget {
   name: string;

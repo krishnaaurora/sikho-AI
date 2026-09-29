@@ -148,7 +148,7 @@ export const handleSikhoX402Payment = asyncHandler(async (req: Request, res: Res
  * - POST with Payment-Signature verifies on-chain transaction and unlocks multi-file repository audit
  */
 export const handleGitRepoAnalyserEndpoint = asyncHandler(async (req: Request, res: Response) => {
-  const publicOrigin = env.PUBLIC_BACKEND_URL || "https://sikho-ai.onrender.com";
+  const publicOrigin = env.PUBLIC_BACKEND_URL || "https://sikho-ai-im1v.onrender.com";
   const requestUrl = `${publicOrigin}/api/v1/services/github-review/sikho-x402`;
   const treasuryAddress = env.AVM_ADDRESS || process.env.AVM_ADDRESS || "2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY";
 

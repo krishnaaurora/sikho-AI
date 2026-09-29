@@ -186,18 +186,51 @@ const allowedOrigins = appConfig.corsOrigin === "*"
   ? []
   : appConfig.corsOrigin.split(",").map(o => o.trim());
 
-app.use(cors({
+const corsOptions: cors.CorsOptions = {
   origin: function (origin, callback) {
-    if (!origin || appConfig.corsOrigin === "*" || allowedOrigins.indexOf(origin) !== -1 || origin.includes("localhost") || origin.includes("127.0.0.1")) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    // Allow non-browser requests (curl, server-to-server, mobile apps)
+    if (!origin) return callback(null, true);
+
+    // Allow all if configured as wildcard, or if matching origin/vercel/localhost
+    if (
+      appConfig.corsOrigin === "*" ||
+      allowedOrigins.includes(origin) ||
+      origin.includes("localhost") ||
+      origin.includes("127.0.0.1") ||
+      origin.includes("vercel.app") ||
+      origin.includes("onrender.com")
+    ) {
+      return callback(null, true);
     }
+    // Fallback: allow the origin rather than throwing an unhandled preflight 500 error
+    return callback(null, true);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  exposedHeaders: ['X-PAYMENT-RESPONSE', 'x-payment-response', 'PAYMENT-REQUIRED', 'payment-required', 'PAYMENT-RESPONSE', 'payment-response', 'Access-Control-Expose-Headers'],
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers',
+    'x-payment-response',
+    'payment-response',
+  ],
+  exposedHeaders: [
+    'X-PAYMENT-RESPONSE',
+    'x-payment-response',
+    'PAYMENT-REQUIRED',
+    'payment-required',
+    'PAYMENT-RESPONSE',
+    'payment-response',
+    'Access-Control-Expose-Headers',
+  ],
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -240,20 +273,40 @@ app.get("/", (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 // Standard AI Agent & Facilitator Discovery Endpoints
 // ---------------------------------------------------------------------------
-app.get("/.well-known/x402", (req: Request, res: Response) => {
+const discoveryHandler = (req: Request, res: Response) => {
   res.json({
     name: MERCHANT.name,
     description: MERCHANT.description,
     logo: MERCHANT.logoUrl,
     icon: MERCHANT.iconUrl,
     site: MERCHANT.siteUrl,
+    backend: env.PUBLIC_BACKEND_URL,
     x402: {
       tag: MERCHANT.tag,
       network: MERCHANT.network,
       category: MERCHANT.category,
       discovery: true,
     },
-    api: `${MERCHANT.siteUrl}${appConfig.apiPrefix}`,
+    api: `${env.PUBLIC_BACKEND_URL}${appConfig.apiPrefix}`,
+  });
+};
+
+app.get(["/.well-known/x402", "/.well-known/x402.json", "/x402.json"], discoveryHandler);
+
+app.get(["/bazaar.json", "/.well-known/bazaar.json"], (req: Request, res: Response) => {
+  res.json({
+    x402Version: 2,
+    tag: MERCHANT.tag,
+    network: MERCHANT.network,
+    category: MERCHANT.category,
+    merchant: {
+      name: MERCHANT.name,
+      site: MERCHANT.siteUrl,
+      backend: env.PUBLIC_BACKEND_URL,
+      logo: MERCHANT.logoUrl,
+      icon: MERCHANT.iconUrl,
+      description: MERCHANT.description,
+    },
   });
 });
 
@@ -265,22 +318,31 @@ app.get("/openapi.json", (req: Request, res: Response) => {
       version: "1.0.0",
       description: MERCHANT.description,
     },
+    servers: [
+      { url: `${env.PUBLIC_BACKEND_URL}${appConfig.apiPrefix}`, description: "Production API" }
+    ],
     paths: {},
   });
 });
 
-app.get("/agents.json", (req: Request, res: Response) => {
+app.get(["/agents.json", "/agent-card.json", "/.well-known/agent-card.json", "/.well-known/agents.json"], (req: Request, res: Response) => {
   res.json({
     name: MERCHANT.name,
     description: MERCHANT.description,
     version: "1.0.0",
     url: MERCHANT.siteUrl,
+    backendUrl: env.PUBLIC_BACKEND_URL,
+    logo: MERCHANT.logoUrl,
+    icon: MERCHANT.iconUrl,
+    tag: MERCHANT.tag,
+    category: MERCHANT.category,
+    network: MERCHANT.network,
   });
 });
 
 app.get("/llms.txt", (req: Request, res: Response) => {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
-  res.send(`# Sikho AI\n\n${MERCHANT.description}\n\nSite: ${MERCHANT.siteUrl}`);
+  res.send(`# Sikho AI\n\n${MERCHANT.description}\n\nSite: ${MERCHANT.siteUrl}\nAPI: ${env.PUBLIC_BACKEND_URL}${appConfig.apiPrefix}`);
 });
 
 // API routes

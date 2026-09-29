@@ -44,8 +44,8 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
       .replace(/\/learners\/chapters\/[^/]+\/unlock/i, "/learners/chapters/unlock")
       .replace(/\/[a-f\d]{24}/gi, "");
 
-    // Canonical public origin: always associate with merchant domain sikho-ai.onrender.com
-    const publicOrigin = env.PUBLIC_BACKEND_URL || "https://sikho-ai.onrender.com";
+    // Canonical public origin: always associate with merchant domain sikho-ai-im1v.onrender.com
+    const publicOrigin = env.PUBLIC_BACKEND_URL || "https://sikho-ai-im1v.onrender.com";
     const requestUrl = `${publicOrigin}${cleanPath}`;
 
     // Derive service identity and unique operation resource targets

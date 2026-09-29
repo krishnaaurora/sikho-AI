@@ -315,7 +315,7 @@ const _RAW_INTERVIEW_URL = import.meta.env.VITE_INTERVIEW_API_URL as string | un
 const PYTHON_API_BASE = (() => {
   let base = (_RAW_INTERVIEW_URL || API_BASE_URL).replace(/\/$/, '');
   // Force main backend if stale/dead separate render service URL is set in env
-  if (base.includes('interview-pro-backend.onrender.com') || base.includes('sikho-ai-1.onrender.com')) {
+  if (base.includes('interview-pro-backend.onrender.com') || base.includes('sikho-ai-1.onrender.com') || base.includes('sikho-ai.onrender.com')) {
     base = API_BASE_URL;
   }
   if (base.includes('/interview-pro')) return base;
