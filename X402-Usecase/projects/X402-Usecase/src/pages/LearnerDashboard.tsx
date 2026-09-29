@@ -160,6 +160,7 @@ const LearnerDashboard: React.FC = () => {
   };
 
   const handleUnlockChapter = async (_courseId: string, chapterId: string) => {
+    if (unlockingChapter) return;
     setUnlockError(null);
     if (!activeAddress) {
       setUnlockError('Please connect your Algorand wallet first.');
@@ -558,7 +559,7 @@ const LearnerDashboard: React.FC = () => {
                         ) : (
                           <Button
                             size="sm"
-                            disabled={unlockingChapter === chapter._id}
+                            disabled={!!unlockingChapter}
                             onClick={e => { e.stopPropagation(); handleUnlockChapter(selectedCourse._id, chapter._id); }}
                             className="rounded-xl text-xs"
                           >
