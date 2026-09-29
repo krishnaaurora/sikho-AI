@@ -101,12 +101,20 @@ export const env = {
    * Must be the Vercel production URL — NOT localhost.
    */
   PUBLIC_SITE_URL: process.env.PUBLIC_SITE_URL || "https://sikho-ai-37ni.vercel.app",
-  /**
-   * Canonical public-facing backend domain for GoPlausible x402 resource tracking.
-   * Ensures all endpoints register under merchant c2e058960979f0f2 on the dashboard.
-   */
-  PUBLIC_BACKEND_URL: process.env.PUBLIC_BACKEND_URL || process.env.RENDER_EXTERNAL_URL || "https://sikho-ai-im1v.onrender.com",
-  SIKHO_X402_ENDPOINT: process.env.SIKHO_X402_ENDPOINT || "https://sikho-ai-im1v.onrender.com/api/v1/services/github-review/sikho-x402",
+  get PUBLIC_BACKEND_URL(): string {
+    const raw = process.env.PUBLIC_BACKEND_URL || process.env.RENDER_EXTERNAL_URL || "https://sikho-ai-im1v.onrender.com";
+    if (raw.includes("sikho-ai.onrender.com") && !raw.includes("sikho-ai-im1v")) {
+      return "https://sikho-ai-im1v.onrender.com";
+    }
+    return raw;
+  },
+  get SIKHO_X402_ENDPOINT(): string {
+    const raw = process.env.SIKHO_X402_ENDPOINT || "https://sikho-ai-im1v.onrender.com/api/v1/services/github-review/sikho-x402";
+    if (raw.includes("sikho-ai.onrender.com") && !raw.includes("sikho-ai-im1v")) {
+      return "https://sikho-ai-im1v.onrender.com/api/v1/services/github-review/sikho-x402";
+    }
+    return raw;
+  },
   PRISM_ENDPOINT: process.env.PRISM_ENDPOINT || "https://prism-99h2.onrender.com/code-review-accurate",
   PRISM_PAYTO: process.env.PRISM_PAYTO || "FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE",
   PRISM_PRICE_MICRO_USDC: parseInt(process.env.PRISM_PRICE_MICRO_USDC || "200000", 10),

@@ -45,7 +45,10 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
       .replace(/\/[a-f\d]{24}/gi, "");
 
     // Canonical public origin: always associate with merchant domain sikho-ai-im1v.onrender.com
-    const publicOrigin = env.PUBLIC_BACKEND_URL || "https://sikho-ai-im1v.onrender.com";
+    const forwardedHost = String(req.headers["x-forwarded-host"] || req.get("host") || "");
+    const forwardedProto = String(req.headers["x-forwarded-proto"] || req.protocol || "https");
+    const isLocal = !forwardedHost || forwardedHost.includes("localhost") || forwardedHost.includes("127.0.0.1");
+    const publicOrigin = isLocal ? env.PUBLIC_BACKEND_URL : `${forwardedProto}://${forwardedHost}`;
     const requestUrl = `${publicOrigin}${cleanPath}`;
 
     // Derive service identity and unique operation resource targets

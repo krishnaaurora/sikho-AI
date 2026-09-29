@@ -148,7 +148,10 @@ export const handleSikhoX402Payment = asyncHandler(async (req: Request, res: Res
  * - POST with Payment-Signature verifies on-chain transaction and unlocks multi-file repository audit
  */
 export const handleGitRepoAnalyserEndpoint = asyncHandler(async (req: Request, res: Response) => {
-  const publicOrigin = env.PUBLIC_BACKEND_URL || "https://sikho-ai-im1v.onrender.com";
+  const forwardedHost = String(req.headers["x-forwarded-host"] || req.get("host") || "");
+  const forwardedProto = String(req.headers["x-forwarded-proto"] || req.protocol || "https");
+  const isLocal = !forwardedHost || forwardedHost.includes("localhost") || forwardedHost.includes("127.0.0.1");
+  const publicOrigin = isLocal ? env.PUBLIC_BACKEND_URL : `${forwardedProto}://${forwardedHost}`;
   const requestUrl = `${publicOrigin}/api/v1/services/github-review/sikho-x402`;
   const treasuryAddress = env.AVM_ADDRESS || process.env.AVM_ADDRESS || "2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY";
 
