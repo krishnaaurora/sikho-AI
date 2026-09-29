@@ -14,6 +14,7 @@ import { ExactAvmScheme } from '@x402-avm/avm';
 import type { ClientAvmSigner } from '@x402-avm/avm';
 import { x402Client } from '@x402-avm/fetch';
 import { githubReviewApi } from '../utils/api';
+import { API_BASE_URL } from '../config/api';
 
 interface DiscoveredFileMeta {
   fileReviewId: string;

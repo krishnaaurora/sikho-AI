@@ -80,6 +80,31 @@ export async function createX402Fetch(walletSigner: any) {
   client.register(ALGORAND_MAINNET_CAIP2, new ExactAvmScheme(x402Signer, { algodClient }))
   console.log('x402 client registered for MainNet')
 
-  return wrapFetchWithPayment(fetch, client)
+  // Custom fetch interceptor to strip illegal response-only header "Access-Control-Expose-Headers"
+  // injected into outgoing Request objects by @x402-avm/fetch
+  const cleanFetch: typeof fetch = async (input, init) => {
+    if (input instanceof Request) {
+      const headers = new Headers(input.headers);
+      headers.delete('access-control-expose-headers');
+      headers.delete('Access-Control-Expose-Headers');
+      
+      const cleanRequest = new Request(input, {
+        headers,
+      });
+      return fetch(cleanRequest);
+    }
+
+    const headers = new Headers(init?.headers || {});
+    headers.delete('access-control-expose-headers');
+    headers.delete('Access-Control-Expose-Headers');
+
+    return fetch(input, {
+      ...init,
+      headers,
+    });
+  };
+
+  return wrapFetchWithPayment(cleanFetch, client)
 }
+
 
