@@ -84,27 +84,35 @@ export async function createX402Fetch(walletSigner: any) {
   // injected into outgoing Request objects by @x402-avm/fetch
   const cleanFetch: typeof fetch = async (input, init) => {
     if (input instanceof Request) {
-      const headers = new Headers(input.headers);
-      headers.delete('access-control-expose-headers');
-      headers.delete('Access-Control-Expose-Headers');
-      
-      const cleanRequest = new Request(input, {
-        headers,
-      });
-      return fetch(cleanRequest);
+      try {
+        input.headers.delete('access-control-expose-headers');
+        input.headers.delete('Access-Control-Expose-Headers');
+      } catch {
+        // Headers might be immutable on some browser implementations
+      }
+      return fetch(input);
     }
 
-    const headers = new Headers(init?.headers || {});
-    headers.delete('access-control-expose-headers');
-    headers.delete('Access-Control-Expose-Headers');
+    if (init && init.headers) {
+      if (init.headers instanceof Headers) {
+        init.headers.delete('access-control-expose-headers');
+        init.headers.delete('Access-Control-Expose-Headers');
+      } else if (Array.isArray(init.headers)) {
+        init.headers = init.headers.filter(
+          ([k]) => k.toLowerCase() !== 'access-control-expose-headers'
+        );
+      } else if (typeof init.headers === 'object') {
+        const h = { ...init.headers } as Record<string, any>;
+        delete h['access-control-expose-headers'];
+        delete h['Access-Control-Expose-Headers'];
+        init.headers = h;
+      }
+    }
 
-    return fetch(input, {
-      ...init,
-      headers,
-    });
+    return fetch(input, init);
   };
 
-  return wrapFetchWithPayment(cleanFetch, client)
+  return wrapFetchWithPayment(cleanFetch, client);
 }
 
 
