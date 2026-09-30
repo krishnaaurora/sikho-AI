@@ -21,49 +21,9 @@ import {
 } from "../../services/email.service";
 import { syncOnchainTransactions } from "../../services/onchainSync.service";
 
-// Seed realistic telemetry events if database is empty
-const ensureDemoData = async () => {
-  try {
-    const eventCount = await AppUsageEvent.countDocuments();
-    if (eventCount === 0) {
-      const learners = await User.find({ role: { $ne: UserRole.ADMIN } });
-      const apps = Object.values(SikhoAppType);
-      const eventsToInsert = [];
-      const now = Date.now();
-
-      for (const app of apps) {
-        const numEvents = Math.floor(Math.random() * 20) + 15;
-        for (let i = 0; i < numEvents; i++) {
-          const randomUser = learners.length > 0 ? learners[Math.floor(Math.random() * learners.length)] : null;
-          const randomDaysAgo = Math.floor(Math.random() * 28);
-          const eventTime = new Date(now - randomDaysAgo * 24 * 60 * 60 * 1000 - Math.random() * 3600000 * 8);
-          const isPaid = Math.random() > 0.55;
-          const amount = isPaid ? [1.0, 2.5, 5.0, 10.0, 20.0][Math.floor(Math.random() * 5)] : 0;
-
-          eventsToInsert.push({
-            userId: randomUser ? randomUser._id : undefined,
-            userName: randomUser ? randomUser.fullName : "Learner",
-            userEmail: randomUser ? randomUser.email : "learner@gmail.com",
-            appName: app,
-            featureName: `${app} Analysis Session`,
-            isPaid,
-            paymentAmount: amount,
-            currency: "USDC",
-            timestamp: eventTime,
-          });
-        }
-      }
-      await AppUsageEvent.insertMany(eventsToInsert);
-    }
-  } catch (err) {
-    console.error("[ensureDemoData] Error seeding telemetry:", err);
-  }
-};
-
 // 1. DASHBOARD OVERVIEW (100% Real MongoDB Data + On-chain Sync)
 export const getOverview = async (req: Request, res: Response) => {
   try {
-    await ensureDemoData();
     // Real-time synchronization of on-chain Algorand Mainnet / Testnet transactions
     await syncOnchainTransactions();
 
@@ -630,31 +590,6 @@ export const getTransactions = async (req: Request, res: Response) => {
       });
     });
 
-    // 4. AI Features Paid Micro-transactions
-    paidAppEvents.forEach((evt) => {
-      const txId = `TX_${evt._id.toString().substring(0, 12)}`;
-      if (seenTxIds.has(txId)) return;
-      seenTxIds.add(txId);
-
-      if (evt.appName !== "GitHub Review" && evt.paymentAmount && evt.paymentAmount > 0) {
-        ledger.push({
-          _id: evt._id,
-          transactionId: txId,
-          userId: evt.userId || "N/A",
-          userName: evt.userName || "Learner",
-          userEmail: evt.userEmail || "N/A",
-          appName: evt.appName,
-          featureUsed: `${evt.appName}: ${evt.featureName || 'Session'}`,
-          amount: evt.paymentAmount,
-          currency: evt.currency || "USDC",
-          paymentDate: evt.timestamp,
-          status: "successful",
-          algorandTxRef: `TX_X402_${evt._id.toString().substring(0, 8)}`,
-          type: "ai_feature_payment",
-        });
-      }
-    });
-
     // Sort by paymentDate descending
     ledger.sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
 
@@ -748,7 +683,6 @@ export const getTransactions = async (req: Request, res: Response) => {
 // 5. APPLICATION USAGE ANALYTICS (100% Real DB Queries for 7 Apps)
 export const getAppAnalytics = async (req: Request, res: Response) => {
   try {
-    await ensureDemoData();
     const { range = "30d" } = req.query;
     const allApps = Object.values(SikhoAppType);
 

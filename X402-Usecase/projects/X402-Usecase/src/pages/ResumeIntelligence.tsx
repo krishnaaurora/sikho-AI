@@ -1913,68 +1913,6 @@ ${certStr ? `\nCertifications:\n${certStr}` : ''}
 
               {/* Upload card */}
               <div className="w-full rounded-2xl border-2 border-indigo-200/70 bg-white shadow-[0_8px_30px_rgba(99,102,241,0.07)] overflow-hidden relative">
-                <button
-                  id="dev-mock-upload-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setResumeId("mock-resume-123");
-                    setIsAnalyzing(true);
-                    setStage('viewer');
-                    setExtractedData({
-                      status: 'READY',
-                      structuredData: {
-                        personal: {
-                          name: "Daniel D'Souza",
-                          email: "daniel.dsouza@email.com",
-                          phone: "+91 98765 43210",
-                          location: "Hyderabad, India",
-                          linkedin: "linkedin.com/in/danieldsouza",
-                          summary: "High-impact Machine Learning Engineer with 2+ years experience building predictive models and REST APIs."
-                        },
-                        experience: [
-                          {
-                            role: "Software & AI Engineering Lead",
-                            company: "SikhoAI Solutions",
-                            startDate: "2024",
-                            endDate: "Present",
-                            description: "Architected high-performance REST APIs using Python and FastAPI, processing 10,000+ requests daily."
-                          }
-                        ],
-                        education: [
-                          {
-                            degree: "B.Tech",
-                            field: "Computer Science & Engineering",
-                            institution: "JNTU Hyderabad",
-                            endYear: "2024",
-                            gpa: "8.8 / 10.0"
-                          }
-                        ],
-                        skills: ["Python", "FastAPI", "TensorFlow", "SQL", "Docker", "Git", "System Design", "MLOps", "Pandas", "Scikit-Learn"],
-                        projects: [
-                          {
-                            name: "Multi-Service ATS Platform",
-                            description: "Built an automated multi-stage resume parser with AI extraction and matching.",
-                            technologies: ["Python", "FastAPI", "Docker", "Algorand"]
-                          }
-                        ]
-                      }
-                    });
-                    setPipelineStatus({
-                      extraction: 'done',
-                      atsAnalysis: 'running',
-                      bestFitRoles: 'running',
-                      searchQueries: 'idle',
-                      apifyScraping: 'idle',
-                      normalization: 'idle',
-                      matching: 'idle',
-                      skillGaps: 'idle',
-                      improvements: 'idle',
-                    });
-                  }}
-                  className="absolute top-2 right-2 text-[9px] bg-slate-100 hover:bg-slate-200 border text-slate-500 font-bold px-2 py-0.5 rounded z-10 cursor-pointer"
-                >
-                  Dev Mock Upload
-                </button>
                 {/* Security badge */}
                 <div className="flex justify-center pt-5 pb-1">
                   <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-full px-3 py-1">

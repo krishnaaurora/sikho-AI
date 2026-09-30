@@ -16,13 +16,8 @@ import {
 export const analyzeJob = asyncHandler(async (req: Request, res: Response) => {
   const jobId = req.params.jobId as string;
 
-  // Resilient fallback check for short mock IDs
   if (!/^[0-9a-fA-F]{24}$/.test(jobId)) {
-    return sendSuccessResponse(
-      res,
-      { jobId, title: "ML Engineer", status: "done" },
-      "Intelligence analysis started (Mock Preset Mode)"
-    );
+    throw new AppError("Invalid job ID format", 400);
   }
 
   const job = await Job.findById(jobId).select("title company intelligenceStatus");

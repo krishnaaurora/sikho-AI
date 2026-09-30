@@ -111,22 +111,6 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
       return;
     }
 
-    // Allow mock payment signatures for demo/testing
-    if (paymentHeader === "mock_payment" || paymentHeader?.startsWith("mock_")) {
-      logger.info(`[x402 Mock Bypass] Mock payment header detected. Bypassing facilitator verification for ${req.path}.`);
-      await X402Transaction.create({
-        userId,
-        serviceId,
-        resourceId,
-        amount: config.priceUsd,
-        currency: "USDC",
-        walletAddress: "MOCK_WALLET_ADDRESS",
-        txHash: `mock_tx_${Date.now()}`,
-        status: "Success"
-      });
-      return next();
-    }
-
     try {
       logger.info(`Verifying pay-per-use x402 payment for endpoint ${req.path} (USDC ${config.priceUsd})`);
       // Verify payment with GoPlausible facilitator
