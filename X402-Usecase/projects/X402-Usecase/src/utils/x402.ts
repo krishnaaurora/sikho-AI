@@ -9,27 +9,27 @@ export async function createX402Fetch(walletSigner: any) {
   console.log('createX402Fetch: initializing for address', walletSigner.address)
   const client = new x402Client()
 
-  const isTestnet =
-    (import.meta.env.VITE_ALGOD_NETWORK || '').toLowerCase() === 'testnet' ||
-    (import.meta.env.VITE_ENVIRONMENT || '').toLowerCase() === 'testnet'
-
-  const activeNetwork = isTestnet ? ALGORAND_TESTNET_CAIP2 : ALGORAND_MAINNET_CAIP2
-  const algodServer =
-    import.meta.env.VITE_ALGOD_SERVER ||
-    (isTestnet
-      ? 'https://testnet-api.algonode.cloud'
-      : 'https://mainnet-api.algonode.cloud')
-
-  // Create algod client for active network and intercept suggestedParams to enforce min fee
-  const algodClient = createAlgodClient(activeNetwork, algodServer)
-  const originalSuggestedParams = algodClient.suggestedParams.bind(algodClient)
-  algodClient.suggestedParams = async () => {
-    const params = await originalSuggestedParams()
-    // Enforce fee to be minFee (typically 1000 microAlgos / 1mA)
-    const minFee = params.minFee ? BigInt(params.minFee) : 1000n
-    params.fee = minFee
-    return params
+  // Helper to create configured algod client with min fee enforcement
+  const createConfiguredAlgodClient = (network: `${string}:${string}`, server: string) => {
+    const algod = createAlgodClient(network, server)
+    const originalSuggestedParams = algod.suggestedParams.bind(algod)
+    algod.suggestedParams = async () => {
+      const params = await originalSuggestedParams()
+      const minFee = params.minFee ? BigInt(params.minFee) : 1000n
+      params.fee = minFee
+      return params
+    }
+    return algod
   }
+
+  const mainnetAlgod = createConfiguredAlgodClient(
+    ALGORAND_MAINNET_CAIP2,
+    import.meta.env.VITE_MAINNET_ALGOD_SERVER || 'https://mainnet-api.algonode.cloud'
+  )
+  const testnetAlgod = createConfiguredAlgodClient(
+    ALGORAND_TESTNET_CAIP2,
+    import.meta.env.VITE_TESTNET_ALGOD_SERVER || 'https://testnet-api.algonode.cloud'
+  )
 
   let originalTxns: Uint8Array[] = []
 
@@ -90,8 +90,10 @@ export async function createX402Fetch(walletSigner: any) {
     },
   }
 
-  client.register(activeNetwork, new ExactAvmScheme(x402Signer, { algodClient }))
-  console.log(`x402 client registered for ${isTestnet ? 'TestNet' : 'MainNet'} (${activeNetwork})`)
+  // Register BOTH MainNet and TestNet so client seamlessly handles either network
+  client.register(ALGORAND_MAINNET_CAIP2, new ExactAvmScheme(x402Signer, { algodClient: mainnetAlgod }))
+  client.register(ALGORAND_TESTNET_CAIP2, new ExactAvmScheme(x402Signer, { algodClient: testnetAlgod }))
+  console.log('x402 client registered for both MainNet and TestNet')
 
   // Custom fetch interceptor to strip illegal response-only header "Access-Control-Expose-Headers"
   // injected into outgoing Request objects by @x402-avm/fetch
