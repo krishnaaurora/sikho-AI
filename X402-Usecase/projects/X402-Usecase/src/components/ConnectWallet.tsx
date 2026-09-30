@@ -60,8 +60,12 @@ const ConnectWallet = ({ openModal, closeModal }: ConnectWalletInterface) => {
                   className="w-full flex items-center gap-4 px-4 py-3.5 border border-slate-200 dark:border-slate-800 hover:border-primary dark:hover:border-primary/50 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100/50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-350 rounded-xl transition-all duration-200 font-semibold text-left shadow-sm group"
                   key={`provider-${wallet.id}`}
                   onClick={async () => {
-                    await wallet.connect()
                     closeModal()
+                    try {
+                      await wallet.connect()
+                    } catch (err: any) {
+                      console.error(`Error connecting to ${wallet.metadata.name}:`, err)
+                    }
                   }}
                 >
                   <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800 p-1 group-hover:scale-105 transition-transform">
