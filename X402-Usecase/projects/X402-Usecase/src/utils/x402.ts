@@ -3,12 +3,25 @@ import { ALGORAND_MAINNET_CAIP2, createAlgodClient } from '@x402-avm/avm'
 import type { ClientAvmSigner } from '@x402-avm/avm'
 import { ExactAvmScheme } from '@x402-avm/avm/exact/client'
 
+export const ALGORAND_TESTNET_CAIP2 = 'algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI='
+
 export async function createX402Fetch(walletSigner: any) {
   console.log('createX402Fetch: initializing for address', walletSigner.address)
   const client = new x402Client()
 
-  // Create algod client for MainNet and intercept suggestedParams to enforce min fee
-  const algodClient = createAlgodClient(ALGORAND_MAINNET_CAIP2, 'https://mainnet-api.algonode.cloud')
+  const isTestnet =
+    (import.meta.env.VITE_ALGOD_NETWORK || '').toLowerCase() === 'testnet' ||
+    (import.meta.env.VITE_ENVIRONMENT || '').toLowerCase() === 'testnet'
+
+  const activeNetwork = isTestnet ? ALGORAND_TESTNET_CAIP2 : ALGORAND_MAINNET_CAIP2
+  const algodServer =
+    import.meta.env.VITE_ALGOD_SERVER ||
+    (isTestnet
+      ? 'https://testnet-api.algonode.cloud'
+      : 'https://mainnet-api.algonode.cloud')
+
+  // Create algod client for active network and intercept suggestedParams to enforce min fee
+  const algodClient = createAlgodClient(activeNetwork, algodServer)
   const originalSuggestedParams = algodClient.suggestedParams.bind(algodClient)
   algodClient.suggestedParams = async () => {
     const params = await originalSuggestedParams()
@@ -77,8 +90,8 @@ export async function createX402Fetch(walletSigner: any) {
     },
   }
 
-  client.register(ALGORAND_MAINNET_CAIP2, new ExactAvmScheme(x402Signer, { algodClient }))
-  console.log('x402 client registered for MainNet')
+  client.register(activeNetwork, new ExactAvmScheme(x402Signer, { algodClient }))
+  console.log(`x402 client registered for ${isTestnet ? 'TestNet' : 'MainNet'} (${activeNetwork})`)
 
   // Custom fetch interceptor to strip illegal response-only header "Access-Control-Expose-Headers"
   // injected into outgoing Request objects by @x402-avm/fetch

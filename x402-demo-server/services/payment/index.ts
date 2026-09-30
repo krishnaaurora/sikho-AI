@@ -81,12 +81,12 @@ export function decodePaymentSignatureHeader(header: string | object): any {
   }
 }import { declareDiscoveryExtension } from "@x402-avm/extensions/bazaar";
 
-/** CAIP-2 for Algorand MainNet */
-export const ALGORAND_MAINNET_CAIP2 =
-  "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
-
-/** USDC ASA on Algorand MainNet */
-export const USDC_MAINNET_ASA_ID = "31566704";
+export {
+  ALGORAND_MAINNET_CAIP2,
+  ALGORAND_TESTNET_CAIP2,
+  USDC_MAINNET_ASA_ID,
+  USDC_TESTNET_ASA_ID,
+} from "../../config/env";
 
 /** Decimal places for USDC */
 const USDC_DECIMALS = 6;
@@ -115,7 +115,7 @@ export function buildPaymentRequired(
   priceUsd: number,
   requestUrl: string
 ): object {
-  const payTo = env.AVM_ADDRESS;
+  const payTo = env.X402_PAY_TO || env.AVM_ADDRESS;
   const amountStr = usdToUSDCAtomicStr(priceUsd);
 
   // Use the actual public x402 unlock endpoint so the facilitator can catalog
@@ -181,10 +181,10 @@ export function buildPaymentRequired(
     accepts: [
       {
         scheme: "exact",
-        network: ALGORAND_MAINNET_CAIP2,
+        network: env.X402_NETWORK,
         payTo,
         amount: amountStr,
-        asset: USDC_MAINNET_ASA_ID,
+        asset: env.X402_ASSET,
         extra: {
           name: "USDC",
           version: "1",

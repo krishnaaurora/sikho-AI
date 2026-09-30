@@ -2,6 +2,42 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+export const ALGORAND_MAINNET_CAIP2 =
+  "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
+export const ALGORAND_TESTNET_CAIP2 =
+  "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=";
+export const USDC_MAINNET_ASA_ID = "31566704";
+export const USDC_TESTNET_ASA_ID = "10458941";
+
+const rawNetwork = (
+  process.env.X402_NETWORK ||
+  process.env.ALGORAND_NETWORK ||
+  process.env.NETWORK ||
+  ""
+).trim();
+const isTestnet =
+  rawNetwork.toLowerCase().includes("testnet") ||
+  rawNetwork.includes("SGO1GK");
+const resolvedNetwork = isTestnet
+  ? ALGORAND_TESTNET_CAIP2
+  : ALGORAND_MAINNET_CAIP2;
+const resolvedAsset =
+  process.env.X402_ASSET ||
+  (isTestnet ? USDC_TESTNET_ASA_ID : USDC_MAINNET_ASA_ID);
+const resolvedPayTo =
+  process.env.X402_PAY_TO ||
+  process.env.AVM_ADDRESS ||
+  "2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY";
+const resolvedFacilitator =
+  process.env.X402_FACILITATOR_URL ||
+  process.env.FACILITATOR_URL ||
+  "https://facilitator.goplausible.xyz";
+const resolvedAlgodServer =
+  process.env.ALGORAND_SERVER ||
+  (isTestnet
+    ? "https://testnet-api.algonode.cloud"
+    : "https://mainnet-api.algonode.cloud");
+
 export const env = {
   NODE_ENV: process.env.NODE_ENV || "development",
   PORT: parseInt(process.env.PORT || "4021"),
@@ -52,8 +88,6 @@ export const env = {
     process.env.GROQ_API_KEY_27,
   ].filter(Boolean) as string[],
   // ─── Resume Intelligence dedicated key pool ────────────────────
-  // All 27 keys are used for round-robin rotation across ATS analysis,
-  // career fit, resume extraction, and improvements.
   GROQ_RESUME_KEYS: [
     process.env.GROQ_RESUME_KEY_1  || process.env.GROQ_API_KEY_1,
     process.env.GROQ_RESUME_KEY_2  || process.env.GROQ_API_KEY_2,
@@ -83,14 +117,18 @@ export const env = {
     process.env.GROQ_API_KEY_26,
     process.env.GROQ_API_KEY_27,
   ].filter(Boolean) as string[],
-  // llama-3.3-70b-versatile deprecated June 17 2026 → openai/gpt-oss-120b
   GROQ_RESUME_MODEL: process.env.GROQ_RESUME_MODEL || "openai/gpt-oss-120b",
   JSEARCH_API_KEY: process.env.JSEARCH_API_KEY || "",
   ALGORAND_API_KEY: process.env.ALGORAND_API_KEY || "",
-  ALGORAND_SERVER: process.env.ALGORAND_SERVER || "https://mainnet-api.algonode.cloud",
+  ALGORAND_SERVER: resolvedAlgodServer,
   X402_API_KEY: process.env.X402_API_KEY || "",
-  AVM_ADDRESS: process.env.AVM_ADDRESS || "2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY",
-  FACILITATOR_URL: process.env.FACILITATOR_URL || "https://facilitator.goplausible.xyz",
+  AVM_ADDRESS: resolvedPayTo,
+  FACILITATOR_URL: resolvedFacilitator,
+  X402_NETWORK: resolvedNetwork,
+  X402_ASSET: resolvedAsset,
+  X402_PAY_TO: resolvedPayTo,
+  X402_FACILITATOR_URL: resolvedFacilitator,
+  IS_TESTNET: isTestnet,
   APIFY_API_TOKEN: process.env.APIFY_API_TOKEN || "",
   APIFY_LINKEDIN_ACTOR: process.env.APIFY_LINKEDIN_ACTOR || "crawlworks~linkedin-jobs-scraper",
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || "AIzaSyAZTTsW72ILNQgzFkV_u_9I7vaw4Og9BYE",

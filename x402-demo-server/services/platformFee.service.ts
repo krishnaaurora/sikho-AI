@@ -6,6 +6,8 @@ import RepositoryReview from "../models/RepositoryReview.model";
 import RepositoryFileReview from "../models/RepositoryFileReview.model";
 import { logger } from "../utils/logger";
 
+import { env } from "../config/env";
+
 export interface ProcessPlatformFeeInput {
   reviewId: string;
   fileId: string;
@@ -44,8 +46,8 @@ export async function processPlatformFee(
     filePath,
     amount = EXPECTED_PLATFORM_FEE_MICRO_USDC,
     currency = "USDC",
-    assetId = "31566704",
-    network = "Algorand MainNet",
+    assetId = env.X402_ASSET,
+    network = env.IS_TESTNET ? "Algorand TestNet" : "Algorand MainNet",
     purpose = "github_code_review_platform_fee",
   } = input;
 

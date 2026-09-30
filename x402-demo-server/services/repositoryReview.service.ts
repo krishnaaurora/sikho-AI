@@ -46,12 +46,19 @@ export async function verifyOnChainSikhoPayment(
     );
   }
 
+  const networkLabel = env.IS_TESTNET ? "Algorand TestNet" : "Algorand MainNet";
+  const indexerBase = env.IS_TESTNET
+    ? "https://testnet-idx.algonode.cloud"
+    : "https://mainnet-idx.algonode.cloud";
+  const algodBase = env.ALGORAND_SERVER ||
+    (env.IS_TESTNET ? "https://testnet-api.algonode.cloud" : "https://mainnet-api.algonode.cloud");
+
   logger.info(
-    `[Sikho Payment] Verifying on-chain tx ${txId} for ${expectedMicroAmount} micro-USDC on Algorand MainNet...`
+    `[Sikho Payment] Verifying on-chain tx ${txId} for ${expectedMicroAmount} micro-USDC on ${networkLabel}...`
   );
 
-  // Query Algorand MainNet Indexer (Algonode public API)
-  const indexerUrl = `https://mainnet-idx.algonode.cloud/v2/transactions/${txId}`;
+  // Query Algorand Indexer (env-driven: testnet or mainnet)
+  const indexerUrl = `${indexerBase}/v2/transactions/${txId}`;
   let txData: any = null;
 
   try {
@@ -67,23 +74,21 @@ export async function verifyOnChainSikhoPayment(
 
   if (!txData) {
     try {
-      const algodUrl = `${
-        env.ALGORAND_SERVER || "https://mainnet-api.algonode.cloud"
-      }/v2/transactions/pending/${txId}`;
+      const algodUrl = `${algodBase}/v2/transactions/pending/${txId}`;
       const res = await axios.get(algodUrl, { timeout: 10000 });
       if (res.status === 200 && res.data) {
         txData = res.data;
       }
     } catch (err: any) {
       throw new Error(
-        `Unable to find or verify transaction ${txId} on Algorand MainNet: ${err.message}`
+        `Unable to find or verify transaction ${txId} on ${networkLabel}: ${err.message}`
       );
     }
   }
 
   if (!txData) {
     throw new Error(
-      `Transaction ${txId} could not be verified on Algorand MainNet.`
+      `Transaction ${txId} could not be verified on ${networkLabel}.`
     );
   }
 
@@ -153,12 +158,19 @@ export async function verifyOnChainPrismPayment(
     );
   }
 
+  const networkLabel2 = env.IS_TESTNET ? "Algorand TestNet" : "Algorand MainNet";
+  const indexerBase2 = env.IS_TESTNET
+    ? "https://testnet-idx.algonode.cloud"
+    : "https://mainnet-idx.algonode.cloud";
+  const algodBase2 = env.ALGORAND_SERVER ||
+    (env.IS_TESTNET ? "https://testnet-api.algonode.cloud" : "https://mainnet-api.algonode.cloud");
+
   logger.info(
-    `[Prism Payment] Verifying on-chain tx ${txId} for ${expectedMicroAmount} micro-USDC on Algorand MainNet...`
+    `[Prism Payment] Verifying on-chain tx ${txId} for ${expectedMicroAmount} micro-USDC on ${networkLabel2}...`
   );
 
-  // Query Algorand MainNet Indexer (Algonode public API)
-  const indexerUrl = `https://mainnet-idx.algonode.cloud/v2/transactions/${txId}`;
+  // Query Algorand Indexer (env-driven: testnet or mainnet)
+  const indexerUrl = `${indexerBase2}/v2/transactions/${txId}`;
   let txData: any = null;
 
   try {
@@ -174,23 +186,21 @@ export async function verifyOnChainPrismPayment(
 
   if (!txData) {
     try {
-      const algodUrl = `${
-        env.ALGORAND_SERVER || "https://mainnet-api.algonode.cloud"
-      }/v2/transactions/pending/${txId}`;
+      const algodUrl = `${algodBase2}/v2/transactions/pending/${txId}`;
       const res = await axios.get(algodUrl, { timeout: 10000 });
       if (res.status === 200 && res.data) {
         txData = res.data;
       }
     } catch (err: any) {
       throw new Error(
-        `Unable to find or verify transaction ${txId} on Algorand MainNet: ${err.message}`
+        `Unable to find or verify transaction ${txId} on ${networkLabel2}: ${err.message}`
       );
     }
   }
 
   if (!txData) {
     throw new Error(
-      `Transaction ${txId} could not be verified on Algorand MainNet.`
+      `Transaction ${txId} could not be verified on ${networkLabel2}.`
     );
   }
 
@@ -320,12 +330,10 @@ export async function getSikhoChallengeForFile(
     throw new Error(`File review record "${fileId}" not found in review "${reviewId}".`);
   }
 
-  const treasuryAddress =
-    process.env.AVM_ADDRESS ||
-    "2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY";
+  const treasuryAddress = env.X402_PAY_TO || env.AVM_ADDRESS;
   const amountMicro = 50000;
-  const assetId = "31566704";
-  const network = "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
+  const assetId = env.X402_ASSET;
+  const network = env.X402_NETWORK;
   const publicOrigin = env.PUBLIC_BACKEND_URL || "https://sikho-ai-im1v.onrender.com";
   const endpointUrl = `${publicOrigin}/api/v1/services/github-review/sikho-x402`;
 
@@ -462,7 +470,7 @@ export async function recordSikhoPaymentForFile(
       success: true,
       transaction: fileDoc.sikhoPaymentTxId,
       payer: sender || treasuryAddress,
-      network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
+      network: env.X402_NETWORK,
     })).toString("base64");
     return { file: fileDoc, paymentResponseHeader: existingResp, txId: fileDoc.sikhoPaymentTxId };
   }
@@ -488,7 +496,7 @@ export async function recordSikhoPaymentForFile(
     const verified = await verifyOnChainSikhoPayment(
       settledTxId,
       treasuryAddress,
-      "31566704", // USDC ASA ID
+      env.X402_ASSET, // USDC ASA ID
       50000, // $0.05 micro-USDC
       fileDoc.fileReviewId
     );
@@ -501,7 +509,7 @@ export async function recordSikhoPaymentForFile(
     success: true,
     transaction: settledTxId,
     payer: verifiedSender || treasuryAddress,
-    network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
+    network: env.X402_NETWORK,
   };
   const paymentResponseHeader = Buffer.from(JSON.stringify(paymentResponseObj)).toString("base64");
 
@@ -525,8 +533,8 @@ export async function recordSikhoPaymentForFile(
       filePath: fileDoc.filePath,
       amount: 50000,
       currency: "USDC",
-      assetId: "31566704",
-      network: "Algorand MainNet",
+      assetId: env.X402_ASSET,
+      network: env.IS_TESTNET ? "Algorand TestNet" : "Algorand MainNet",
       purpose: "github_code_review_platform_fee",
     });
   } catch (feeErr: any) {
@@ -567,8 +575,8 @@ export async function getPrismChallengeForFile(
     process.env.PRISM_PAYTO ||
     "FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE";
   const amountMicro = 200000;
-  const assetId = "31566704";
-  const network = "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=";
+  const assetId = env.X402_ASSET;
+  const network = env.X402_NETWORK;
   const endpointUrl = "https://prism-99h2.onrender.com/code-review-accurate";
 
   const challengeObj = {
@@ -588,7 +596,7 @@ export async function getPrismChallengeForFile(
         asset: assetId,
         description: `Prism code review ($0.20 USDC / 200,000 micro-USDC) for ${fileDoc.filePath}`,
         extra: {
-          asset: 31566704,
+          asset: Number(env.X402_ASSET) || 31566704,
           tag: "x402-global-challenge",
           decimals: 6,
           feePayer: "ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA",
@@ -675,7 +683,7 @@ export async function submitPrismReviewWithSignature(
 
   logger.info("[PRISM X402] Payment requirements received");
   logger.info("[PRISM X402] Amount: 200000 micro-USDC");
-  logger.info("[PRISM X402] Asset: 31566704");
+  logger.info(`[PRISM X402] Asset: ${env.X402_ASSET}`);
   logger.info(`[PRISM X402] PayTo: ${prismPayTo}`);
   logger.info("[PRISM X402] Payment group constructed");
   logger.info("[PRISM X402] User signed payment");
@@ -739,7 +747,7 @@ export async function submitPrismReviewWithSignature(
     verified = await verifyOnChainPrismPayment(
       realTxId,
       prismPayTo,
-      "31566704", // USDC ASA ID
+      env.X402_ASSET, // USDC ASA ID
       200000,     // 0.20 USDC (200,000 micro-units)
       fileDoc.fileReviewId
     );
@@ -753,7 +761,8 @@ export async function submitPrismReviewWithSignature(
   if (!verified.confirmed) {
     fileDoc.status = "failed";
     await fileDoc.save();
-    throw new Error(`Transaction ${realTxId} was not confirmed on Algorand MainNet.`);
+    const netLabel = env.IS_TESTNET ? "Algorand TestNet" : "Algorand MainNet";
+    throw new Error(`Transaction ${realTxId} was not confirmed on ${netLabel}.`);
   }
 
   logger.info("[PRISM X402] On-chain confirmation: TRUE");
@@ -877,7 +886,7 @@ export async function submitPrismReviewWithSignature(
         success: true,
         transaction: realTxId,
         payer: verified.sender || prismPayTo,
-        network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
+        network: env.X402_NETWORK,
       };
       paymentResponseHeader = Buffer.from(JSON.stringify(respObj)).toString("base64");
     }

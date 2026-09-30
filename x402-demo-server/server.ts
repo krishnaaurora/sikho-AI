@@ -22,6 +22,16 @@ async function startServer() {
     const server = app.listen(env.PORT, () => {
       logger.info(`Server is running on port ${env.PORT}`);
       logger.info(`Environment: ${env.NODE_ENV}`);
+      const shortenedPayTo =
+        env.X402_PAY_TO.length > 10
+          ? `${env.X402_PAY_TO.substring(0, 6)}...${env.X402_PAY_TO.substring(env.X402_PAY_TO.length - 4)}`
+          : env.X402_PAY_TO;
+      logger.info("--------------------------------------------------");
+      logger.info(`X402 Network: ${env.IS_TESTNET ? "TESTNET" : "MAINNET"}`);
+      logger.info(`USDC Asset: ${env.X402_ASSET}`);
+      logger.info(`PayTo: ${shortenedPayTo}`);
+      logger.info(`Facilitator: ${env.X402_FACILITATOR_URL}`);
+      logger.info("--------------------------------------------------");
     });
 
     // Graceful shutdown

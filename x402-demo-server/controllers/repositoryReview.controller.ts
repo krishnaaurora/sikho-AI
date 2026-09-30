@@ -192,13 +192,13 @@ export const handleGitRepoAnalyserEndpoint = asyncHandler(async (req: Request, r
     accepts: [
       {
         scheme: "exact",
-        network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
+        network: env.X402_NETWORK,
         amount: "50000",
-        asset: "31566704",
-        payTo: treasuryAddress,
+        asset: env.X402_ASSET,
+        payTo: env.X402_PAY_TO || treasuryAddress,
         maxTimeoutSeconds: 300,
         extra: {
-          asset: 31566704,
+          asset: Number(env.X402_ASSET) || 31566704,
           tag: "x402-sikho-git-repo-analyser",
           decimals: 6,
           merchant: merchantIdentity,
@@ -260,7 +260,7 @@ export const handleGitRepoAnalyserEndpoint = asyncHandler(async (req: Request, r
   const paymentResponseObj = {
     success: true,
     payer: senderAddress || treasuryAddress,
-    network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
+    network: env.X402_NETWORK,
     service: "git_repo_analyser",
     timestamp: Date.now(),
   };

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { buildWorkspacePaymentRequired, verifyX402Payment, PaidEndpointConfig, ALGORAND_MAINNET_CAIP2 } from "../services/payment";
+import { buildWorkspacePaymentRequired, verifyX402Payment, PaidEndpointConfig } from "../services/payment";
 // @ts-ignore
 import { encodePaymentRequiredHeader, encodePaymentResponseHeader } from "@x402/core/http";
 import { logger } from "../utils/logger";
@@ -138,7 +138,7 @@ export const enforceWorkspacePayment = (config: PaidEndpointConfig) => {
         success: true,
         transaction: transactionHash,
         payer,
-        network: ALGORAND_MAINNET_CAIP2,
+        network: env.X402_NETWORK,
       };
       const encodedPaymentResponse = encodePaymentResponseHeader
         ? encodePaymentResponseHeader(paymentResponseObj as any)

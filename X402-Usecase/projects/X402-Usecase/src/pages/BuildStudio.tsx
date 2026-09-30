@@ -155,7 +155,11 @@ export const BuildStudio: React.FC = () => {
 
         const assets: any[] = acctInfo.assets || [];
         const usdcAsset = assets.find(
-          (a: any) => a['asset-id'] === 31566704 || a.assetId === 31566704
+          (a: any) =>
+            a['asset-id'] === 31566704 ||
+            a.assetId === 31566704 ||
+            a['asset-id'] === 10458941 ||
+            a.assetId === 10458941
         );
         if (usdcAsset) {
           setWalletUsdcBalance(usdcAsset.amount / 1000000);
@@ -231,12 +235,16 @@ export const BuildStudio: React.FC = () => {
       const challengeRes = await githubReviewApi.getSikhoChallenge(activeReviewId, file.fileReviewId);
       const challenge = (challengeRes && (challengeRes as any).data) ? (challengeRes as any).data : challengeRes;
 
+      const isTestnet = (import.meta.env.VITE_ALGOD_NETWORK || '').toLowerCase() === 'testnet';
       const sikhoPayTo =
+        import.meta.env.VITE_X402_PAY_TO ||
         import.meta.env.VITE_AVM_ADDRESS ||
-        '2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY';
+        (isTestnet ? '' : '2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY');
       const targetAmount = 50000; // 0.05 USDC (50,000 micro-units)
-      const targetAsset = 31566704; // Algorand MainNet USDC ASA ID
-      const targetNetwork = 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
+      const targetAsset = isTestnet ? 10458941 : 31566704;
+      const targetNetwork = isTestnet
+        ? 'algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI='
+        : 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
 
       let paymentRequired: any = null;
       if (challenge?.paymentRequiredHeader) {
@@ -529,15 +537,19 @@ export const BuildStudio: React.FC = () => {
     setIsProcessingFileId(file.fileReviewId);
     setError(null);
 
+    const isTestnet = (import.meta.env.VITE_ALGOD_NETWORK || '').toLowerCase() === 'testnet';
     const sikhoTreasury =
+      import.meta.env.VITE_X402_PAY_TO ||
       import.meta.env.VITE_AVM_ADDRESS ||
-      '2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY';
+      (isTestnet ? '' : '2RIRIX5XK6GWK7LOXDAYIDTN4IYDVNRDJFXR4TJCLYIM72A3EF2UQPROQY');
     const prismPayTo =
       import.meta.env.VITE_PRISM_PAYTO ||
       'FL7U7GHUZB2R6RACPGY5UFD2K47CP2IL4RQWX7LKYE5QSFGXVJCDGPRLBE';
     const targetAmount = 200000; // 0.20 USDC (200,000 micro-units)
-    const targetAsset = 31566704; // Algorand MainNet USDC ASA ID
-    const targetNetwork = 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
+    const targetAsset = isTestnet ? 10458941 : 31566704;
+    const targetNetwork = isTestnet
+      ? 'algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI='
+      : 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=';
 
     try {
       // 1. Fetch 402 challenge parameters from Prism via backend

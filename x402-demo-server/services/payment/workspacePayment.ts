@@ -1,5 +1,5 @@
 import { env } from "../../config/env";
-import { ALGORAND_MAINNET_CAIP2, USDC_MAINNET_ASA_ID, usdToUSDCAtomicStr } from "./index";
+import { usdToUSDCAtomicStr } from "./index";
 // @ts-ignore
 import { declareDiscoveryExtension } from "@x402-avm/extensions/bazaar";
 
@@ -50,7 +50,7 @@ export function buildWorkspacePaymentRequired(
   method: string = "GET",
   config?: Partial<PaidEndpointConfig>
 ): object {
-  const payTo = env.AVM_ADDRESS;
+  const payTo = env.X402_PAY_TO || env.AVM_ADDRESS;
   const amountStr = usdToUSDCAtomicStr(priceUsd);
   const upper = (method || "GET").toUpperCase();
   const isBody = upper === "POST" || upper === "PUT" || upper === "PATCH";
@@ -118,10 +118,10 @@ export function buildWorkspacePaymentRequired(
     accepts: [
       {
         scheme: "exact",
-        network: ALGORAND_MAINNET_CAIP2,
+        network: env.X402_NETWORK,
         payTo,
         amount: amountStr,
-        asset: USDC_MAINNET_ASA_ID,
+        asset: env.X402_ASSET,
         extra: {
           name: "USDC",
           version: "1",
