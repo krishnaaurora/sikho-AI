@@ -221,8 +221,8 @@ export async function verifyX402Payment(
   try {
     paymentPayload = decodePaymentSignatureHeader(paymentHeader);
   } catch (decodeErr: any) {
-    logger.error(`Failed to decode X-PAYMENT header: ${decodeErr?.message}`);
-    throw new AppError(`Invalid payment header: ${decodeErr?.message}`, 400);
+    logger.error(`[x402][VERIFICATION] Failed to decode X-PAYMENT header: ${decodeErr?.message}`);
+    throw new AppError(`Invalid payment header format: ${decodeErr?.message}`, 400);
   }
 
   const settleBody = {
@@ -231,7 +231,9 @@ export async function verifyX402Payment(
     paymentRequirements: (paymentRequired as any).accepts[0],
   };
 
-  logger.info(`Sending to facilitator (${facilitatorUrl}/settle): ${JSON.stringify(settleBody)}`);
+  logger.info(`[x402][SUBMISSION] Decoded: network=${paymentPayload?.accepted?.network}, payTo=${paymentPayload?.accepted?.payTo}, amount=${paymentPayload?.accepted?.amount}, asset=${paymentPayload?.accepted?.asset}`);
+  logger.info(`[x402][SUBMISSION] Sending to facilitator: POST ${facilitatorUrl}/settle`);
+  logger.info(`[x402][SUBMISSION] Requirements: network=${settleBody.paymentRequirements?.network}, payTo=${settleBody.paymentRequirements?.payTo}, amount=${settleBody.paymentRequirements?.amount}, asset=${settleBody.paymentRequirements?.asset}`);
 
   let res: Response;
   try {
@@ -246,7 +248,7 @@ export async function verifyX402Payment(
   }
 
   const rawText = await (res as any).text();
-  logger.info(`Facilitator raw response [${(res as any).status}]: ${rawText}`);
+  logger.info(`[x402][CONFIRMATION] Facilitator HTTP ${(res as any).status}: ${rawText}`);
 
   if (!(res as any).ok) {
     throw new AppError(
