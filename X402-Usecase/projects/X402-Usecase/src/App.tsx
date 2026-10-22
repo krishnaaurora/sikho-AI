@@ -5,6 +5,7 @@ import Navbar from './components/Navbar'
 import Home from './Home'
 import BrowseCourses from './pages/BrowseCourses'
 import CourseDetailPage from './pages/CourseDetail'
+import CourseChapterPage from './pages/CourseChapterPage'
 import CategoryPage from './pages/CategoryPage'
 import SearchResults from './pages/SearchResults'
 import LearnerDashboard from './pages/LearnerDashboard'
@@ -123,6 +124,11 @@ function AppContent() {
             <Route path="/courses/:id" element={
               <ProtectedRoute>
                 <CourseDetailPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/courses/:courseId/chapters/:chapterId" element={
+              <ProtectedRoute>
+                <CourseChapterPage />
               </ProtectedRoute>
             } />
             <Route path="/category/:slug" element={

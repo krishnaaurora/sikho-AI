@@ -5,7 +5,7 @@ import {
   Code2, MessageSquare, Maximize2, Minimize2, Copy, Check,
   BookOpen, Brain, Zap, CheckCircle2, RefreshCw, X, Eye
 } from 'lucide-react';
-import { FlashcardDeck } from './FlashcardDeck';
+import { DynamicConceptChart } from './DynamicConceptChart';
 import { InteractiveArchitectureSimulator } from './InteractiveArchitectureSimulator';
 import { ConceptExplanation } from './ConceptExplanation';
 import { ConceptQuizCelebration } from './ConceptQuizCelebration';
@@ -34,7 +34,7 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
 }) => {
   const [data, setData] = useState<IntelligentUiConceptData | null>(initialData || null);
   const [loading, setLoading] = useState(!initialData);
-  const [activeTab, setActiveTab] = useState<'simulation' | 'explanation' | 'flashcards' | 'quiz' | 'code' | 'copilot'>('simulation');
+  const [activeTab, setActiveTab] = useState<'simulation' | 'chart' | 'explanation' | 'quiz' | 'code' | 'copilot'>('simulation');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [currentSimulatorParams, setCurrentSimulatorParams] = useState<Record<string, number>>({});
@@ -153,29 +153,20 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
               ],
               databaseTitle: 'Primary DB & Redis Cache',
             },
-            flashcards: [
-              {
-                id: 'fc-1',
-                front: `What is the primary role of ${conceptName}?`,
-                back: 'Evenly distribute client workloads across multiple healthy compute instances to eliminate single points of failure.',
-                category: 'Architecture',
-                hint: 'Consider what happens when a single server gets all traffic.',
-              },
-              {
-                id: 'fc-2',
-                front: 'What happens when a backend instance fails health checks?',
-                back: 'The load balancer immediately isolates the dead instance and reroutes subsequent traffic to surviving healthy nodes with zero downtime.',
-                category: 'Resilience',
-                hint: 'Automated circuit breaker and failover.',
-              },
-              {
-                id: 'fc-3',
-                front: 'Why must backend servers remain stateless in this architecture?',
-                back: 'Because any request can hit any backend server; session state stored in a shared cache allows instant auto-scaling and server replacement.',
-                category: 'Scaling',
-                hint: 'Think about where user logins and tokens are stored.',
-              },
-            ],
+            chart: {
+              title: `Latency (ms) vs Number of Scaled Nodes: ${conceptName}`,
+              description: 'Visualizing p99 tail latency reduction as node count increases under constant concurrent load.',
+              type: 'area',
+              xAxisKey: 'name',
+              data: [
+                { name: '1 Node', value: 480, benchmark: 50, secondary: 98 },
+                { name: '2 Nodes', value: 240, benchmark: 50, secondary: 75 },
+                { name: '4 Nodes', value: 72, benchmark: 50, secondary: 38 },
+                { name: '6 Nodes', value: 36, benchmark: 50, secondary: 22 },
+                { name: '8 Nodes', value: 24, benchmark: 50, secondary: 15 },
+                { name: '12 Nodes', value: 18, benchmark: 50, secondary: 12 },
+              ],
+            },
             flowSteps: [
               { step: 1, title: 'Client Ingress', description: 'User browser or mobile app dispatches HTTPS request to public gateway.', nodeType: 'client', highlight: 'TLS Handshake' },
               { step: 2, title: 'Load Balancing & Health Check', description: 'Gateway verifies server health and picks target instance via selected algorithm.', nodeType: 'gateway', highlight: 'Algorithm Routing' },
@@ -236,7 +227,7 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
         </div>
         <div>
           <h4 className="text-base font-black text-slate-900">Synthesizing Intelligent UI Studio...</h4>
-          <p className="text-xs text-slate-500 mt-1">Generating interactive architecture diagrams, live simulation testbed, and 3D flashcards for "{conceptName}"</p>
+          <p className="text-xs text-slate-500 mt-1">Generating interactive architecture diagrams, live simulation testbed, and performance metrics for "{conceptName}"</p>
         </div>
       </div>
     );
@@ -329,7 +320,7 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
         )}
 
         {/* NAVIGATION TABS */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-slate-100 no-scrollbar">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-100 no-scrollbar">
           {/* COMBINED INTERACTIVE ARCHITECTURE FLOW & LIVE SIMULATOR */}
           <button
             type="button"
@@ -343,7 +334,20 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
             <Zap size={13} /> Architecture & Live Simulator
           </button>
 
-          {/* DEEP CONCEPT EXPLANATION (REPLACING PERFORMANCE CHART) */}
+          {/* PERFORMANCE CHART WITH SIMPLE EXPLANATION */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('chart')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+              activeTab === 'chart'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <BarChart3 size={13} /> Performance Chart
+          </button>
+
+          {/* DEEP CONCEPT EXPLANATION */}
           <button
             type="button"
             onClick={() => setActiveTab('explanation')}
@@ -356,30 +360,17 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
             <BookOpen size={13} /> Deep Explanation
           </button>
 
-          {/* 3D FLASHCARDS (Matches User Screenshot 2) */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('flashcards')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'flashcards'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Layers size={13} /> 3D Flashcards ({data.flashcards?.length || 0})
-          </button>
-
-          {/* QUIZ & CELEBRATION (Matches User Screenshot 1) */}
+          {/* QUIZ & CELEBRATION (Matches User Screenshot Style) */}
           <button
             type="button"
             onClick={() => setActiveTab('quiz')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+            className={`px-4 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow-xs ${
               activeTab === 'quiz'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-500/20'
+                : 'text-slate-700 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700'
             }`}
           >
-            <HelpCircle size={13} /> Quiz & Celebration
+            <HelpCircle size={14} className="shrink-0" /> Quiz & Celebration
           </button>
 
           {/* CODE IMPLEMENTATION */}
@@ -420,6 +411,28 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
             />
           )}
 
+          {/* PERFORMANCE CHART WITH PLAIN-ENGLISH EXPLANATION */}
+          {activeTab === 'chart' && (
+            <DynamicConceptChart
+              config={
+                data.chart || {
+                  title: `Latency (ms) vs Number of Scaled Nodes: ${data.concept}`,
+                  description: 'Visualizing p99 tail latency reduction as node count increases under constant concurrent load.',
+                  type: 'area',
+                  xAxisKey: 'name',
+                  data: [
+                    { name: '1 Node', value: 480, benchmark: 50, secondary: 98 },
+                    { name: '2 Nodes', value: 240, benchmark: 50, secondary: 75 },
+                    { name: '4 Nodes', value: 72, benchmark: 50, secondary: 38 },
+                    { name: '6 Nodes', value: 36, benchmark: 50, secondary: 22 },
+                    { name: '8 Nodes', value: 24, benchmark: 50, secondary: 15 },
+                    { name: '12 Nodes', value: 18, benchmark: 50, secondary: 12 },
+                  ],
+                }
+              }
+            />
+          )}
+
           {/* DEEP EXPLANATION TAB */}
           {activeTab === 'explanation' && (
             <ConceptExplanation
@@ -427,14 +440,6 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
               explanation={data.explanation}
               onExploreQuiz={() => setActiveTab('quiz')}
               onExploreSimulation={() => setActiveTab('simulation')}
-            />
-          )}
-
-          {/* 3D FLASHCARDS */}
-          {activeTab === 'flashcards' && data.flashcards && (
-            <FlashcardDeck
-              cards={data.flashcards}
-              conceptTitle={data.concept}
             />
           )}
 

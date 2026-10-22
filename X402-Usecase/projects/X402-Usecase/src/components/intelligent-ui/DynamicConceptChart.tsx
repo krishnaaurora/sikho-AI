@@ -183,10 +183,50 @@ export const DynamicConceptChart: React.FC<DynamicConceptChartProps> = ({ config
         </div>
       )}
 
-      {/* Chart Footnote Insight */}
-      <div className="flex items-center gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
-        <Info size={13} className="text-slate-400 flex-shrink-0" />
-        <span>Values generated dynamically to model real-world production performance characteristics.</span>
+      {/* SIMPLE PLAIN-ENGLISH CHART EXPLANATION */}
+      <div className="mt-5 p-5 rounded-2xl bg-gradient-to-br from-indigo-50/70 via-slate-50/50 to-indigo-50/30 border border-indigo-100/90 space-y-3.5">
+        <div className="flex items-center gap-2 text-indigo-950 font-bold text-xs uppercase tracking-wider">
+          <Info size={15} className="text-indigo-600" />
+          <span>Simple Plain-English Explanation of This Chart</span>
+        </div>
+
+        <p className="text-xs text-slate-700 leading-relaxed font-medium">
+          This chart compares <strong>how your system performs as traffic scales</strong> from normal daily usage to intense traffic surges.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <div className="p-3 rounded-xl bg-white border border-indigo-100/80 shadow-xs space-y-1">
+            <span className="font-bold text-slate-900 block flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block" />
+              Blue Area / Line (Optimized Cluster)
+            </span>
+            <p className="text-slate-600 leading-relaxed">
+              When workload increases, traffic is spread evenly across multiple worker nodes. Response time stays flat and fast (under 50ms) with zero queue bottlenecks.
+            </p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+            <span className="font-bold text-slate-700 block flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block" />
+              Dashed Gray Line (Unoptimized Baseline)
+            </span>
+            <p className="text-slate-600 leading-relaxed">
+              Without load distribution, a single server handles all requests. Once CPU reaches 80%, request latency spikes exponentially into seconds before crashing.
+            </p>
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-indigo-100/70 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 font-medium">
+          <span className="flex items-center gap-1">
+            📍 <strong>Horizontal Axis (X):</strong> Incoming Workload & Scale
+          </span>
+          <span className="flex items-center gap-1">
+            ⏱️ <strong>Vertical Axis (Y):</strong> Latency / Delay (Lower is better)
+          </span>
+          <span className="text-indigo-700 font-bold">
+            💡 Takeaway: Horizontal scaling prevents 100% of sudden traffic crashes.
+          </span>
+        </div>
       </div>
     </div>
   );

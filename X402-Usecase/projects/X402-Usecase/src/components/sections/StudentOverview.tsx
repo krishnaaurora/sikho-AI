@@ -38,7 +38,7 @@ const StudentOverview = () => {
                 <li className="flex items-center gap-1.5"><Check className="h-3 w-3 text-indigo-500" /> AI Tutor</li>
                 <li className="flex items-center gap-1.5"><Check className="h-3 w-3 text-indigo-500" /> Interactive Lessons</li>
                 <li className="flex items-center gap-1.5"><Check className="h-3 w-3 text-indigo-500" /> Concept Explanations</li>
-                <li className="flex items-center gap-1.5"><Check className="h-3 w-3 text-indigo-500" /> Notes & Flashcards</li>
+                <li className="flex items-center gap-1.5"><Check className="h-3 w-3 text-indigo-500" /> Notes & Simulations</li>
               </ul>
               <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-900 text-[9px] font-bold">
                 <span className="text-indigo-650 dark:text-indigo-400">Deep Explanation</span>

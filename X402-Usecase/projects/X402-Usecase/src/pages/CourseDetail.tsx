@@ -8,6 +8,7 @@ import LoadingSkeleton from '../components/marketplace/LoadingSkeleton';
 import type { CourseDetail, Chapter, Review, Course } from '../types';
 import { Sparkles } from 'lucide-react';
 import { IntelligentUIContainer } from '../components/intelligent-ui';
+import { UnifiedCourseChapter } from '../components/chapter-experience';
 
 const CourseDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -208,7 +209,7 @@ const CourseDetailPage: React.FC = () => {
                       <span>Includes Open Intelligent UI Interactive Studio for every concept.</span>
                     </div>
                     <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
-                      Every chapter includes interactive 3D flashcards, live parameter simulators, visual trade-off charts & quizzes.
+                      Every chapter includes live parameter simulators, interactive architecture demos, visual trade-off charts & quizzes.
                     </p>
                   </div>
 
@@ -407,14 +408,13 @@ const CourseDetailPage: React.FC = () => {
                                     )}
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => setPreviewConcept({ title: lesson.title, chapterTitle: chapter.title })}
+                                    <Link
+                                      to={`/courses/${course._id}/chapters/${chapter._id}`}
                                       className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-full transition-colors border border-indigo-200"
-                                      title="Explore interactive 3D flashcards, live simulator & quiz"
+                                      title="Study chapter with unified intelligent notes & live simulations"
                                     >
-                                      <Sparkles size={11} /> Interactive Studio
-                                    </button>
+                                      <Sparkles size={11} /> Unified Notes
+                                    </Link>
                                     {lesson.duration && (
                                       <span className="text-sm text-gray-500">{formatDuration(lesson.duration)}</span>
                                     )}
@@ -526,13 +526,34 @@ const CourseDetailPage: React.FC = () => {
       </div>
 
       {previewConcept && (
-        <IntelligentUIContainer
-          conceptName={previewConcept.title}
-          chapterTitle={previewConcept.chapterTitle}
-          courseTopic={course.title}
-          isModal={true}
-          onClose={() => setPreviewConcept(null)}
-        />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="relative bg-white rounded-3xl shadow-2xl max-w-5xl w-full max-h-[92vh] overflow-y-auto border border-slate-200 p-4 sm:p-6">
+            <button
+              onClick={() => setPreviewConcept(null)}
+              className="absolute top-6 right-6 p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors z-20"
+              title="Close Preview"
+            >
+              ✕
+            </button>
+            <UnifiedCourseChapter
+              courseTitle={course?.title || 'Distributed Systems'}
+              courseId={course?._id}
+              chapter={{
+                _id: 'preview-ch',
+                title: previewConcept.chapterTitle || previewConcept.title,
+                isUnlocked: true,
+                lessons: [
+                  {
+                    _id: 'preview-l1',
+                    title: previewConcept.title,
+                  },
+                ],
+              }}
+              walletConnected={true}
+              isStandalonePage={false}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

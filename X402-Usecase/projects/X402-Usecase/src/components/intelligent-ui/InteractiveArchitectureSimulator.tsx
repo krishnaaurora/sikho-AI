@@ -144,10 +144,10 @@ export const InteractiveArchitectureSimulator: React.FC<InteractiveArchitectureS
           prev.map((s) =>
             s.id === selectedServer.id
               ? {
-                  ...s,
-                  requestsHandled: s.requestsHandled + 1,
-                  currentLoad: Math.min(95, s.currentLoad + 5),
-                }
+                ...s,
+                requestsHandled: s.requestsHandled + 1,
+                currentLoad: Math.min(95, s.currentLoad + 5),
+              }
               : { ...s, currentLoad: Math.max(15, s.currentLoad - 2) }
           )
         );
@@ -221,22 +221,20 @@ export const InteractiveArchitectureSimulator: React.FC<InteractiveArchitectureS
             <button
               type="button"
               onClick={() => setViewMode('interactive')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                viewMode === 'interactive'
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${viewMode === 'interactive'
                   ? 'bg-white text-indigo-600 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
             >
               <Activity size={13} /> Interactive Simulator
             </button>
             <button
               type="button"
               onClick={() => setViewMode('isometric')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                viewMode === 'isometric'
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${viewMode === 'isometric'
                   ? 'bg-white text-indigo-600 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
             >
               <Eye size={13} /> 3D Architecture Diagram
             </button>
@@ -300,11 +298,10 @@ export const InteractiveArchitectureSimulator: React.FC<InteractiveArchitectureS
               <button
                 type="button"
                 onClick={() => setIsAutoSimulating(!isAutoSimulating)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  isAutoSimulating
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${isAutoSimulating
                     ? 'bg-amber-100 text-amber-800 border border-amber-200'
                     : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 shadow-xs'
-                }`}
+                  }`}
               >
                 {isAutoSimulating ? <Pause size={13} /> : <Play size={13} />}
                 {isAutoSimulating ? 'Stop Auto-Traffic' : 'Auto-Traffic Stream'}
@@ -352,11 +349,10 @@ export const InteractiveArchitectureSimulator: React.FC<InteractiveArchitectureS
               {/* TIER 1: FRONTEND CLIENT */}
               <div className="flex flex-col items-center text-center space-y-3 p-4 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-sm">
                 <div
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
-                    packetStage === 'client' || packetStage === 'response'
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${packetStage === 'client' || packetStage === 'response'
                       ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/50 scale-105 ring-4 ring-blue-400/30'
                       : 'bg-slate-800 text-blue-400 border border-blue-500/30'
-                  }`}
+                    }`}
                 >
                   <Globe size={26} />
                 </div>
@@ -378,11 +374,10 @@ export const InteractiveArchitectureSimulator: React.FC<InteractiveArchitectureS
                   </span>
                 )}
                 <div
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
-                    packetStage === 'gateway'
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${packetStage === 'gateway'
                       ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/50 scale-105 ring-4 ring-indigo-400/30'
                       : 'bg-slate-800 text-indigo-400 border border-indigo-500/30'
-                  }`}
+                    }`}
                 >
                   <Shield size={26} />
                 </div>
@@ -411,13 +406,12 @@ export const InteractiveArchitectureSimulator: React.FC<InteractiveArchitectureS
                       <div
                         key={srv.id}
                         onClick={() => toggleServerHealth(srv.id)}
-                        className={`p-3 rounded-xl border transition-all cursor-pointer relative ${
-                          !srv.isHealthy
+                        className={`p-3 rounded-xl border transition-all cursor-pointer relative ${!srv.isHealthy
                             ? 'bg-rose-950/40 border-rose-800/80 opacity-70 hover:opacity-100'
                             : isTargeted
-                            ? 'bg-purple-900/60 border-purple-400 shadow-md shadow-purple-500/40 scale-[1.02]'
-                            : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'
-                        }`}
+                              ? 'bg-purple-900/60 border-purple-400 shadow-md shadow-purple-500/40 scale-[1.02]'
+                              : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'
+                          }`}
                         title="Click to toggle server healthy / down"
                       >
                         <div className="flex items-center justify-between">
@@ -428,8 +422,8 @@ export const InteractiveArchitectureSimulator: React.FC<InteractiveArchitectureS
                                 !srv.isHealthy
                                   ? 'text-rose-400'
                                   : isTargeted
-                                  ? 'text-purple-300 animate-pulse'
-                                  : 'text-purple-400'
+                                    ? 'text-purple-300 animate-pulse'
+                                    : 'text-purple-400'
                               }
                             />
                             <div>
@@ -445,11 +439,10 @@ export const InteractiveArchitectureSimulator: React.FC<InteractiveArchitectureS
 
                           <div className="flex items-center gap-1.5">
                             <span
-                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                                srv.isHealthy
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${srv.isHealthy
                                   ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60'
                                   : 'bg-rose-950 text-rose-300 border border-rose-800/60'
-                              }`}
+                                }`}
                             >
                               {srv.isHealthy ? 'Healthy' : 'Crashed'}
                             </span>
@@ -477,11 +470,10 @@ export const InteractiveArchitectureSimulator: React.FC<InteractiveArchitectureS
               {/* TIER 4: DATABASE & CACHE */}
               <div className="flex flex-col items-center text-center space-y-3 p-4 rounded-2xl bg-emerald-950/30 border border-emerald-800/50 backdrop-blur-sm">
                 <div
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
-                    packetStage === 'database'
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${packetStage === 'database'
                       ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/50 scale-105 ring-4 ring-emerald-400/30'
                       : 'bg-slate-800 text-emerald-400 border border-emerald-500/30'
-                  }`}
+                    }`}
                 >
                   <Database size={26} />
                 </div>
@@ -536,11 +528,10 @@ export const InteractiveArchitectureSimulator: React.FC<InteractiveArchitectureS
                 <button
                   type="button"
                   onClick={() => setIsAutoStepping(!isAutoStepping)}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    isAutoStepping
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${isAutoStepping
                       ? 'bg-amber-100 text-amber-800 border border-amber-200'
                       : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
-                  }`}
+                    }`}
                 >
                   {isAutoStepping ? <Pause size={12} /> : <Play size={12} />}
                   {isAutoStepping ? 'Pause Auto-Step' : 'Auto-Step'}
@@ -560,11 +551,10 @@ export const InteractiveArchitectureSimulator: React.FC<InteractiveArchitectureS
                       setIsAutoStepping(false);
                       setActiveStep(idx);
                     }}
-                    className={`p-3 rounded-2xl text-left border transition-all ${
-                      isSelected
+                    className={`p-3 rounded-2xl text-left border transition-all ${isSelected
                         ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm ring-2 ring-indigo-300'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className={`text-[10px] font-bold ${isSelected ? 'text-indigo-200' : 'text-slate-400'}`}>

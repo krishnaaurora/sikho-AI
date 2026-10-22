@@ -14,13 +14,6 @@ export interface IntelligentUiConceptData {
     whyItMatters: string;
     keyTakeaway: string;
   };
-  flashcards: Array<{
-    id: string;
-    front: string;
-    back: string;
-    category: string;
-    hint?: string;
-  }>;
   explanation?: {
     title: string;
     tagline: string;
@@ -127,29 +120,6 @@ function generateFallbackIntelligentUi(concept: string): IntelligentUiConceptDat
         whyItMatters: "Without load balancers, a sudden traffic spike crashes your single server, resulting in 100% outage.",
         keyTakeaway: "Decouples client ingress from server capacity, enabling zero-downtime deployments and horizontal scaling."
       },
-      flashcards: [
-        {
-          id: "fc-1",
-          front: "What is Round Robin load balancing?",
-          back: "Sequentially forwards each new client request to the next server in a circular list (Server 1 → 2 → 3 → 1).",
-          category: "Algorithms",
-          hint: "Think of dealing cards evenly around a poker table."
-        },
-        {
-          id: "fc-2",
-          front: "What is Layer 4 vs Layer 7 Load Balancing?",
-          back: "Layer 4 routes based purely on IP/TCP ports without reading HTTP payload. Layer 7 inspects HTTP headers, cookies, and URLs for smart routing.",
-          category: "OSI Stack",
-          hint: "Transport layer vs Application layer."
-        },
-        {
-          id: "fc-3",
-          front: "What is Active Health Checking?",
-          back: "The load balancer periodically pings /healthz. If a node fails 3 checks, it is evicted immediately without dropping live traffic.",
-          category: "Reliability",
-          hint: "How does the balancer detect dead nodes?"
-        }
-      ],
       explanation: {
         title: "In-Depth Architecture Breakdown: Load Balancing & Traffic Distribution",
         tagline: "How modern distributed systems eliminate single points of failure and scale horizontally",
@@ -287,29 +257,6 @@ function generateFallbackIntelligentUi(concept: string): IntelligentUiConceptDat
         whyItMatters: "Databases bottleneck under heavy I/O; an in-memory cache absorbs 90%+ of read volume.",
         keyTakeaway: "Cache hit ratio is the single biggest multiplier for application throughput."
       },
-      flashcards: [
-        {
-          id: "fc-1",
-          front: "What is Cache Stampede (Thundering Herd)?",
-          back: "When a popular key expires, hundreds of concurrent requests simultaneously hit the database to recompute it, causing database meltdown.",
-          category: "Concurrency",
-          hint: "Everyone rushing through a single door at once."
-        },
-        {
-          id: "fc-2",
-          front: "What is Write-Through vs Cache-Aside?",
-          back: "Cache-Aside: The application checks cache, falls back to DB on miss, then writes to cache. Write-Through: The app always writes to cache, which synchronously updates DB.",
-          category: "Patterns",
-          hint: "Who is responsible for orchestrating the save?"
-        },
-        {
-          id: "fc-3",
-          front: "What is Cache Penetration vs Avalanche?",
-          back: "Penetration: Queries for non-existent keys bypass cache and hit DB. Avalanche: Hundreds of keys expire at the exact same second.",
-          category: "Failure Modes",
-          hint: "Missing keys vs synchronized TTL expiration."
-        }
-      ],
       simulator: {
         title: "Cache Hit Ratio & Database Load Simulator",
         description: "Test how caching TTL, hit percentage, and memory eviction impact database queries per second.",
@@ -376,29 +323,6 @@ function generateFallbackIntelligentUi(concept: string): IntelligentUiConceptDat
       whyItMatters: `Mastering ${concept} allows you to design scalable, production-ready systems that do not break under unexpected load.`,
       keyTakeaway: `Isolate bottlenecks early, measure trade-offs empirically, and design for asynchronous decoupling.`
     },
-    flashcards: [
-      {
-        id: "fc-1",
-        front: `What core problem does ${concept} solve?`,
-        back: `It provides deterministic guarantees, reduces algorithmic complexity, and ensures fault-tolerant operation under real-world conditions.`,
-        category: "Foundations",
-        hint: "Consider what fails if this mechanism is absent."
-      },
-      {
-        id: "fc-2",
-        front: `What is the primary trade-off when adopting ${concept}?`,
-        back: `Usually increased architectural complexity or memory overhead in exchange for dramatic latency reduction or consistency.`,
-        category: "Trade-offs",
-        hint: "No free lunch in computer science."
-      },
-      {
-        id: "fc-3",
-        front: `How do senior engineers benchmark ${concept} in production?`,
-        back: `Through synthetic stress testing, percentile latency tracking (p95/p99), and continuous profiling under degraded network conditions.`,
-        category: "Observability",
-        hint: "Averages hide latency spikes."
-      }
-    ],
     explanation: {
       title: `In-Depth Architecture Breakdown: ${concept || "System Architecture"}`,
       tagline: "How modern distributed systems eliminate single points of failure and scale horizontally",
@@ -513,17 +437,6 @@ Strictly format your response as a valid JSON object matching this schema:
     "whyItMatters": "Why this exists and what breaks without it",
     "keyTakeaway": "Single most important rule of thumb"
   },
-  "flashcards": [
-    {
-      "id": "fc-1",
-      "front": "Challenging question testing deep understanding",
-      "back": "Clear, concise, memorable answer",
-      "category": "Core Concept | Edge Case | Mechanism",
-      "hint": "Subtle clue"
-    },
-    { "id": "fc-2", "front": "...", "back": "...", "category": "...", "hint": "..." },
-    { "id": "fc-3", "front": "...", "back": "...", "category": "...", "hint": "..." }
-  ],
   "explanation": {
     "title": "In-Depth Architecture Breakdown: ${targetConcept}",
     "tagline": "How modern distributed systems eliminate single points of failure and scale horizontally",
@@ -616,7 +529,7 @@ Chapter Context: "${chapterTitle || "Advanced Technical Chapter"}"`;
 
   try {
     const aiData = await queryAIWithJsonRotation(systemPrompt, userPrompt);
-    if (aiData && aiData.concept && (aiData.flashcards || aiData.explanation || aiData.flowSteps)) {
+    if (aiData && aiData.concept && (aiData.explanation || aiData.flowSteps)) {
       const fallback = generateFallbackIntelligentUi(targetConcept);
       const mergedData = {
         ...fallback,
@@ -624,7 +537,6 @@ Chapter Context: "${chapterTitle || "Advanced Technical Chapter"}"`;
         explanation: aiData.explanation || fallback.explanation,
         architectureSim: aiData.architectureSim || fallback.architectureSim,
         flowSteps: aiData.flowSteps || fallback.flowSteps,
-        flashcards: aiData.flashcards || fallback.flashcards,
         quiz: aiData.quiz || fallback.quiz,
       };
       return sendSuccessResponse(res, mergedData, "Intelligent UI concept generated successfully");

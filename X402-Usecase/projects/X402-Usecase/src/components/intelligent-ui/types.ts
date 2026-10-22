@@ -1,11 +1,3 @@
-export interface IntelligentUiFlashcard {
-  id: string;
-  front: string;
-  back: string;
-  category: string;
-  hint?: string;
-}
-
 export interface SimulatorParameter {
   id: string;
   label: string;
@@ -126,7 +118,6 @@ export interface IntelligentUiConceptData {
     whyItMatters: string;
     keyTakeaway: string;
   };
-  flashcards: IntelligentUiFlashcard[];
   explanation: ConceptExplanationConfig;
   architectureSim?: ArchitectureSimulationConfig;
   flowSteps: FlowStepNode[];
