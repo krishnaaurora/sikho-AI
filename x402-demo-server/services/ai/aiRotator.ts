@@ -1,12 +1,28 @@
 import Groq from "groq-sdk";
 import { config } from "../../config";
 
-// Setup single rotated client request helper
-const keys = config.groqApiKeys;
-if (!keys || keys.length === 0) {
-  throw new Error("No Groq API keys configured in .env");
+// Collect all active, non-empty Groq API keys from existing environment variables
+const rawKeys: (string | undefined)[] = [
+  ...(config.groqApiKeys || []),
+  ...(config.groqResumeKeys || []),
+  ...(config.groqInterviewPrepKeys || []),
+  process.env.GROQ_API_KEY_1,
+  process.env.GROQ_API_KEY_2,
+  process.env.GROQ_API_KEY_3,
+  process.env.GROQ_RESUME_KEY_1,
+];
+
+const validKeys: string[] = Array.from(
+  new Set(
+    rawKeys.filter((k): k is string => typeof k === "string" && k.trim().length > 0)
+  )
+);
+
+if (validKeys.length === 0) {
+  console.warn("[aiRotator] Warning: No active Groq API keys found in environment variables.");
 }
-const clientPool = keys.map(k => new Groq({ apiKey: k }));
+
+const clientPool: Groq[] = validKeys.map(k => new Groq({ apiKey: k }));
 let keyRotatorIndex = 0;
 
 export async function queryAIWithJsonRotation(systemPrompt: string, userPrompt: string): Promise<any> {
@@ -36,9 +52,18 @@ export async function queryAIWithJsonRotation(systemPrompt: string, userPrompt: 
 }
 
 // Setup Interview Prep rotator
-const interviewPrepKeys = config.groqInterviewPrepKeys;
-const interviewPrepClientPool = interviewPrepKeys && interviewPrepKeys.length > 0
-  ? interviewPrepKeys.map(k => new Groq({ apiKey: k }))
+const rawInterviewKeys = [
+  ...(config.groqInterviewPrepKeys || []),
+  process.env.GROQ_INTERVIEW_PREP_KEY_1,
+  process.env.GROQ_INTERVIEW_PREP_KEY_2,
+];
+const validInterviewKeys = Array.from(
+  new Set(
+    rawInterviewKeys.filter((k): k is string => typeof k === "string" && k.trim().length > 0)
+  )
+);
+const interviewPrepClientPool = validInterviewKeys.length > 0
+  ? validInterviewKeys.map(k => new Groq({ apiKey: k }))
   : clientPool; // fallback to generic pool if not configured
 let interviewPrepKeyRotatorIndex = 0;
 
