@@ -6,7 +6,7 @@ import {
   BookOpen, Lock, Unlock, Loader2, AlertCircle,
   ChevronDown, ChevronRight, ArrowRight, Send,
   Sparkles, Code2, Compass, FlaskConical, PenLine,
-  Clock, RotateCcw, Plus, Zap
+  Clock, RotateCcw, Plus, Zap, Maximize2, Sliders, Layers
 } from 'lucide-react';
 import { learnerApi } from '../utils/api';
 import { useWallet } from '@txnlab/use-wallet-react';
@@ -14,6 +14,7 @@ import { createX402Fetch } from '../utils/x402';
 import { API_ENDPOINTS } from '../config/api';
 import ConnectWallet from '../components/ConnectWallet';
 import boyIllustration from '../assets/boy_illustration_transparent.png';
+import { IntelligentUIContainer } from '../components/intelligent-ui';
 
 interface Lesson {
   _id: string;
@@ -74,6 +75,10 @@ const LearnerDashboard: React.FC = () => {
   // Intent router modal states
   const [showRouterModal, setShowRouterModal] = useState(false);
   const [routerTopic, setRouterTopic] = useState('');
+
+  // Open Intelligent UI concept studio state
+  const [lessonViewModes, setLessonViewModes] = useState<Record<string, 'standard' | 'intelligent-ui'>>({});
+  const [fullscreenConcept, setFullscreenConcept] = useState<{ lesson: Lesson; chapter: Chapter } | null>(null);
 
   const toggleChapter = (chapterId: string, isUnlocked: boolean) => {
     if (!isUnlocked) return;
@@ -549,7 +554,17 @@ const LearnerDashboard: React.FC = () => {
                               : <ChevronRight size={14} className="text-slate-400" />
                             )}
                           </p>
-                          <p className="text-xs text-slate-400 mt-0.5">{chapter.totalLessons} lessons</p>
+                          <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                            <span>{chapter.totalLessons} lessons</span>
+                            {chapter.isUnlocked && (
+                              <>
+                                <span>•</span>
+                                <span className="text-indigo-600 font-semibold inline-flex items-center gap-1 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full text-[11px]">
+                                  <Sparkles size={11} /> Open Intelligent UI Interactive Studio
+                                </span>
+                              </>
+                            )}
+                          </p>
                         </div>
                       </div>
 
@@ -574,37 +589,99 @@ const LearnerDashboard: React.FC = () => {
 
                     {expandedChapters.has(chapter._id) && chapter.lessons && (
                       <div className="border-t border-slate-200 bg-white">
-                        {chapter.lessons.map(lesson => (
-                          <div key={lesson._id} className="border-b border-slate-100 last:border-0">
-                            <div
-                              className="flex items-center justify-between px-6 py-3.5 cursor-pointer hover:bg-slate-50 transition-colors"
-                              onClick={() => toggleLesson(lesson._id)}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
-                                  {expandedLessons.has(lesson._id)
-                                    ? <ChevronDown size={11} className="text-slate-500" />
-                                    : <ChevronRight size={11} className="text-slate-500" />
-                                  }
+                        {chapter.lessons.map(lesson => {
+                          const currentMode = lessonViewModes[lesson._id] || (chapter.isUnlocked ? 'intelligent-ui' : 'standard');
+
+                          return (
+                            <div key={lesson._id} className="border-b border-slate-100 last:border-0">
+                              <div
+                                className="flex items-center justify-between px-6 py-3.5 cursor-pointer hover:bg-slate-50 transition-colors"
+                                onClick={() => toggleLesson(lesson._id)}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
+                                    {expandedLessons.has(lesson._id)
+                                      ? <ChevronDown size={11} className="text-slate-500" />
+                                      : <ChevronRight size={11} className="text-slate-500" />
+                                    }
+                                  </div>
+                                  <span className="text-sm font-semibold text-slate-800">{lesson.title}</span>
+                                  {lesson.isFree && !chapter.isUnlocked && (
+                                    <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full uppercase">Free</span>
+                                  )}
                                 </div>
-                                <span className="text-sm font-medium text-slate-700">{lesson.title}</span>
-                                {lesson.isFree && !chapter.isUnlocked && (
-                                  <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full uppercase">Free</span>
-                                )}
+
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] font-extrabold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                    <Sparkles size={10} /> Intelligent UI Ready
+                                  </span>
+                                </div>
                               </div>
+
+                              {expandedLessons.has(lesson._id) && (
+                                <div className="px-6 pb-6 pt-2 bg-slate-50/50 space-y-4">
+                                  {/* View mode switcher toolbar */}
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 pb-3 border-b border-slate-200">
+                                    <div className="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl w-fit">
+                                      <button
+                                        type="button"
+                                        onClick={() => setLessonViewModes(prev => ({ ...prev, [lesson._id]: 'intelligent-ui' }))}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                          currentMode === 'intelligent-ui'
+                                            ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-xs'
+                                            : 'text-slate-600 hover:text-slate-900'
+                                        }`}
+                                      >
+                                        <Sparkles size={13} /> Intelligent UI Studio
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => setLessonViewModes(prev => ({ ...prev, [lesson._id]: 'standard' }))}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                          currentMode === 'standard'
+                                            ? 'bg-white text-slate-900 shadow-xs'
+                                            : 'text-slate-600 hover:text-slate-900'
+                                        }`}
+                                      >
+                                        <BookOpen size={13} /> Standard Notes
+                                      </button>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setFullscreenConcept({ lesson, chapter })}
+                                      className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs w-fit"
+                                      title="Open Fullscreen Concept Studio"
+                                    >
+                                      <Maximize2 size={13} /> Fullscreen Studio
+                                    </button>
+                                  </div>
+
+                                  {/* Render chosen mode */}
+                                  {currentMode === 'intelligent-ui' ? (
+                                    <IntelligentUIContainer
+                                      conceptName={lesson.title}
+                                      chapterTitle={chapter.title}
+                                      courseTopic={selectedCourse.title}
+                                      lessonContent={lesson.content}
+                                    />
+                                  ) : (
+                                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+                                      <div className="prose prose-sm max-w-none text-slate-700">
+                                        {lesson.content ? (
+                                          <div dangerouslySetInnerHTML={{ __html: lesson.content.replace(/\n/g, '<br/><br/>') }} />
+                                        ) : (
+                                          <p className="italic text-slate-400">Content not available.</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                            {expandedLessons.has(lesson._id) && (
-                              <div className="px-8 pb-5 pt-2 bg-white">
-                                <div className="prose prose-sm max-w-none text-slate-700">
-                                  {lesson.content
-                                    ? <div dangerouslySetInnerHTML={{ __html: lesson.content.replace(/\n/g, '<br/><br/>') }} />
-                                    : <p className="italic text-slate-400">Content not available.</p>
-                                  }
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -694,6 +771,18 @@ const LearnerDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── FULLSCREEN INTELLIGENT UI STUDIO MODAL ── */}
+      {fullscreenConcept && (
+        <IntelligentUIContainer
+          conceptName={fullscreenConcept.lesson.title}
+          chapterTitle={fullscreenConcept.chapter.title}
+          courseTopic={selectedCourse?.title}
+          lessonContent={fullscreenConcept.lesson.content}
+          isModal={true}
+          onClose={() => setFullscreenConcept(null)}
+        />
       )}
 
       <ConnectWallet openModal={walletModalOpen} closeModal={() => setWalletModalOpen(false)} />

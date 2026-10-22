@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export enum SikhoAppType {
   LEARN_ANYTHING = "Learn Anything",
+  INTERACTIVE_LEARNING = "Interactive Learning",
   RESUME_INTELLIGENCE = "Resume Intelligence",
   CAREER_ROADMAP = "Career Roadmap",
   INTERVIEW_MISSION = "Interview Mission",

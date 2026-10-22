@@ -6,6 +6,8 @@ import RatingStars from '../components/marketplace/RatingStars';
 import DifficultyBadge from '../components/marketplace/DifficultyBadge';
 import LoadingSkeleton from '../components/marketplace/LoadingSkeleton';
 import type { CourseDetail, Chapter, Review, Course } from '../types';
+import { Sparkles } from 'lucide-react';
+import { IntelligentUIContainer } from '../components/intelligent-ui';
 
 const CourseDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +15,7 @@ const CourseDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'overview' | 'curriculum' | 'reviews' | 'pricing'>('overview');
+  const [previewConcept, setPreviewConcept] = useState<{ title: string; chapterTitle: string } | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -198,6 +201,16 @@ const CourseDetailPage: React.FC = () => {
                       </button>
                     </>
                   )}
+
+                  <div className="p-3.5 bg-gradient-to-r from-indigo-50 to-violet-50 rounded-xl border border-indigo-100 mb-4 space-y-1">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700">
+                      <Sparkles size={13} className="text-indigo-600" />
+                      <span>Includes Open Intelligent UI Interactive Studio for every concept.</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
+                      Every chapter includes interactive 3D flashcards, live parameter simulators, visual trade-off charts & quizzes.
+                    </p>
+                  </div>
 
                   <div className="space-y-3">
                     {courseIncludes.map((item, index) => (
@@ -393,9 +406,19 @@ const CourseDetailPage: React.FC = () => {
                                       </span>
                                     )}
                                   </div>
-                                  {lesson.duration && (
-                                    <span className="text-sm text-gray-500">{formatDuration(lesson.duration)}</span>
-                                  )}
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => setPreviewConcept({ title: lesson.title, chapterTitle: chapter.title })}
+                                      className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-full transition-colors border border-indigo-200"
+                                      title="Explore interactive 3D flashcards, live simulator & quiz"
+                                    >
+                                      <Sparkles size={11} /> Interactive Studio
+                                    </button>
+                                    {lesson.duration && (
+                                      <span className="text-sm text-gray-500">{formatDuration(lesson.duration)}</span>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -501,6 +524,16 @@ const CourseDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {previewConcept && (
+        <IntelligentUIContainer
+          conceptName={previewConcept.title}
+          chapterTitle={previewConcept.chapterTitle}
+          courseTopic={course.title}
+          isModal={true}
+          onClose={() => setPreviewConcept(null)}
+        />
+      )}
     </div>
   );
 };

@@ -26,6 +26,8 @@ export const API_ENDPOINTS = {
   LEARNER_UNLOCK_CHAPTER_X402: (chapterId: string) => `${API_BASE_URL}/learners/chapters/unlock?chapterId=${chapterId}`,
   AI_EXPLAIN: `${API_BASE_URL}/ai/explain`,
   AI_ROUTE_INTENT: `${API_BASE_URL}/ai/route-intent`,
+  AI_INTELLIGENT_UI: `${API_BASE_URL}/ai/intelligent-ui`,
+  AI_INTELLIGENT_UI_ASK: `${API_BASE_URL}/ai/intelligent-ui/ask`,
   SERVICES_REGISTRY: `${API_BASE_URL}/services/registry`,
   SERVICES_ORCHESTRATE_REVIEW: `${API_BASE_URL}/services/code-review/orchestrate`,
   SERVICES_TRANSACTIONS: `${API_BASE_URL}/services/transactions`,

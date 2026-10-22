@@ -424,6 +424,29 @@ export const aiApi = {
       body: JSON.stringify(data),
     });
   },
+
+  async getIntelligentUi(data: {
+    concept: string;
+    lessonTitle?: string;
+    chapterTitle?: string;
+    courseTopic?: string;
+  }) {
+    return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.AI_INTELLIGENT_UI, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async askIntelligentUi(data: {
+    concept: string;
+    question: string;
+    currentParameters?: any;
+  }) {
+    return fetchAPI<ApiResponse<any>>(API_ENDPOINTS.AI_INTELLIGENT_UI_ASK, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 export const servicesApi = {

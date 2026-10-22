@@ -17,6 +17,7 @@ import { validate } from "../middlewares/validate.middleware";
 import { explainRequestSchema } from "../types/explain.types";
 import { uploadSingle } from "../middlewares/upload.middleware";
 import { visualExplain } from "../controllers/ai/visualExplain.controller";
+import { getIntelligentUiConcept, askConceptAssistant } from "../controllers/ai/intelligentUi.controller";
 
 // New MVP imports
 import {
@@ -160,6 +161,19 @@ router.post(
   "/visual-explain",
   optionalAuthenticate,
   visualExplain
+);
+
+// Open Intelligent UI routes for interactive learning concepts
+router.post(
+  "/intelligent-ui",
+  optionalAuthenticate,
+  getIntelligentUiConcept
+);
+
+router.post(
+  "/intelligent-ui/ask",
+  optionalAuthenticate,
+  askConceptAssistant
 );
 
 router.post(

@@ -3,6 +3,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import { sendSuccessResponse, sendErrorResponse } from "../../utils/response";
 import { AppError } from "../../utils/errors";
 import { explainConcept } from "../../services/ai";
+import { getIntelligentUiConcept } from "./intelligentUi.controller";
 
 // This is a placeholder - in a real implementation, you would use the Groq SDK
 // For now, we'll simulate the AI course generation
@@ -92,8 +93,11 @@ export const analyze = asyncHandler(async (req: Request, res: Response) => {
   );
 });
 
-export const explain = asyncHandler(async (req: Request, res: Response) => {
-  const { query, learningStyle, depth, examples, language, sourceId } = req.body;
+export const explain = asyncHandler(async (req: Request, res: Response, next: any) => {
+  const { query, learningStyle, depth, examples, language, sourceId, concept, format } = req.body;
+  if (concept || format === "intelligent-ui" || req.headers["x-intelligent-ui"]) {
+    return getIntelligentUiConcept(req, res, next);
+  }
   const result = await explainConcept({ query, learningStyle, depth, examples, language, sourceId });
   
   // Format to match user's custom schema format specification
