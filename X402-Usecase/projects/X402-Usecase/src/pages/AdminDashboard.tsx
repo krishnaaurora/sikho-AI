@@ -14,7 +14,7 @@ import {
   ExternalLink, Sparkles, BookOpen, Code2, Briefcase, FileText, Target, MessageSquare,
   UserCheck, Eye, EyeOff, RefreshCw, X, DollarSign, Layers,
   UserX, UserPlus, Award, Zap, Mail, Send, Check, Code, FileCode, Trash2, Key, Copy, Lock,
-  Brain, Lightbulb
+  Brain, Lightbulb, GraduationCap, Building2, ListOrdered
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 
@@ -48,7 +48,27 @@ const AdminDashboard: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
 
   // Active Navigation Tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'payments' | 'apps' | 'email' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'colleges' | 'payments' | 'apps' | 'email' | 'settings'>('overview');
+
+  // Registered Colleges State
+  const [collegesData, setCollegesData] = useState<{
+    colleges: Array<{
+      name: string;
+      count: number;
+      students: Array<{ name: string; email: string; degree?: string; targetRole?: string; joinedAt?: string }>;
+    }>;
+    collegeNames: string[];
+    totalColleges: number;
+    totalStudentsWithCollege: number;
+  }>({
+    colleges: [],
+    collegeNames: [],
+    totalColleges: 0,
+    totalStudentsWithCollege: 0,
+  });
+  const [collegeSearch, setCollegeSearch] = useState('');
+  const [collegeViewMode, setCollegeViewMode] = useState<'pure-list' | 'cards' | 'table'>('pure-list');
+  const [copiedCollegeList, setCopiedCollegeList] = useState(false);
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -286,6 +306,12 @@ const AdminDashboard: React.FC = () => {
         setEmailUpdatedBy(emailRes.data.updatedBy || 'system');
         setEmailUpdatedAt(emailRes.data.updatedAt || '');
       }
+
+      // 7. Registered Colleges
+      const collegesRes = await adminApi.getColleges();
+      if (collegesRes.success && collegesRes.data) {
+        setCollegesData(collegesRes.data);
+      }
     } catch (err: any) {
       console.error(err);
       enqueueSnackbar(err.message || 'Failed to fetch admin metrics', { variant: 'error' });
@@ -447,8 +473,30 @@ const AdminDashboard: React.FC = () => {
     return matchesStatus && matchesFeature && matchesSearch;
   });
 
+  // Filtered Colleges & Names
+  const filteredColleges = (collegesData.colleges || []).filter((c) =>
+    c.name.toLowerCase().includes(collegeSearch.toLowerCase())
+  );
+  const filteredCollegeNames = (collegesData.collegeNames || []).filter((name) =>
+    name.toLowerCase().includes(collegeSearch.toLowerCase())
+  );
+
+  const copyAllCollegeNames = () => {
+    if (filteredCollegeNames.length === 0) return;
+    const text = filteredCollegeNames.join('\n');
+    navigator.clipboard.writeText(text);
+    setCopiedCollegeList(true);
+    enqueueSnackbar(`Copied ${filteredCollegeNames.length} college names to clipboard`, { variant: 'success' });
+    setTimeout(() => setCopiedCollegeList(false), 2500);
+  };
+
+  const copySingleCollege = (name: string) => {
+    navigator.clipboard.writeText(name);
+    enqueueSnackbar(`Copied "${name}"`, { variant: 'success' });
+  };
+
   // CSV Export Handler
-  const handleExportCsv = async (type: 'users' | 'payments' | 'app-usage') => {
+  const handleExportCsv = async (type: 'users' | 'payments' | 'app-usage' | 'colleges') => {
     try {
       await adminApi.downloadCsv(type);
       enqueueSnackbar(`Successfully exported ${type} report to CSV`, { variant: 'success' });
@@ -508,17 +556,21 @@ const AdminDashboard: React.FC = () => {
           {[
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'users', label: 'User Management', icon: Users },
+            { id: 'colleges', label: 'Registered Colleges', icon: GraduationCap, badge: collegesData.totalColleges },
             { id: 'payments', label: 'Payments & Ledger', icon: CreditCard },
             { id: 'apps', label: 'Application Usage', icon: BarChart3 },
             { id: 'email', label: 'Email Templates', icon: Mail },
             { id: 'settings', label: 'Settings & Security', icon: Settings },
-          ].map((item) => {
+          ].map((item: any) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id as any)}
+                onClick={() => {
+                  setActiveTab(item.id as any);
+                  setMobileSidebarOpen(false);
+                }}
                 title={sidebarCollapsed ? item.label : undefined}
                 className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-0 py-3' : 'gap-3 px-3.5 py-3'} rounded-xl text-xs font-semibold transition-all ${
                   isActive
@@ -528,7 +580,16 @@ const AdminDashboard: React.FC = () => {
               >
                 <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                 {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
-                {!sidebarCollapsed && isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto text-white/80 shrink-0" />}
+                {!sidebarCollapsed && item.badge !== undefined && item.badge > 0 && (
+                  <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded-md font-bold ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-300'
+                  }`}>
+                    {item.badge}
+                  </span>
+                )}
+                {!sidebarCollapsed && isActive && item.badge === undefined && (
+                  <ChevronRight className="w-3.5 h-3.5 ml-auto text-white/80 shrink-0" />
+                )}
               </button>
             );
           })}
@@ -584,6 +645,7 @@ const AdminDashboard: React.FC = () => {
             <h2 className="text-base font-bold text-slate-900 capitalize tracking-tight flex items-center gap-2">
               {activeTab === 'overview' && 'Dashboard Overview'}
               {activeTab === 'users' && 'User Management & Learner Profiles'}
+              {activeTab === 'colleges' && 'Registered Colleges & Universities'}
               {activeTab === 'payments' && 'Payments & Ledger (All Features)'}
               {activeTab === 'apps' && 'Application Usage Analytics'}
               {activeTab === 'email' && 'Welcome Email Template & Auto-Dispatch'}
@@ -604,7 +666,7 @@ const AdminDashboard: React.FC = () => {
 
             {/* Quick Export CSV Button */}
             <button
-              onClick={() => handleExportCsv(activeTab === 'users' ? 'users' : activeTab === 'payments' ? 'payments' : 'app-usage')}
+              onClick={() => handleExportCsv(activeTab === 'users' ? 'users' : activeTab === 'payments' ? 'payments' : activeTab === 'colleges' ? 'colleges' : 'app-usage')}
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all"
             >
               <Download className="w-3.5 h-3.5" />
@@ -662,19 +724,24 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* 6 Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+              {/* 7 Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4">
                 {[
-                  { label: 'Total Registered Users', val: overviewData.summary?.totalRegisteredUsers, icon: Users, color: 'text-indigo-600 bg-indigo-50 border-indigo-100' },
+                  { label: 'Total Registered Users', val: overviewData.summary?.totalRegisteredUsers, icon: Users, color: 'text-indigo-600 bg-indigo-50 border-indigo-100', tab: 'users' },
+                  { label: 'Registered Colleges', val: `${collegesData.totalColleges} Campuses`, icon: GraduationCap, color: 'text-blue-600 bg-blue-50 border-blue-100', tab: 'colleges' },
                   { label: 'Daily / Monthly Active', val: `${overviewData.summary?.dailyActiveUsers} DAU / ${overviewData.summary?.monthlyActiveUsers} MAU`, icon: Activity, color: 'text-sky-600 bg-sky-50 border-sky-100' },
-                  { label: 'Successful Payments', val: overviewData.summary?.totalSuccessfulPayments, icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
-                  { label: 'Total Revenue (USDC)', val: `$${(overviewData.summary?.totalRevenueUSDC || 0).toFixed(2)}`, icon: DollarSign, color: 'text-green-600 bg-green-50 border-green-100' },
-                  { label: 'Most-Used Application', val: overviewData.summary?.mostUsedApp, icon: Sparkles, color: 'text-amber-600 bg-amber-50 border-amber-100' },
-                  { label: 'Total AI Feature Usage', val: overviewData.summary?.totalAiFeatureUsage, icon: Layers, color: 'text-purple-600 bg-purple-50 border-purple-100' },
-                ].map((card, idx) => {
+                  { label: 'Successful Payments', val: overviewData.summary?.totalSuccessfulPayments, icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 border-emerald-100', tab: 'payments' },
+                  { label: 'Total Revenue (USDC)', val: `$${(overviewData.summary?.totalRevenueUSDC || 0).toFixed(2)}`, icon: DollarSign, color: 'text-green-600 bg-green-50 border-green-100', tab: 'payments' },
+                  { label: 'Most-Used Application', val: overviewData.summary?.mostUsedApp, icon: Sparkles, color: 'text-amber-600 bg-amber-50 border-amber-100', tab: 'apps' },
+                  { label: 'Total AI Feature Usage', val: overviewData.summary?.totalAiFeatureUsage, icon: Layers, color: 'text-purple-600 bg-purple-50 border-purple-100', tab: 'apps' },
+                ].map((card: any, idx) => {
                   const Icon = card.icon;
                   return (
-                    <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all">
+                    <div
+                      key={idx}
+                      onClick={() => card.tab && setActiveTab(card.tab)}
+                      className={`bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all ${card.tab ? 'cursor-pointer hover:border-indigo-300' : ''}`}
+                    >
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-tight">{card.label}</span>
                         <span className={`p-2 rounded-xl border ${card.color}`}>
@@ -984,6 +1051,11 @@ const AdminDashboard: React.FC = () => {
                           <td className="py-3.5 px-4 text-slate-600 font-medium">{maskText(u.email, true)}</td>
                           <td className="py-3.5 px-4">
                             <p className="font-semibold text-slate-800">{u.educationLevel || 'General'}</p>
+                            {u.collegeUniversity && u.collegeUniversity !== 'N/A' && (
+                              <p className="text-[10px] text-indigo-600 font-semibold truncate max-w-[170px]" title={u.collegeUniversity}>
+                                🏫 {u.collegeUniversity}
+                              </p>
+                            )}
                             <p className="text-[10px] text-slate-400">{u.targetRole || 'Learner'}</p>
                           </td>
                           <td className="py-3.5 px-4 text-slate-500">{new Date(u.createdAt).toLocaleDateString()}</td>
@@ -1013,6 +1085,339 @@ const AdminDashboard: React.FC = () => {
                   </table>
                 </div>
               </div>
+
+            </div>
+          )}
+
+          {/* REGISTERED COLLEGES TAB (PURE COLLEGES NAMES LIST & DIRECTORY) */}
+          {activeTab === 'colleges' && (
+            <div className="space-y-6">
+
+              {/* Top Banner Card */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-xs shrink-0">
+                    <GraduationCap className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-lg font-bold text-slate-900">Registered Colleges & Universities</h3>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        {collegesData.totalColleges} {collegesData.totalColleges === 1 ? 'College' : 'Colleges'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Direct index of colleges and universities entered by registered users across Sikho AI
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={copyAllCollegeNames}
+                    disabled={filteredCollegeNames.length === 0}
+                    className="text-xs h-9 font-semibold border-slate-200 hover:bg-slate-50 text-slate-700 shadow-xs gap-1.5"
+                  >
+                    {copiedCollegeList ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedCollegeList ? 'Copied Names!' : 'Copy All College Names'}
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    onClick={() => handleExportCsv('colleges')}
+                    className="text-xs h-9 font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs gap-1.5"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Export CSV
+                  </Button>
+                </div>
+              </div>
+
+              {/* Metric Summary Tiles */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Registered Colleges</span>
+                    <GraduationCap className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <p className="text-2xl font-extrabold text-slate-900">{collegesData.totalColleges}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Distinct institutions represented</p>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Learners With College</span>
+                    <Users className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <p className="text-2xl font-extrabold text-emerald-600">{collegesData.totalStudentsWithCollege}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Students who submitted their college</p>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Active Search Matches</span>
+                    <Search className="w-4 h-4 text-sky-600" />
+                  </div>
+                  <p className="text-2xl font-extrabold text-sky-600">{filteredCollegeNames.length}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{collegeSearch ? `Filtered by "${collegeSearch}"` : 'All colleges currently listed'}</p>
+                </div>
+              </div>
+
+              {/* Controls Bar: Search & View Toggle */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
+                <div className="relative w-full md:max-w-md">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={collegeSearch}
+                    onChange={(e) => setCollegeSearch(e.target.value)}
+                    placeholder="Search college or university name..."
+                    className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                  />
+                  {collegeSearch && (
+                    <button
+                      onClick={() => setCollegeSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* View Mode Toggle */}
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 self-stretch md:self-auto justify-center">
+                  <button
+                    onClick={() => setCollegeViewMode('pure-list')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                      collegeViewMode === 'pure-list'
+                        ? 'bg-white text-indigo-700 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <ListOrdered className="w-3.5 h-3.5" />
+                    Only College Names List
+                  </button>
+                  <button
+                    onClick={() => setCollegeViewMode('cards')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                      collegeViewMode === 'cards'
+                        ? 'bg-white text-indigo-700 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Building2 className="w-3.5 h-3.5" />
+                    College Cards
+                  </button>
+                  <button
+                    onClick={() => setCollegeViewMode('table')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                      collegeViewMode === 'table'
+                        ? 'bg-white text-indigo-700 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    Detailed Table
+                  </button>
+                </div>
+              </div>
+
+              {/* VIEW 1: ONLY COLLEGE NAMES LIST (Primary Focus Requested by User) */}
+              {collegeViewMode === 'pure-list' && (
+                <div className="space-y-4">
+                  <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                    <div className="p-4 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                          Colleges List ({filteredCollegeNames.length})
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                          — Clean list of all registered colleges
+                        </span>
+                      </div>
+                      <button
+                        onClick={copyAllCollegeNames}
+                        className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                      >
+                        <Copy className="w-3 h-3" /> Copy Full List
+                      </button>
+                    </div>
+
+                    <div className="divide-y divide-slate-100">
+                      {filteredColleges.map((c, index) => (
+                        <div
+                          key={c.name}
+                          className="p-3.5 px-5 flex items-center justify-between hover:bg-slate-50/80 transition-colors group"
+                        >
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center shrink-0 font-mono">
+                              {index + 1}
+                            </span>
+                            <div className="truncate">
+                              <span className="text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                {c.name}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                              {c.count} {c.count === 1 ? 'Student' : 'Students'}
+                            </span>
+                            <button
+                              onClick={() => copySingleCollege(c.name)}
+                              title="Copy College Name"
+                              className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {filteredCollegeNames.length === 0 && (
+                        <div className="py-16 text-center">
+                          <GraduationCap className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                          <p className="text-sm font-semibold text-slate-700">No colleges found</p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            {collegeSearch ? `No college names match "${collegeSearch}"` : 'No registered students have submitted college names yet'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Quick Plain Text Box for copy-pasting */}
+                  {filteredCollegeNames.length > 0 && (
+                    <div className="bg-slate-900 text-slate-200 rounded-2xl p-4 shadow-xs border border-slate-800">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Code className="w-3.5 h-3.5 text-indigo-400" /> Plain Text College Names List (Ready to Copy)
+                        </span>
+                        <button
+                          onClick={copyAllCollegeNames}
+                          className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                        >
+                          <Copy className="w-3 h-3" /> Copy All
+                        </button>
+                      </div>
+                      <pre className="font-mono text-xs bg-slate-950/70 p-3 rounded-xl border border-slate-800/80 max-h-48 overflow-y-auto text-slate-300 select-all leading-relaxed whitespace-pre-wrap">
+                        {filteredCollegeNames.join('\n')}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* VIEW 2: COLLEGE CARDS */}
+              {collegeViewMode === 'cards' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredColleges.map((c, idx) => (
+                    <div
+                      key={c.name}
+                      className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+                            <GraduationCap className="w-4 h-4" />
+                          </div>
+                          <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                            {c.count} {c.count === 1 ? 'Registered Learner' : 'Registered Learners'}
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-slate-900 text-sm leading-snug line-clamp-2">
+                          {c.name}
+                        </h4>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                        <span className="text-slate-400 text-[11px]">Rank #{idx + 1} by student count</span>
+                        <button
+                          onClick={() => copySingleCollege(c.name)}
+                          className="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 text-[11px]"
+                        >
+                          <Copy className="w-3 h-3" /> Copy
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {filteredColleges.length === 0 && (
+                    <div className="col-span-full py-16 text-center bg-white border border-slate-200 rounded-2xl">
+                      <GraduationCap className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                      <p className="text-sm font-semibold text-slate-700">No colleges found</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* VIEW 3: DETAILED TABLE */}
+              {collegeViewMode === 'table' && (
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                        <tr>
+                          <th className="py-3.5 px-4 font-semibold w-16">#</th>
+                          <th className="py-3.5 px-4 font-semibold">College / University Name</th>
+                          <th className="py-3.5 px-4 font-semibold">Registered Learners</th>
+                          <th className="py-3.5 px-4 font-semibold">Share of Learners</th>
+                          <th className="py-3.5 px-4 font-semibold text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredColleges.map((c, idx) => {
+                          const percentage = collegesData.totalStudentsWithCollege > 0
+                            ? Math.round((c.count / collegesData.totalStudentsWithCollege) * 100)
+                            : 0;
+                          return (
+                            <tr key={c.name} className="hover:bg-slate-50/80 transition-all">
+                              <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">{idx + 1}</td>
+                              <td className="py-3.5 px-4 font-bold text-slate-900">{c.name}</td>
+                              <td className="py-3.5 px-4">
+                                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                  {c.count} {c.count === 1 ? 'Learner' : 'Learners'}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 bg-slate-100 h-2 rounded-full overflow-hidden">
+                                    <div
+                                      className="bg-indigo-600 h-full rounded-full"
+                                      style={{ width: `${Math.max(5, percentage)}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[11px] font-semibold text-slate-600">{percentage}%</span>
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4 text-right">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => copySingleCollege(c.name)}
+                                  className="text-[11px] h-7 border-slate-200 text-slate-700 hover:bg-slate-50"
+                                >
+                                  <Copy className="w-3 h-3 mr-1" /> Copy Name
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {filteredColleges.length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="py-12 text-center text-slate-500">
+                              No matching colleges found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
             </div>
           )}

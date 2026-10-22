@@ -223,6 +223,7 @@ export const getUsers = async (req: Request, res: Response) => {
           walletAddress: u.walletAddress || "N/A",
           totalLearningHours: u.totalLearningHours || 0,
           educationLevel: u.educationLevel || "N/A",
+          collegeUniversity: u.collegeUniversity || "N/A",
           targetRole: u.targetRole || "N/A",
           onboardingCompleted: !!u.onboardingCompleted,
           welcomeEmailSent: !!u.welcomeEmailSent,
@@ -811,6 +812,21 @@ export const exportCsv = async (req: Request, res: Response) => {
       events.forEach((e) => {
         csvString += `"${e._id}","${e.appName}","${e.userName || 'N/A'}","${e.userEmail || 'N/A'}","${e.isPaid}","${e.paymentAmount}","${e.timestamp}"\n`;
       });
+    } else if (type === "colleges") {
+      const users = await User.find({ role: { $ne: UserRole.ADMIN }, isDeleted: { $ne: true } });
+      const collegeMap: Record<string, number> = {};
+      users.forEach((u) => {
+        const c = (u.collegeUniversity || "").trim();
+        if (c && c !== "N/A" && c.toLowerCase() !== "undefined") {
+          collegeMap[c] = (collegeMap[c] || 0) + 1;
+        }
+      });
+      csvString = "College Name,Registered Students Count\n";
+      Object.entries(collegeMap)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .forEach(([name, count]) => {
+          csvString += `"${name.replace(/"/g, '""')}","${count}"\n`;
+        });
     }
 
     res.setHeader("Content-Type", "text/csv");
@@ -1010,6 +1026,64 @@ export const sendTestWelcomeEmailController = async (req: Request, res: Response
     }
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getColleges = async (req: Request, res: Response) => {
+  try {
+    const users = await User.find(
+      { role: { $ne: UserRole.ADMIN }, isDeleted: { $ne: true } },
+      "collegeUniversity fullName email createdAt educationLevel degree targetRole"
+    );
+
+    const collegeMap: Record<
+      string,
+      { count: number; students: Array<{ name: string; email: string; degree?: string; targetRole?: string; joinedAt?: string }> }
+    > = {};
+
+    users.forEach((u) => {
+      const rawCollege = (u.collegeUniversity || "").trim();
+      if (rawCollege && rawCollege !== "N/A" && rawCollege.toLowerCase() !== "undefined") {
+        if (!collegeMap[rawCollege]) {
+          collegeMap[rawCollege] = { count: 0, students: [] };
+        }
+        collegeMap[rawCollege].count += 1;
+        collegeMap[rawCollege].students.push({
+          name: u.fullName || u.email,
+          email: u.email,
+          degree: u.degree || undefined,
+          targetRole: u.targetRole || undefined,
+          joinedAt: (u as any).createdAt,
+        });
+      }
+    });
+
+    const collegesList = Object.keys(collegeMap)
+      .map((name) => ({
+        name,
+        count: collegeMap[name].count,
+        students: collegeMap[name].students,
+      }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+    const collegeNames = collegesList.map((c) => c.name);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        colleges: collegesList,
+        collegeNames,
+        totalColleges: collegeNames.length,
+        totalStudentsWithCollege: collegesList.reduce((acc, c) => acc + c.count, 0),
+      },
+      message: "Registered colleges list retrieved successfully",
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve colleges list",
+      error: error?.message || error,
+    });
   }
 };
 

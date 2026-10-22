@@ -464,12 +464,12 @@ const RegisterPage: React.FC = () => {
                       value={registerData.fullName}
                       onChange={e => setRegisterData({ ...registerData, fullName: e.target.value })}
                       className="w-full px-3.5 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 text-sm font-semibold outline-none focus:border-indigo-500"
-                      placeholder="Jai Krishna"
+                      placeholder="Full Name"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Email Address</label>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">College Email ID</label>
                     <input
                       type="email"
                       required
@@ -483,7 +483,7 @@ const RegisterPage: React.FC = () => {
                           ? 'border-red-400 dark:border-red-500 focus:border-red-500'
                           : 'border-slate-200 dark:border-slate-800 focus:border-indigo-500'
                       }`}
-                      placeholder="jai@example.com"
+                      placeholder="student@college.edu"
                     />
                     {emailError && (
                       <p className="mt-1.5 text-xs text-red-600 font-semibold flex items-center gap-1">

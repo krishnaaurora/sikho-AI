@@ -12,6 +12,7 @@ import {
   getActivityLogs,
   createActivityLog,
   exportCsv,
+  getColleges,
   addCourse,
   addLesson,
   createQuiz,
@@ -31,6 +32,7 @@ router.get("/stats", getStats);
 router.get("/transactions", getTransactions);
 router.get("/payments", getTransactions);
 router.get("/users", getUsers);
+router.get("/colleges", getColleges);
 router.get("/users/:userId/details", getUserDetails);
 router.patch("/users/:userId/status", toggleUserStatus);
 router.delete("/users/:userId", deleteUser);

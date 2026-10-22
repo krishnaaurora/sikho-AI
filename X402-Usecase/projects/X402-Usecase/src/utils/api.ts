@@ -299,6 +299,18 @@ export const adminApi = {
     const qs = queryParams.toString() ? `?${queryParams}` : '';
     return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/users${qs}`);
   },
+  async getColleges() {
+    return fetchAPI<ApiResponse<{
+      colleges: Array<{
+        name: string;
+        count: number;
+        students: Array<{ name: string; email: string; degree?: string; targetRole?: string; joinedAt?: string }>;
+      }>;
+      collegeNames: string[];
+      totalColleges: number;
+      totalStudentsWithCollege: number;
+    }>>(`${API_BASE_URL}/admin/colleges`);
+  },
   async getUserDetails(userId: string) {
     return fetchAPI<ApiResponse<any>>(`${API_BASE_URL}/admin/users/${userId}/details`);
   },
@@ -331,7 +343,7 @@ export const adminApi = {
       body: JSON.stringify(data),
     });
   },
-  async downloadCsv(type: 'users' | 'payments' | 'app-usage') {
+  async downloadCsv(type: 'users' | 'payments' | 'app-usage' | 'colleges') {
     const activeToken = localStorage.getItem('accessToken') || localStorage.getItem('token');
     const res = await fetch(`${API_BASE_URL}/admin/export-csv?type=${type}`, {
       headers: {
