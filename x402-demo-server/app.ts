@@ -25,7 +25,7 @@ const MERCHANT = {
   name: "Sikho AI",
   siteName: "Sikho AI",
   description:
-    "AI-powered micro-payment learning platform — unlock premium course chapters with USDC on Algorand via x402.",
+    "Sikho AI is an all-in-one, pay-as-you-go AI workspace built for students. Pay only for what you use across AI Learning, Presentations, Writing, Research, Coding, and Career Intelligence via x402 on Algorand.",
   /** Full banner logo served from the backend domain */
   get logoUrl() {
     const baseUrl = env.PUBLIC_BACKEND_URL || env.PUBLIC_SITE_URL;

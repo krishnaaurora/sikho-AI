@@ -176,7 +176,7 @@ export const handleGitRepoAnalyserEndpoint = asyncHandler(async (req: Request, r
     backend: env.PUBLIC_BACKEND_URL,
     logo: `${env.PUBLIC_BACKEND_URL}/logo.png`,
     icon: `${env.PUBLIC_BACKEND_URL}/icon.png`,
-    description: "AI-powered micro-payment learning platform — unlock premium course chapters with USDC on Algorand via x402.",
+    description: "Sikho AI is an all-in-one, pay-as-you-go AI workspace built for students. Pay only for what you use across AI Learning, Presentations, Writing, Research, Coding, and Career Intelligence via x402 on Algorand.",
     category: "education",
   };
 
