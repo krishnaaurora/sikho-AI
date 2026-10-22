@@ -17,17 +17,22 @@
 
 ## What is Sikho AI?
 
-Modern education and career preparation tools are locked behind expensive, rigid subscription walls. A developer or student preparing for an interview or studying a single complex topic (such as Distributed Load Balancing, Database Sharding, or Dynamic Programming) is often forced into:
-- $39–$199/month all-or-nothing course subscriptions (Coursera, Udacity, Educative)
-- Standalone resume-scanning paywalls ($25/scan)
-- Proprietary mock interview subscriptions ($49/mo on LeetCode / Interviewing.io)
-- Fragmented, static documentation that offers no interactive experimentation
+**Sikho AI is an all-in-one, pay-as-you-go AI workspace built for students.**
 
-**The problem is not a lack of educational content. The problem is payment and delivery friction:** learners are forced to pay for entire libraries when they only need to master one concept, and they are forced to read flat text instead of interacting with live system simulators.
+Instead of paying separate monthly subscriptions for tools like Gamma for presentations, Grammarly for writing, Perplexity for research, and Cursor or Lovable for coding, students can access multiple AI-powered capabilities through one platform and pay only for what they use.
 
-**Sikho AI** (*"Sikho"* means *learn* in Hindi) is a decentralized AI education and career acceleration platform built to eliminate that barrier.
+Sikho AI combines:
 
-Instead of making learners discover, configure, and overpay for separate edtech services, Sikho AI provides a single unified interface that executes:
+- **AI Learning:** Interactive courses, chapter-wise payments, visual explanations, simulations and quizzes.
+- **AI Presentations:** Generate professional PPTs from topics, notes and documents.
+- **AI Writing & Originality:** Grammar correction, writing improvement, citation assistance and plagiarism checking through supported services.
+- **AI Research:** Research discovery, source-backed answers and literature review assistance.
+- **AI Coding:** GitHub repository analysis, code review, debugging and project development.
+- **Career Intelligence:** Resume analysis, skill-gap detection, personalized roadmaps and interview preparation.
+
+Powered by a modular AI service architecture and **x402 micropayments**, Sikho AI aims to make powerful AI tools more affordable by eliminating the need for multiple subscriptions.
+
+**Our vision: One platform. Multiple AI capabilities. Pay only for what you use.**
 
 ```
 Learner Request
@@ -38,7 +43,7 @@ Map Concept Context
        ↓
 Synthesize Open Intelligent UI (Interactive Diagram + Failover Simulation)
        ↓
-Route to Specialized LLM Tier
+Route to Specialized AI Capability
        ↓
 x402 On-Chain Settlement (USDC on Algorand)
        ↓
