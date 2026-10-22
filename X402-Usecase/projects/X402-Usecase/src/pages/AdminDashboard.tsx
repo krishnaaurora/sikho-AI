@@ -988,15 +988,7 @@ const AdminDashboard: React.FC = () => {
                           </td>
                           <td className="py-3.5 px-4 text-slate-500">{new Date(u.createdAt).toLocaleDateString()}</td>
                           <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleSelectUser(u)}
-                                className="text-[11px] h-7 border-slate-200 hover:border-indigo-500 text-indigo-600 hover:bg-indigo-50"
-                              >
-                                View Profile <ChevronRight className="w-3 h-3 ml-1" />
-                              </Button>
+                            <div className="flex items-center justify-end">
                               <Button
                                 size="sm"
                                 variant="outline"
