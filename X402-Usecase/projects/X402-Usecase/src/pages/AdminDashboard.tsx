@@ -10,7 +10,7 @@ import {
 import {
   LayoutDashboard, Users, CreditCard, BarChart3, Settings, LogOut,
   TrendingUp, Activity, CheckCircle2, Clock, AlertCircle, Search,
-  Download, Filter, ChevronRight, ChevronLeft, PanelLeftClose, PanelLeftOpen, Shield, ShieldCheck, FileSpreadsheet,
+  Download, Filter, ChevronRight, ChevronLeft, ChevronDown, PanelLeftClose, PanelLeftOpen, Shield, ShieldCheck, FileSpreadsheet,
   ExternalLink, Sparkles, BookOpen, Code2, Briefcase, FileText, Target, MessageSquare,
   UserCheck, Eye, EyeOff, RefreshCw, X, DollarSign, Layers,
   UserX, UserPlus, Award, Zap, Mail, Send, Check, Code, FileCode, Trash2, Key, Copy, Lock,
@@ -55,20 +55,30 @@ const AdminDashboard: React.FC = () => {
     colleges: Array<{
       name: string;
       count: number;
-      students: Array<{ name: string; email: string; degree?: string; targetRole?: string; joinedAt?: string }>;
+      students: Array<{ id?: string; name: string; email: string; degree?: string; targetRole?: string; joinedAt?: string }>;
     }>;
     collegeNames: string[];
+    undecidedStudents?: Array<{ id?: string; name: string; email: string; degree?: string; targetRole?: string; joinedAt?: string }>;
+    undecidedCount?: number;
+    unassignedCount?: number;
+    totalLearners?: number;
     totalColleges: number;
     totalStudentsWithCollege: number;
   }>({
     colleges: [],
     collegeNames: [],
+    undecidedStudents: [],
+    undecidedCount: 0,
+    unassignedCount: 0,
+    totalLearners: 0,
     totalColleges: 0,
     totalStudentsWithCollege: 0,
   });
   const [collegeSearch, setCollegeSearch] = useState('');
   const [collegeViewMode, setCollegeViewMode] = useState<'pure-list' | 'cards' | 'table'>('pure-list');
   const [copiedCollegeList, setCopiedCollegeList] = useState(false);
+  const [expandedCollege, setExpandedCollege] = useState<string | null>(null);
+  const [showUndecidedRoster, setShowUndecidedRoster] = useState(false);
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -307,10 +317,70 @@ const AdminDashboard: React.FC = () => {
         setEmailUpdatedAt(emailRes.data.updatedAt || '');
       }
 
-      // 7. Registered Colleges
-      const collegesRes = await adminApi.getColleges();
-      if (collegesRes.success && collegesRes.data) {
-        setCollegesData(collegesRes.data);
+      // 7. Registered Colleges (API + Resilient Client Fallback from Users List)
+      let collegesPayload: any = null;
+      try {
+        const collegesRes = await adminApi.getColleges();
+        if (collegesRes.success && collegesRes.data) {
+          collegesPayload = collegesRes.data;
+        }
+      } catch (collegesErr) {
+        console.warn('API getColleges call had an issue, falling back to client derivation', collegesErr);
+      }
+
+      // If colleges API returned empty or failed, derive directly from loaded users list
+      if (!collegesPayload || !collegesPayload.colleges || collegesPayload.colleges.length === 0) {
+        const usersList: any[] = (usersRes.success && usersRes.data?.users) ? usersRes.data.users : [];
+        const collegeMap: Record<string, { count: number; students: any[] }> = {};
+        const undecided: any[] = [];
+        let unassigned = 0;
+
+        usersList.forEach((u: any) => {
+          const raw = (u.collegeUniversity || '').trim();
+          const lower = raw.toLowerCase();
+          const isUndecided = lower.includes("haven't decided") || lower.includes("not decided") || lower.includes("undecided");
+          const isUnassigned = !raw || raw === 'N/A' || lower === 'undefined' || lower === 'null';
+
+          const sObj = {
+            id: u._id,
+            name: u.fullName || u.email,
+            email: u.email,
+            degree: u.degree || u.educationLevel,
+            targetRole: u.targetRole,
+            joinedAt: u.createdAt,
+          };
+
+          if (isUndecided) {
+            undecided.push(sObj);
+          } else if (isUnassigned) {
+            unassigned += 1;
+          } else {
+            if (!collegeMap[raw]) collegeMap[raw] = { count: 0, students: [] };
+            collegeMap[raw].count += 1;
+            collegeMap[raw].students.push(sObj);
+          }
+        });
+
+        const list = Object.keys(collegeMap).map(name => ({
+          name,
+          count: collegeMap[name].count,
+          students: collegeMap[name].students,
+        })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+        collegesPayload = {
+          colleges: list,
+          collegeNames: list.map(c => c.name),
+          undecidedStudents: undecided,
+          undecidedCount: undecided.length,
+          unassignedCount: unassigned,
+          totalLearners: usersList.length,
+          totalColleges: list.length,
+          totalStudentsWithCollege: list.reduce((sum, c) => sum + c.count, 0),
+        };
+      }
+
+      if (collegesPayload) {
+        setCollegesData(collegesPayload);
       }
     } catch (err: any) {
       console.error(err);
@@ -444,12 +514,22 @@ const AdminDashboard: React.FC = () => {
 
   // Filtered Users Table
   const filteredUsers = (usersData.users || []).filter((u: any) => {
+    const q = userSearch.toLowerCase();
     return (
-      u.fullName?.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u._id?.toLowerCase().includes(userSearch.toLowerCase())
+      u.fullName?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q) ||
+      u._id?.toLowerCase().includes(q) ||
+      u.collegeUniversity?.toLowerCase().includes(q) ||
+      u.educationLevel?.toLowerCase().includes(q) ||
+      u.targetRole?.toLowerCase().includes(q)
     );
   });
+
+  const viewCollegeInUsers = (collegeName: string) => {
+    setUserSearch(collegeName);
+    setActiveTab('users');
+    enqueueSnackbar(`Filtered learners from "${collegeName}" in User Management`, { variant: 'info' });
+  };
 
   // Filtered Payments Table
   const filteredPayments = (paymentsData.ledger || []).filter((p: any) => {
@@ -1025,38 +1105,172 @@ const AdminDashboard: React.FC = () => {
                   )}
                 </div>
 
-                {/* Clean College Names List */}
-                <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto border border-slate-100 rounded-xl bg-slate-50/40">
-                  {filteredColleges.map((c, index) => (
-                    <div
-                      key={c.name}
-                      className="p-3 px-4 flex items-center justify-between hover:bg-white transition-colors group"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="w-5 h-5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold flex items-center justify-center shrink-0 font-mono">
-                          {index + 1}
-                        </span>
-                        <span className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
-                          {c.name}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
-                          {c.count} {c.count === 1 ? 'Student' : 'Students'}
-                        </span>
-                        <button
-                          onClick={() => copySingleCollege(c.name)}
-                          title="Copy College Name"
-                          className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all"
+                {/* Clean College Names List with Expandable Student Rosters */}
+                <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto border border-slate-100 rounded-xl bg-slate-50/40">
+                  {filteredColleges.map((c, index) => {
+                    const isExpanded = expandedCollege === c.name;
+                    return (
+                      <div key={c.name} className="transition-colors">
+                        <div
+                          onClick={() => setExpandedCollege(isExpanded ? null : c.name)}
+                          className="p-3 px-4 flex items-center justify-between hover:bg-white cursor-pointer group select-none"
                         >
-                          <Copy className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="w-6 h-6 rounded-md bg-indigo-50 text-indigo-700 text-[11px] font-bold flex items-center justify-center shrink-0 font-mono border border-indigo-100">
+                              {index + 1}
+                            </span>
+                            <div className="truncate">
+                              <span className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                {c.name}
+                              </span>
+                              <p className="text-[10px] text-slate-400 mt-0.5">
+                                Click to {isExpanded ? 'hide' : 'view'} enrolled learners
+                              </p>
+                            </div>
+                          </div>
 
-                  {filteredColleges.length === 0 && (
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                              {c.count} {c.count === 1 ? 'Student' : 'Students'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                viewCollegeInUsers(c.name);
+                              }}
+                              title="Filter in User Management table"
+                              className="px-2 py-1 text-[10px] font-semibold text-indigo-600 hover:text-white hover:bg-indigo-600 border border-indigo-200 rounded-lg transition-all hidden sm:inline-flex items-center gap-1"
+                            >
+                              <Users className="w-3 h-3" /> View in Table
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copySingleCollege(c.name);
+                              }}
+                              title="Copy College Name"
+                              className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                            <div className="text-slate-400 group-hover:text-slate-700 transition-transform">
+                              {isExpanded ? <ChevronDown className="w-4 h-4 text-indigo-600" /> : <ChevronRight className="w-4 h-4" />}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Expanded Student Roster */}
+                        {isExpanded && (
+                          <div className="p-3 bg-white border-t border-slate-100 space-y-2">
+                            <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider px-1">
+                              <span>Registered Students ({c.students?.length || c.count})</span>
+                              <button
+                                onClick={() => viewCollegeInUsers(c.name)}
+                                className="text-indigo-600 hover:underline normal-case font-semibold"
+                              >
+                                Filter in Users Table &rarr;
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {(c.students || []).map((student: any, sIdx: number) => (
+                                <div
+                                  key={sIdx}
+                                  className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2"
+                                >
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-bold text-slate-900 truncate">{student.name}</p>
+                                    <p className="text-[11px] text-slate-500 font-mono truncate">{maskText(student.email, true)}</p>
+                                    {(student.degree || student.targetRole) && (
+                                      <p className="text-[10px] text-indigo-600 font-medium truncate mt-0.5">
+                                        {student.degree} {student.targetRole ? `• ${student.targetRole}` : ''}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <span className="text-[10px] text-slate-400 block font-mono">
+                                      {student.joinedAt ? new Date(student.joinedAt).toLocaleDateString() : 'Active'}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                              {(!c.students || c.students.length === 0) && (
+                                <p className="text-xs text-slate-400 italic py-2 col-span-2">No student records attached.</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Undecided / In Onboarding Group */}
+                  {(collegesData.undecidedCount || 0) > 0 && (
+                    <div className="transition-colors border-t border-amber-100">
+                      <div
+                        onClick={() => setShowUndecidedRoster(!showUndecidedRoster)}
+                        className="p-3 px-4 flex items-center justify-between bg-amber-50/40 hover:bg-amber-50/80 cursor-pointer group select-none"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="w-6 h-6 rounded-md bg-amber-100 text-amber-800 text-[11px] font-bold flex items-center justify-center shrink-0 border border-amber-200">
+                            ?
+                          </span>
+                          <div className="truncate">
+                            <span className="text-xs font-bold text-slate-900 group-hover:text-amber-800 transition-colors">
+                              Haven't Decided College Yet / Exploring
+                            </span>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              Students currently exploring or undecided on campus
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                            {collegesData.undecidedCount} Students
+                          </span>
+                          <div className="text-slate-400 group-hover:text-slate-700 transition-transform">
+                            {showUndecidedRoster ? <ChevronDown className="w-4 h-4 text-amber-600" /> : <ChevronRight className="w-4 h-4" />}
+                          </div>
+                        </div>
+                      </div>
+
+                      {showUndecidedRoster && (
+                        <div className="p-3 bg-white border-t border-amber-100 space-y-2">
+                          <p className="text-[11px] font-bold text-amber-800 uppercase tracking-wider px-1">
+                            Learners Marked as Undecided ({collegesData.undecidedStudents?.length || 0})
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {(collegesData.undecidedStudents || []).map((student: any, sIdx: number) => (
+                              <div
+                                key={sIdx}
+                                className="p-2.5 rounded-xl bg-amber-50/50 border border-amber-200/70 flex items-center justify-between gap-2"
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-xs font-bold text-slate-900 truncate">{student.name}</p>
+                                  <p className="text-[11px] text-slate-500 font-mono truncate">{maskText(student.email, true)}</p>
+                                </div>
+                                <span className="text-[10px] text-slate-400 shrink-0 font-mono">
+                                  {student.joinedAt ? new Date(student.joinedAt).toLocaleDateString() : 'Active'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Early Registered Students Without College Prompt */}
+                  {(collegesData.unassignedCount || 0) > 0 && (
+                    <div className="p-2.5 px-4 bg-slate-100/60 text-slate-500 text-[11px] flex items-center justify-between border-t border-slate-200">
+                      <span>Early Learners without college assigned</span>
+                      <span className="font-bold text-slate-700 font-mono">{collegesData.unassignedCount} learners</span>
+                    </div>
+                  )}
+
+                  {filteredColleges.length === 0 && (!collegesData.undecidedCount || collegesData.undecidedCount === 0) && (
                     <div className="py-10 text-center">
                       <GraduationCap className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                       <p className="text-xs font-semibold text-slate-700">No colleges found</p>
@@ -1146,6 +1360,7 @@ const AdminDashboard: React.FC = () => {
                         <th className="py-3.5 px-4 font-semibold">User ID</th>
                         <th className="py-3.5 px-4 font-semibold">Learner Name</th>
                         <th className="py-3.5 px-4 font-semibold">Email</th>
+                        <th className="py-3.5 px-4 font-semibold">College / University</th>
                         <th className="py-3.5 px-4 font-semibold">Education / Role</th>
                         <th className="py-3.5 px-4 font-semibold">Reg Date</th>
                         <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
@@ -1158,12 +1373,29 @@ const AdminDashboard: React.FC = () => {
                           <td className="py-3.5 px-4 font-bold text-slate-900">{u.fullName}</td>
                           <td className="py-3.5 px-4 text-slate-600 font-medium">{maskText(u.email, true)}</td>
                           <td className="py-3.5 px-4">
-                            <p className="font-semibold text-slate-800">{u.educationLevel || 'General'}</p>
-                            {u.collegeUniversity && u.collegeUniversity !== 'N/A' && (
-                              <p className="text-[10px] text-indigo-600 font-semibold truncate max-w-[170px]" title={u.collegeUniversity}>
-                                🏫 {u.collegeUniversity}
-                              </p>
+                            {u.collegeUniversity && u.collegeUniversity !== 'N/A' && u.collegeUniversity.toLowerCase() !== 'undefined' ? (
+                              u.collegeUniversity.toLowerCase().includes("haven't decided") ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                  <Sparkles className="w-3 h-3 text-amber-500" /> Undecided
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => viewCollegeInUsers(u.collegeUniversity)}
+                                  className="flex items-center gap-1.5 text-left group"
+                                  title={`Filter all learners from ${u.collegeUniversity}`}
+                                >
+                                  <GraduationCap className="w-3.5 h-3.5 text-indigo-600 shrink-0 group-hover:scale-110 transition-transform" />
+                                  <span className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors truncate max-w-[210px]">
+                                    {u.collegeUniversity}
+                                  </span>
+                                </button>
+                              )
+                            ) : (
+                              <span className="text-[11px] text-slate-400 italic">Not Specified (Early Learner)</span>
                             )}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <p className="font-semibold text-slate-800">{u.educationLevel || 'General'}</p>
                             <p className="text-[10px] text-slate-400">{u.targetRole || 'Learner'}</p>
                           </td>
                           <td className="py-3.5 px-4 text-slate-500">{new Date(u.createdAt).toLocaleDateString()}</td>
@@ -1186,7 +1418,7 @@ const AdminDashboard: React.FC = () => {
                       ))}
                       {filteredUsers.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="py-12 text-center text-slate-500">No matching users found.</td>
+                          <td colSpan={7} className="py-12 text-center text-slate-500">No matching users found.</td>
                         </tr>
                       )}
                     </tbody>
@@ -1354,36 +1586,167 @@ const AdminDashboard: React.FC = () => {
                     </div>
 
                     <div className="divide-y divide-slate-100">
-                      {filteredColleges.map((c, index) => (
-                        <div
-                          key={c.name}
-                          className="p-3.5 px-5 flex items-center justify-between hover:bg-slate-50/80 transition-colors group"
-                        >
-                          <div className="flex items-center gap-3.5 min-w-0">
-                            <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center shrink-0 font-mono">
-                              {index + 1}
-                            </span>
-                            <div className="truncate">
-                              <span className="text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                                {c.name}
+                      {filteredColleges.map((c, index) => {
+                        const isExpanded = expandedCollege === c.name;
+                        return (
+                          <div key={c.name} className="transition-colors">
+                            <div
+                              onClick={() => setExpandedCollege(isExpanded ? null : c.name)}
+                              className="p-3.5 px-5 flex items-center justify-between hover:bg-slate-50/80 transition-colors group cursor-pointer select-none"
+                            >
+                              <div className="flex items-center gap-3.5 min-w-0">
+                                <span className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold flex items-center justify-center shrink-0 font-mono border border-indigo-100">
+                                  {index + 1}
+                                </span>
+                                <div className="truncate">
+                                  <span className="text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                    {c.name}
+                                  </span>
+                                  <p className="text-[10px] text-slate-400 mt-0.5">
+                                    {isExpanded ? 'Click to collapse student roster' : 'Click to view enrolled student roster'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    viewCollegeInUsers(c.name);
+                                  }}
+                                  className="px-2.5 py-1 text-[11px] font-semibold text-indigo-600 hover:text-white hover:bg-indigo-600 border border-indigo-200 rounded-lg transition-all hidden sm:inline-flex items-center gap-1"
+                                >
+                                  <Users className="w-3.5 h-3.5" /> View in Table
+                                </button>
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                  {c.count} {c.count === 1 ? 'Student' : 'Students'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    copySingleCollege(c.name);
+                                  }}
+                                  title="Copy College Name"
+                                  className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                </button>
+                                <div className="text-slate-400 group-hover:text-slate-700 transition-transform">
+                                  {isExpanded ? <ChevronDown className="w-4 h-4 text-indigo-600" /> : <ChevronRight className="w-4 h-4" />}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Expanded Students Roster */}
+                            {isExpanded && (
+                              <div className="p-4 bg-white border-t border-slate-100 space-y-2">
+                                <div className="flex items-center justify-between text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                  <span>Enrolled Students at {c.name} ({c.students?.length || c.count})</span>
+                                  <button
+                                    onClick={() => viewCollegeInUsers(c.name)}
+                                    className="text-indigo-600 hover:underline normal-case font-semibold text-xs"
+                                  >
+                                    Filter In User Management &rarr;
+                                  </button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                                  {(c.students || []).map((student: any, sIdx: number) => (
+                                    <div
+                                      key={sIdx}
+                                      className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3"
+                                    >
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-bold text-slate-900 truncate">{student.name}</p>
+                                        <p className="text-[11px] text-slate-500 font-mono truncate">{maskText(student.email, true)}</p>
+                                        {(student.degree || student.targetRole) && (
+                                          <p className="text-[10px] text-indigo-600 font-semibold truncate mt-0.5">
+                                            {student.degree} {student.targetRole ? `• ${student.targetRole}` : ''}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <div className="text-right shrink-0">
+                                        <span className="text-[10px] text-slate-400 block font-mono">
+                                          {student.joinedAt ? new Date(student.joinedAt).toLocaleDateString() : 'Active'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                  {(!c.students || c.students.length === 0) && (
+                                    <p className="text-xs text-slate-400 italic py-2 col-span-2">No student records attached.</p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Undecided / In Onboarding Group */}
+                      {(collegesData.undecidedCount || 0) > 0 && (
+                        <div className="transition-colors border-t border-amber-100">
+                          <div
+                            onClick={() => setShowUndecidedRoster(!showUndecidedRoster)}
+                            className="p-3.5 px-5 flex items-center justify-between bg-amber-50/40 hover:bg-amber-50/80 cursor-pointer group select-none"
+                          >
+                            <div className="flex items-center gap-3.5 min-w-0">
+                              <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 text-xs font-bold flex items-center justify-center shrink-0 border border-amber-200">
+                                ?
                               </span>
+                              <div className="truncate">
+                                <span className="text-sm font-semibold text-slate-900 group-hover:text-amber-800 transition-colors">
+                                  Haven't Decided College Yet / Exploring
+                                </span>
+                                <p className="text-[10px] text-slate-500 mt-0.5">
+                                  Students currently exploring degrees or undecided on campus
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2.5 shrink-0">
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                {collegesData.undecidedCount} Students
+                              </span>
+                              <div className="text-slate-400 group-hover:text-slate-700 transition-transform">
+                                {showUndecidedRoster ? <ChevronDown className="w-4 h-4 text-amber-600" /> : <ChevronRight className="w-4 h-4" />}
+                              </div>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3 shrink-0">
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                              {c.count} {c.count === 1 ? 'Student' : 'Students'}
-                            </span>
-                            <button
-                              onClick={() => copySingleCollege(c.name)}
-                              title="Copy College Name"
-                              className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                            >
-                              <Copy className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          {showUndecidedRoster && (
+                            <div className="p-4 bg-white border-t border-amber-100 space-y-2">
+                              <p className="text-xs font-bold text-amber-800 uppercase tracking-wider">
+                                Undecided Students ({collegesData.undecidedStudents?.length || 0})
+                              </p>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                                {(collegesData.undecidedStudents || []).map((student: any, sIdx: number) => (
+                                  <div
+                                    key={sIdx}
+                                    className="p-3 rounded-xl bg-amber-50/50 border border-amber-200/70 flex items-center justify-between gap-3"
+                                  >
+                                    <div className="min-w-0">
+                                      <p className="text-xs font-bold text-slate-900 truncate">{student.name}</p>
+                                      <p className="text-[11px] text-slate-500 font-mono truncate">{maskText(student.email, true)}</p>
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 shrink-0 font-mono">
+                                      {student.joinedAt ? new Date(student.joinedAt).toLocaleDateString() : 'Active'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      ))}
+                      )}
+
+                      {/* Early Learners banner */}
+                      {(collegesData.unassignedCount || 0) > 0 && (
+                        <div className="p-3 px-5 bg-slate-100/60 text-slate-500 text-xs flex items-center justify-between border-t border-slate-200">
+                          <span>Early Learners without college assigned</span>
+                          <span className="font-bold text-slate-700 font-mono">{collegesData.unassignedCount} learners</span>
+                        </div>
+                      )}
 
                       {filteredCollegeNames.length === 0 && (
                         <div className="py-16 text-center">

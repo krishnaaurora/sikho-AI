@@ -1033,28 +1033,42 @@ export const getColleges = async (req: Request, res: Response) => {
   try {
     const users = await User.find(
       { role: { $ne: UserRole.ADMIN }, isDeleted: { $ne: true } },
-      "collegeUniversity fullName email createdAt educationLevel degree targetRole"
+      "_id collegeUniversity fullName email createdAt educationLevel degree targetRole"
     );
 
     const collegeMap: Record<
       string,
-      { count: number; students: Array<{ name: string; email: string; degree?: string; targetRole?: string; joinedAt?: string }> }
+      { count: number; students: Array<{ id: string; name: string; email: string; degree?: string; targetRole?: string; joinedAt?: string }> }
     > = {};
+
+    const undecidedStudents: Array<{ id: string; name: string; email: string; degree?: string; targetRole?: string; joinedAt?: string }> = [];
+    let unassignedCount = 0;
 
     users.forEach((u) => {
       const rawCollege = (u.collegeUniversity || "").trim();
-      if (rawCollege && rawCollege !== "N/A" && rawCollege.toLowerCase() !== "undefined") {
+      const lower = rawCollege.toLowerCase();
+      const isUndecided = lower.includes("haven't decided") || lower.includes("not decided") || lower.includes("undecided");
+      const isUnassigned = !rawCollege || rawCollege === "N/A" || lower === "undefined" || lower === "null" || lower === "none";
+
+      const studentObj = {
+        id: String(u._id),
+        name: u.fullName || u.email,
+        email: u.email,
+        degree: u.degree || u.educationLevel || undefined,
+        targetRole: u.targetRole || undefined,
+        joinedAt: (u as any).createdAt,
+      };
+
+      if (isUndecided) {
+        undecidedStudents.push(studentObj);
+      } else if (isUnassigned) {
+        unassignedCount += 1;
+      } else {
         if (!collegeMap[rawCollege]) {
           collegeMap[rawCollege] = { count: 0, students: [] };
         }
         collegeMap[rawCollege].count += 1;
-        collegeMap[rawCollege].students.push({
-          name: u.fullName || u.email,
-          email: u.email,
-          degree: u.degree || undefined,
-          targetRole: u.targetRole || undefined,
-          joinedAt: (u as any).createdAt,
-        });
+        collegeMap[rawCollege].students.push(studentObj);
       }
     });
 
@@ -1073,6 +1087,10 @@ export const getColleges = async (req: Request, res: Response) => {
       data: {
         colleges: collegesList,
         collegeNames,
+        undecidedStudents,
+        undecidedCount: undecidedStudents.length,
+        unassignedCount,
+        totalLearners: users.length,
         totalColleges: collegeNames.length,
         totalStudentsWithCollege: collegesList.reduce((acc, c) => acc + c.count, 0),
       },
