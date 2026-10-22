@@ -3,12 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles, Sliders, Layers, BarChart3, HelpCircle,
   Code2, MessageSquare, Maximize2, Minimize2, Copy, Check,
-  BookOpen, Brain, Zap, CheckCircle2, RefreshCw, X
+  BookOpen, Brain, Zap, CheckCircle2, RefreshCw, X, Eye
 } from 'lucide-react';
 import { FlashcardDeck } from './FlashcardDeck';
-import { InteractiveSimulator } from './InteractiveSimulator';
-import { DynamicConceptChart } from './DynamicConceptChart';
-import { ArchitectureFlowStepper } from './ArchitectureFlowStepper';
+import { InteractiveArchitectureSimulator } from './InteractiveArchitectureSimulator';
+import { ConceptExplanation } from './ConceptExplanation';
 import { ConceptQuizCelebration } from './ConceptQuizCelebration';
 import { IntelligentAICopilot } from './IntelligentAICopilot';
 import type { IntelligentUiConceptData } from './types';
@@ -35,7 +34,7 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
 }) => {
   const [data, setData] = useState<IntelligentUiConceptData | null>(initialData || null);
   const [loading, setLoading] = useState(!initialData);
-  const [activeTab, setActiveTab] = useState<'simulator' | 'flashcards' | 'charts' | 'flow' | 'quiz' | 'code' | 'copilot'>('simulator');
+  const [activeTab, setActiveTab] = useState<'simulation' | 'explanation' | 'flashcards' | 'quiz' | 'code' | 'copilot'>('simulation');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [currentSimulatorParams, setCurrentSimulatorParams] = useState<Record<string, number>>({});
@@ -79,77 +78,127 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
             topic: courseTopic || 'Computer Science',
             category: 'Architecture',
             difficulty: 'Intermediate',
-            summary: `Interactive mental model and performance testbed for ${conceptName}.`,
+            summary: `Interactive architectural model and live traffic simulation for ${conceptName}.`,
             mentalModel: {
-              analogy: `Think of ${conceptName} like a precision assembly line where input rates, buffer size, and worker capacity dictate end-to-end latency.`,
-              whyItMatters: `Understanding ${conceptName} empowers you to eliminate production bottlenecks and scale reliably.`,
-              keyTakeaway: 'Always design with headroom margin and monitor p99 tail latency.',
+              analogy: `Think of ${conceptName} like an airport air traffic control tower directing incoming flights to open runways, preventing collisions and runway congestion.`,
+              whyItMatters: `Without ${conceptName}, all traffic overwhelms a single node, causing catastrophic crashes during peak hours.`,
+              keyTakeaway: 'Decouple client ingress from backend compute; always design for dynamic failover.',
+            },
+            explanation: {
+              title: `In-Depth Architecture Breakdown: ${conceptName}`,
+              tagline: 'How modern distributed systems eliminate single points of failure and scale horizontally',
+              overview: `${conceptName} orchestrates traffic across distributed compute nodes. By continuously performing health evaluations and managing routing algorithms, it ensures zero-downtime operation under intense concurrent load.`,
+              problemSolved: 'Eliminates single points of failure, throttles rogue traffic bursts, and seamlessly redistributes load away from degraded or crashed application servers.',
+              architectureBreakdown: [
+                {
+                  component: 'Client / Ingress Layer',
+                  role: 'HTTPS Termination & Handshake',
+                  details: 'Validates transport protocol, terminates TLS encryption, and forwards requests to internal mesh network.',
+                },
+                {
+                  component: 'Load Balancer / Gateway',
+                  role: 'Routing & Health Inspection',
+                  details: 'Executes active heartbeat checks and selects the optimal backend worker instance via Round Robin or Least Connections.',
+                },
+                {
+                  component: 'Backend Server Cluster',
+                  role: 'Application Logic Execution',
+                  details: 'Multiple stateless instances running application code. Nodes can scale horizontally or be drained for maintenance without downtime.',
+                },
+                {
+                  component: 'Database & Redis Cluster',
+                  role: 'Centralized State Persistence',
+                  details: 'Shared persistent storage and cache layer keeping backend workers stateless and resilient.',
+                },
+              ],
+              tradeoffs: [
+                {
+                  factor: 'Round Robin vs Least Connections',
+                  pro: 'Round Robin requires no state tracking and provides deterministic rotation.',
+                  con: 'Least Connections prevents queue pileups when request processing durations are uneven.',
+                },
+                {
+                  factor: 'Layer 4 (Transport) vs Layer 7 (Application)',
+                  pro: 'Layer 4 routes millions of packets per second with ultra-low latency.',
+                  con: 'Layer 7 inspects HTTP headers, cookies, and paths for fine-grained microservice routing at the cost of higher CPU.',
+                },
+                {
+                  factor: 'Stateless JWT vs Sticky Sessions',
+                  pro: 'Stateless architecture allows any server to fail without logging out users.',
+                  con: 'Sticky sessions reduce cache misses but create traffic hotspots if a single user executes heavy tasks.',
+                },
+              ],
+              productionCaseStudy: {
+                company: 'Netflix & AWS Production Infrastructure',
+                scenario: 'Directing over 300 million concurrent global streaming requests during peak releases.',
+                impact: 'Using dynamic routing proxies and Application Load Balancers, traffic reroutes in sub-seconds during regional cloud outages with zero downtime.',
+              },
+              failureModes: [
+                'Thundering Herd on Health Check: Overly frequent polling knocks down recovering servers.',
+                'Cascading Failures: When one server crashes, remaining servers inherit 100% of the load and crash sequentially.',
+                'Stale DNS Caching: Clients bypassing load balancer IP directly hitting dead nodes.',
+              ],
+            },
+            architectureSim: {
+              title: `${conceptName} Architecture Simulation`,
+              description: 'Frontend Ingress → Load Balancing Gateway → Backend Server Cluster',
+              diagramImage: '/architecture_diagram.jpg',
+              frontendTitle: 'Client Ingress',
+              gatewayTitle: 'Central Load Balancer',
+              algorithms: ['Round Robin', 'Least Connections', 'IP Hash'],
+              servers: [
+                { id: 'srv-1', name: 'Backend Instance A', port: 8081, initialHealthy: true },
+                { id: 'srv-2', name: 'Backend Instance B', port: 8082, initialHealthy: true },
+                { id: 'srv-3', name: 'Backend Instance C', port: 8083, initialHealthy: true },
+              ],
+              databaseTitle: 'Primary DB & Redis Cache',
             },
             flashcards: [
               {
                 id: 'fc-1',
-                front: `What is the core operational principle of ${conceptName}?`,
-                back: 'It decouples consumers from internal execution mechanics, providing deterministic throughput guarantees.',
-                category: 'Foundations',
-                hint: 'Consider client vs server boundaries.',
+                front: `What is the primary role of ${conceptName}?`,
+                back: 'Evenly distribute client workloads across multiple healthy compute instances to eliminate single points of failure.',
+                category: 'Architecture',
+                hint: 'Consider what happens when a single server gets all traffic.',
               },
               {
                 id: 'fc-2',
-                front: `What is the primary trade-off when adopting ${conceptName}?`,
-                back: 'Trading memory overhead or design complexity for dramatic throughput and consistency gains.',
-                category: 'Trade-offs',
-                hint: 'No free lunch in engineering.',
+                front: 'What happens when a backend instance fails health checks?',
+                back: 'The load balancer immediately isolates the dead instance and reroutes subsequent traffic to surviving healthy nodes with zero downtime.',
+                category: 'Resilience',
+                hint: 'Automated circuit breaker and failover.',
+              },
+              {
+                id: 'fc-3',
+                front: 'Why must backend servers remain stateless in this architecture?',
+                back: 'Because any request can hit any backend server; session state stored in a shared cache allows instant auto-scaling and server replacement.',
+                category: 'Scaling',
+                hint: 'Think about where user logins and tokens are stored.',
               },
             ],
-            simulator: {
-              title: `${conceptName} Dynamic Parameter Testbed`,
-              description: 'Adjust load and processing capacity to view live metrics.',
-              parameters: [
-                { id: 'rps', label: 'Incoming Requests', min: 100, max: 10000, step: 100, defaultValue: 2500, unit: 'req/s' },
-                { id: 'nodes', label: 'Active Worker Nodes', min: 1, max: 16, step: 1, defaultValue: 4, unit: 'nodes' },
-                { id: 'buffer', label: 'Buffer Cache Size', min: 64, max: 2048, step: 64, defaultValue: 512, unit: 'MB' },
-              ],
-              metricsFormula: 'Load Factor = RPS / Nodes. Optimal latency maintained under 70% saturation.',
-              metricPresets: [
-                { name: 'Standard Load', values: { rps: 2000, nodes: 4, buffer: 512 } },
-                { name: 'Surge Spike', values: { rps: 7500, nodes: 6, buffer: 1024 } },
-              ],
-            },
-            chart: {
-              title: `Scaling Curve: ${conceptName}`,
-              description: 'Latency vs Concurrency comparison',
-              type: 'area',
-              xAxisKey: 'name',
-              data: [
-                { name: '100 QPS', value: 14, benchmark: 40 },
-                { name: '500 QPS', value: 28, benchmark: 110 },
-                { name: '1,000 QPS', value: 45, benchmark: 260 },
-                { name: '5,000 QPS', value: 88, benchmark: 890 },
-              ],
-            },
             flowSteps: [
-              { step: 1, title: 'Client Dispatch', description: 'Request initiated and packet validated at ingress gateway.', nodeType: 'client', highlight: 'Payload Validation' },
-              { step: 2, title: 'Routing & Processing', description: 'Task distributed to selected execution node.', nodeType: 'gateway', highlight: 'Node Routing' },
-              { step: 3, title: 'State Mutation', description: 'Core business logic computes with idempotent safety.', nodeType: 'worker', highlight: 'Processing Loop' },
-              { step: 4, title: 'Output & Telemetry', description: 'Response dispatched and metrics emitted to collector.', nodeType: 'database', highlight: 'Response Sent' },
+              { step: 1, title: 'Client Ingress', description: 'User browser or mobile app dispatches HTTPS request to public gateway.', nodeType: 'client', highlight: 'TLS Handshake' },
+              { step: 2, title: 'Load Balancing & Health Check', description: 'Gateway verifies server health and picks target instance via selected algorithm.', nodeType: 'gateway', highlight: 'Algorithm Routing' },
+              { step: 3, title: 'Backend Worker Processing', description: 'Selected healthy server instance executes business logic.', nodeType: 'worker', highlight: 'Compute Execution' },
+              { step: 4, title: 'Storage & Response', description: 'State committed to cache/database, 200 OK returned to client.', nodeType: 'database', highlight: '200 OK Emitted' },
             ],
             codeSnippet: {
               language: 'typescript',
-              title: `Production Implementation: ${conceptName}`,
-              code: `export async function executeConceptFlow<T>(payload: T): Promise<T> {\n  const startTime = performance.now();\n  // Execute core workflow with retry budget\n  const result = await processPayload(payload);\n  console.log(\`Execution elapsed: \${(performance.now() - startTime).toFixed(1)}ms\`);\n  return result;\n}`,
-              explanation: 'A clean implementation demonstrating input validation, execution timing, and error handling.',
+              title: `Production Load Balancer Router: ${conceptName}`,
+              code: `export class LoadBalancerRouter {\n  private servers = [\n    { id: "s1", url: "http://10.0.0.1:8081", healthy: true, activeConns: 3 },\n    { id: "s2", url: "http://10.0.0.2:8082", healthy: true, activeConns: 1 },\n    { id: "s3", url: "http://10.0.0.3:8083", healthy: true, activeConns: 2 }\n  ];\n  private index = 0;\n\n  // Round Robin with automated health failover\n  public getNextServer(): string {\n    const healthy = this.servers.filter(s => s.healthy);\n    if (healthy.length === 0) throw new Error("503 Service Unavailable: All nodes down");\n    const server = healthy[this.index % healthy.length];\n    this.index = (this.index + 1) % healthy.length;\n    return server.url;\n  }\n}`,
+              explanation: 'TypeScript implementation of a production-grade round-robin load balancer router with active health check filtering.',
             },
             quiz: {
-              question: `When deploying ${conceptName} in production, which metric best reveals degradation first?`,
+              question: `In a high-scale production setup with a load balancer, what is the best strategy if one of three backend servers suddenly crashes?`,
               options: [
-                'Average CPU temperature',
-                'p99 tail latency and request queue depth',
-                'Hard drive free space',
-                'Total number of source code comments',
+                'Immediately shut down all remaining servers',
+                'Load balancer marks the node unhealthy via health checks and automatically routes 100% of subsequent traffic to the surviving healthy servers',
+                'Force all users to refresh their browsers manually',
+                'Wait 24 hours before redirecting network packets',
               ],
               answerIndex: 1,
-              explanation: 'p99 tail latency reflects the slowest 1% of users who experience queuing delays before averages show any change.',
-              celebrationText: 'Brilliant! You recognize early warning signals in production systems.',
+              explanation: 'Continuous health check pings detect node failures within milliseconds, gracefully removing the dead server from the pool so users experience zero dropped requests.',
+              celebrationText: 'Outstanding! You master high-availability cloud architecture.',
             },
           });
         }
@@ -187,7 +236,7 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
         </div>
         <div>
           <h4 className="text-base font-black text-slate-900">Synthesizing Intelligent UI Studio...</h4>
-          <p className="text-xs text-slate-500 mt-1">Generating interactive components, 3D flashcards, and live simulators for "{conceptName}"</p>
+          <p className="text-xs text-slate-500 mt-1">Generating interactive architecture diagrams, live simulation testbed, and 3D flashcards for "{conceptName}"</p>
         </div>
       </div>
     );
@@ -247,9 +296,19 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
         {/* MENTAL MODEL CALLOUT (Feynman Style) */}
         {data.mentalModel && (
           <div className="my-5 p-5 rounded-2xl bg-gradient-to-br from-indigo-50/60 via-slate-50/40 to-violet-50/40 border border-indigo-100/80 space-y-3">
-            <div className="flex items-center gap-2 text-indigo-900 font-bold text-xs uppercase tracking-wider">
-              <Brain size={15} className="text-indigo-600" />
-              <span>Mental Model & Real-World Analogy</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-indigo-900 font-bold text-xs uppercase tracking-wider">
+                <Brain size={15} className="text-indigo-600" />
+                <span>Mental Model & Real-World Analogy</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('simulation')}
+                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors"
+              >
+                <Eye size={13} /> View Architecture & Simulation
+              </button>
             </div>
 
             <p className="text-sm text-slate-800 leading-relaxed font-medium">
@@ -271,18 +330,33 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
 
         {/* NAVIGATION TABS */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-slate-100 no-scrollbar">
+          {/* COMBINED INTERACTIVE ARCHITECTURE FLOW & LIVE SIMULATOR */}
           <button
             type="button"
-            onClick={() => setActiveTab('simulator')}
+            onClick={() => setActiveTab('simulation')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'simulator'
+              activeTab === 'simulation'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <Sliders size={13} /> Live Simulator
+            <Zap size={13} /> Architecture & Live Simulator
           </button>
 
+          {/* DEEP CONCEPT EXPLANATION (REPLACING PERFORMANCE CHART) */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('explanation')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+              activeTab === 'explanation'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <BookOpen size={13} /> Deep Explanation
+          </button>
+
+          {/* 3D FLASHCARDS (Matches User Screenshot 2) */}
           <button
             type="button"
             onClick={() => setActiveTab('flashcards')}
@@ -295,30 +369,7 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
             <Layers size={13} /> 3D Flashcards ({data.flashcards?.length || 0})
           </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('charts')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'charts'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <BarChart3 size={13} /> Performance Chart
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('flow')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'flow'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Zap size={13} /> Execution Flow
-          </button>
-
+          {/* QUIZ & CELEBRATION (Matches User Screenshot 1) */}
           <button
             type="button"
             onClick={() => setActiveTab('quiz')}
@@ -331,6 +382,7 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
             <HelpCircle size={13} /> Quiz & Celebration
           </button>
 
+          {/* CODE IMPLEMENTATION */}
           <button
             type="button"
             onClick={() => setActiveTab('code')}
@@ -343,6 +395,7 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
             <Code2 size={13} /> Code Implementation
           </button>
 
+          {/* AI COPILOT */}
           <button
             type="button"
             onClick={() => setActiveTab('copilot')}
@@ -358,13 +411,26 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
 
         {/* ACTIVE TAB CONTENT DISPLAY */}
         <div className="pt-2">
-          {activeTab === 'simulator' && data.simulator && (
-            <InteractiveSimulator
-              config={data.simulator}
-              onParametersChange={setCurrentSimulatorParams}
+          {/* COMBINED ARCHITECTURE & SIMULATION */}
+          {activeTab === 'simulation' && (
+            <InteractiveArchitectureSimulator
+              steps={data.flowSteps}
+              conceptTitle={data.concept}
+              config={data.architectureSim}
             />
           )}
 
+          {/* DEEP EXPLANATION TAB */}
+          {activeTab === 'explanation' && (
+            <ConceptExplanation
+              conceptTitle={data.concept}
+              explanation={data.explanation}
+              onExploreQuiz={() => setActiveTab('quiz')}
+              onExploreSimulation={() => setActiveTab('simulation')}
+            />
+          )}
+
+          {/* 3D FLASHCARDS */}
           {activeTab === 'flashcards' && data.flashcards && (
             <FlashcardDeck
               cards={data.flashcards}
@@ -372,17 +438,7 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
             />
           )}
 
-          {activeTab === 'charts' && data.chart && (
-            <DynamicConceptChart config={data.chart} />
-          )}
-
-          {activeTab === 'flow' && data.flowSteps && (
-            <ArchitectureFlowStepper
-              steps={data.flowSteps}
-              conceptTitle={data.concept}
-            />
-          )}
-
+          {/* QUIZ & CELEBRATION */}
           {activeTab === 'quiz' && data.quiz && (
             <ConceptQuizCelebration
               quiz={data.quiz}
@@ -390,6 +446,7 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
             />
           )}
 
+          {/* CODE IMPLEMENTATION */}
           {activeTab === 'code' && data.codeSnippet && (
             <div className="bg-slate-900 rounded-3xl p-6 text-white space-y-4 shadow-md border border-slate-800">
               <div className="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -428,6 +485,7 @@ export const IntelligentUIContainer: React.FC<IntelligentUIContainerProps> = ({
             </div>
           )}
 
+          {/* AI COPILOT */}
           {activeTab === 'copilot' && (
             <IntelligentAICopilot
               conceptTitle={data.concept}

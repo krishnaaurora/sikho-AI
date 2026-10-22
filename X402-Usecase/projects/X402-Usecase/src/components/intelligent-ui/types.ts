@@ -68,6 +68,53 @@ export interface ConceptQuiz {
   celebrationText: string;
 }
 
+export interface ConceptExplanationBreakdown {
+  component: string;
+  role: string;
+  details: string;
+  icon?: string;
+}
+
+export interface ConceptExplanationTradeoff {
+  factor: string;
+  pro: string;
+  con: string;
+}
+
+export interface ConceptExplanationConfig {
+  title: string;
+  tagline: string;
+  overview: string;
+  problemSolved: string;
+  architectureBreakdown: ConceptExplanationBreakdown[];
+  tradeoffs: ConceptExplanationTradeoff[];
+  productionCaseStudy: {
+    company: string;
+    scenario: string;
+    impact: string;
+  };
+  failureModes: string[];
+}
+
+export interface ArchitectureSimulationServer {
+  id: string;
+  name: string;
+  port: number;
+  initialHealthy: boolean;
+  load?: number;
+}
+
+export interface ArchitectureSimulationConfig {
+  title: string;
+  description: string;
+  diagramImage?: string;
+  frontendTitle: string;
+  gatewayTitle: string;
+  algorithms: string[];
+  servers: ArchitectureSimulationServer[];
+  databaseTitle: string;
+}
+
 export interface IntelligentUiConceptData {
   concept: string;
   topic: string;
@@ -80,9 +127,12 @@ export interface IntelligentUiConceptData {
     keyTakeaway: string;
   };
   flashcards: IntelligentUiFlashcard[];
-  simulator: SimulatorConfig;
-  chart: ConceptChartConfig;
+  explanation: ConceptExplanationConfig;
+  architectureSim?: ArchitectureSimulationConfig;
   flowSteps: FlowStepNode[];
   codeSnippet: CodeSnippetConfig;
   quiz: ConceptQuiz;
+  // Optional backwards compatibility fields
+  simulator?: SimulatorConfig;
+  chart?: ConceptChartConfig;
 }

@@ -21,7 +21,44 @@ export interface IntelligentUiConceptData {
     category: string;
     hint?: string;
   }>;
-  simulator: {
+  explanation?: {
+    title: string;
+    tagline: string;
+    overview: string;
+    problemSolved: string;
+    architectureBreakdown: Array<{
+      component: string;
+      role: string;
+      details: string;
+    }>;
+    tradeoffs: Array<{
+      factor: string;
+      pro: string;
+      con: string;
+    }>;
+    productionCaseStudy: {
+      company: string;
+      scenario: string;
+      impact: string;
+    };
+    failureModes: string[];
+  };
+  architectureSim?: {
+    title: string;
+    description: string;
+    diagramImage?: string;
+    frontendTitle: string;
+    gatewayTitle: string;
+    algorithms: string[];
+    servers: Array<{
+      id: string;
+      name: string;
+      port: number;
+      initialHealthy: boolean;
+    }>;
+    databaseTitle: string;
+  };
+  simulator?: {
     title: string;
     description: string;
     parameters: Array<{
@@ -39,7 +76,7 @@ export interface IntelligentUiConceptData {
       values: Record<string, number>;
     }>;
   };
-  chart: {
+  chart?: {
     title: string;
     description: string;
     type: "bar" | "line" | "area";
@@ -113,6 +150,75 @@ function generateFallbackIntelligentUi(concept: string): IntelligentUiConceptDat
           hint: "How does the balancer detect dead nodes?"
         }
       ],
+      explanation: {
+        title: "In-Depth Architecture Breakdown: Load Balancing & Traffic Distribution",
+        tagline: "How modern distributed systems eliminate single points of failure and scale horizontally",
+        overview: "Load balancing serves as the traffic conductor of modern web systems. By sitting between incoming client requests and backend server clusters, it prevents single server overload, routes around degraded hardware, and guarantees uninterrupted 99.99% availability.",
+        problemSolved: "Without load balancing, all client traffic floods a single server. A traffic spike crashes the single CPU, causing total outage, lost user transactions, and unrecoverable downtime. With horizontal distribution, traffic is dynamically spread across healthy application workers.",
+        architectureBreakdown: [
+          {
+            component: "Frontend / Client Ingress",
+            role: "TLS Handshake & Rate Limiting",
+            details: "Terminates TLS/SSL connections, validates initial HTTP headers, and buffers network slow-loris attacks before they reach internal application nodes."
+          },
+          {
+            component: "Central Load Balancer / Gateway",
+            role: "Traffic Routing & Health Checks",
+            details: "Executes continuous health pings (e.g., GET /health every 5s). Automatically isolates degraded or crashed servers within milliseconds so no client receives a 500 error."
+          },
+          {
+            component: "Backend Server Pool",
+            role: "Stateless Application Execution",
+            details: "Homogeneous worker nodes executing business logic. Because nodes are stateless, instances can auto-scale from 2 to 200 nodes during traffic surges."
+          },
+          {
+            component: "Shared Cache & Persistent Database",
+            role: "Centralized State Management",
+            details: "Redis and distributed SQL/NoSQL databases manage user sessions and persistence, allowing any backend worker to service any user request idempotently."
+          }
+        ],
+        tradeoffs: [
+          {
+            factor: "Layer 4 (Transport) vs Layer 7 (Application)",
+            pro: "Layer 4 operates on raw TCP/IP packets at extreme wire-speed with minimal CPU overhead.",
+            con: "Layer 7 inspects HTTP paths and cookies for smart microservice routing, but requires SSL termination and higher CPU usage."
+          },
+          {
+            factor: "Round Robin vs Least Connections",
+            pro: "Round Robin is simple, predictable, and requires zero state tracking.",
+            con: "Least Connections is vastly superior when requests have varying execution times (e.g. video rendering vs simple JSON read)."
+          },
+          {
+            factor: "Sticky Sessions vs Stateless Tokens (JWT)",
+            pro: "Sticky sessions route a user to the exact same server where in-memory session data resides.",
+            con: "If that specific server crashes, the user is logged out. Modern architectures strictly favor stateless JWT tokens and external Redis caches."
+          }
+        ],
+        productionCaseStudy: {
+          company: "Netflix & AWS Production Fleet",
+          scenario: "Handling 300+ million concurrent video streaming requests during peak worldwide releases.",
+          impact: "Using dynamic routing proxies (Zuul / Envoy) combined with AWS Application Load Balancers, Netflix reroutes traffic across regions in under 60 seconds with zero customer interruption."
+        },
+        failureModes: [
+          "Thundering Herd on Health Check: If health check intervals are too aggressive, thousands of health pings overwhelm an already struggling server.",
+          "Cascading Failure: If Server 1 dies, its traffic dumps onto Server 2 and 3. Without circuit breakers, Server 2 crashes next, followed immediately by Server 3.",
+          "Stale DNS Caching: Client-side DNS resolvers caching expired IP addresses can bypass the load balancer and hit decommissioned instances."
+        ]
+      },
+      architectureSim: {
+        title: "Load Balancer & Cluster Traffic Simulation",
+        description: "Client Ingress → High-Availability Load Balancer → Multi-Instance Compute Pool",
+        diagramImage: "/architecture_diagram.jpg",
+        frontendTitle: "Client Ingress",
+        gatewayTitle: "Central Load Balancer",
+        algorithms: ["Round Robin", "Least Connections", "IP Hash"],
+        servers: [
+          { id: "srv-1", name: "Backend Instance A", port: 8081, initialHealthy: true },
+          { id: "srv-2", name: "Backend Instance B", port: 8082, initialHealthy: true },
+          { id: "srv-3", name: "Backend Instance C", port: 8083, initialHealthy: true }
+        ],
+        databaseTitle: "Primary DB & Redis Cache"
+      },
       simulator: {
         title: "Traffic & Node Saturation Simulator",
         description: "Adjust incoming request rate and available worker nodes to observe latency and failure rates in real time.",
@@ -293,6 +399,45 @@ function generateFallbackIntelligentUi(concept: string): IntelligentUiConceptDat
         hint: "Averages hide latency spikes."
       }
     ],
+    explanation: {
+      title: `In-Depth Architecture Breakdown: ${concept || "System Architecture"}`,
+      tagline: "How modern distributed systems eliminate single points of failure and scale horizontally",
+      overview: `${concept || "This architecture"} provides deterministic guarantees, decouples processing stages, and ensures fault-tolerant operation under intense real-world load.`,
+      problemSolved: "Prevents resource exhaustion, eliminates single points of failure, and protects backend storage systems from uncoordinated traffic surges.",
+      architectureBreakdown: [
+        { component: "Client / Ingress Layer", role: "Request Validation & Rate Limiting", details: "Terminates network connection and buffers incoming payloads." },
+        { component: "Gateway / Router", role: "Routing & Health Inspection", details: "Selects healthy backend worker nodes using optimal algorithms." },
+        { component: "Backend Compute Nodes", role: "Stateless Logic Processing", details: "Executes business transformations and communicates with state stores." },
+        { component: "Storage & Cache Tier", role: "Idempotent State Management", details: "Guarantees data integrity and provides ultra-low latency lookups." }
+      ],
+      tradeoffs: [
+        { factor: "Throughput vs Latency", pro: "Batching improves network efficiency.", con: "Slightly increases per-packet wait times." },
+        { factor: "Complexity vs Reliability", pro: "Modular distributed architecture survives node crashes.", con: "Requires observability and health check monitoring." }
+      ],
+      productionCaseStudy: {
+        company: "Global Cloud Fleet",
+        scenario: "Handling millions of concurrent requests across multi-zone clusters.",
+        impact: "Zero dropped requests during peak surges and transparent failover under hardware faults."
+      },
+      failureModes: [
+        "Thundering Herd on Health Check: High frequency pings exhaust struggling nodes.",
+        "Cascading Failures: One dead node cascades traffic to remaining nodes without rate limits."
+      ]
+    },
+    architectureSim: {
+      title: `${concept || "System Architecture"} Simulation`,
+      description: "Frontend Ingress → Load Balancing Gateway → Backend Server Cluster",
+      diagramImage: "/architecture_diagram.jpg",
+      frontendTitle: "Client Ingress",
+      gatewayTitle: "Central Gateway",
+      algorithms: ["Round Robin", "Least Connections", "IP Hash"],
+      servers: [
+        { id: "srv-1", name: "Backend Instance A", port: 8081, initialHealthy: true },
+        { id: "srv-2", name: "Backend Instance B", port: 8082, initialHealthy: true },
+        { id: "srv-3", name: "Backend Instance C", port: 8083, initialHealthy: true }
+      ],
+      databaseTitle: "Primary DB & Redis Cache"
+    },
     simulator: {
       title: `${concept} Live Parameter Sandbox`,
       description: "Manipulate operational parameters and watch how throughput, error rates, and resource utilization update in real time.",
@@ -379,6 +524,45 @@ Strictly format your response as a valid JSON object matching this schema:
     { "id": "fc-2", "front": "...", "back": "...", "category": "...", "hint": "..." },
     { "id": "fc-3", "front": "...", "back": "...", "category": "...", "hint": "..." }
   ],
+  "explanation": {
+    "title": "In-Depth Architecture Breakdown: ${targetConcept}",
+    "tagline": "How modern distributed systems eliminate single points of failure and scale horizontally",
+    "overview": "Crisp 2-3 sentence technical overview explaining the fundamental mechanism and role in distributed systems",
+    "problemSolved": "Detailed explanation of what breaks if this architecture is absent (e.g. bottlenecks, single points of failure)",
+    "architectureBreakdown": [
+      { "component": "Frontend / Client Ingress", "role": "TLS termination and initial packet validation", "details": "Explanation of ingress responsibility" },
+      { "component": "Central Load Balancer / Gateway", "role": "Traffic routing and active health checking", "details": "Explanation of gateway responsibility" },
+      { "component": "Backend Server Cluster", "role": "Stateless application logic execution", "details": "Explanation of worker responsibility" },
+      { "component": "Shared Storage / Cache", "role": "State persistence and fast retrieval", "details": "Explanation of database responsibility" }
+    ],
+    "tradeoffs": [
+      { "factor": "Key Tradeoff 1", "pro": "Advantage", "con": "Cost or limitation" },
+      { "factor": "Key Tradeoff 2", "pro": "Advantage", "con": "Cost or limitation" }
+    ],
+    "productionCaseStudy": {
+      "company": "Netflix / AWS / Uber / Cloudflare",
+      "scenario": "Concrete high-scale production scenario",
+      "impact": "Measurable production outcome or latency reduction"
+    },
+    "failureModes": [
+      "Failure mode 1 and defensive mitigation",
+      "Failure mode 2 and defensive mitigation"
+    ]
+  },
+  "architectureSim": {
+    "title": "${targetConcept} Architecture Simulation",
+    "description": "Interactive Frontend → Gateway → Backend Server Cluster",
+    "diagramImage": "/architecture_diagram.jpg",
+    "frontendTitle": "Client Ingress",
+    "gatewayTitle": "Load Balancer / Gateway",
+    "algorithms": ["Round Robin", "Least Connections", "IP Hash"],
+    "servers": [
+      { "id": "srv-1", "name": "Backend Node A", "port": 8081, "initialHealthy": true },
+      { "id": "srv-2", "name": "Backend Node B", "port": 8082, "initialHealthy": true },
+      { "id": "srv-3", "name": "Backend Node C", "port": 8083, "initialHealthy": true }
+    ],
+    "databaseTitle": "Primary DB & Redis Cluster"
+  },
   "simulator": {
     "title": "Interactive parameter testbed title",
     "description": "What learners can test by moving the sliders",
@@ -432,8 +616,18 @@ Chapter Context: "${chapterTitle || "Advanced Technical Chapter"}"`;
 
   try {
     const aiData = await queryAIWithJsonRotation(systemPrompt, userPrompt);
-    if (aiData && aiData.concept && aiData.flashcards && aiData.simulator) {
-      return sendSuccessResponse(res, aiData, "Intelligent UI concept generated successfully");
+    if (aiData && aiData.concept && (aiData.flashcards || aiData.explanation || aiData.flowSteps)) {
+      const fallback = generateFallbackIntelligentUi(targetConcept);
+      const mergedData = {
+        ...fallback,
+        ...aiData,
+        explanation: aiData.explanation || fallback.explanation,
+        architectureSim: aiData.architectureSim || fallback.architectureSim,
+        flowSteps: aiData.flowSteps || fallback.flowSteps,
+        flashcards: aiData.flashcards || fallback.flashcards,
+        quiz: aiData.quiz || fallback.quiz,
+      };
+      return sendSuccessResponse(res, mergedData, "Intelligent UI concept generated successfully");
     }
   } catch (error: any) {
     console.warn(`[Intelligent UI] AI generation fallback activated for "${targetConcept}":`, error?.message || error);
