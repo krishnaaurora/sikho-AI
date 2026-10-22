@@ -43,6 +43,56 @@ const ALL_SIKHO_APPS = [
   'Career Consultant',
 ];
 
+const GENERIC_EMAIL_DOMAINS = new Set([
+  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com',
+  'mail.com', 'proton.me', 'protonmail.com', 'example.com', 'sikhaoai.com'
+]);
+
+export const extractCollegeFromUser = (rawCollege?: string, email?: string): string => {
+  const trimmed = (rawCollege || '').trim();
+  const lower = trimmed.toLowerCase();
+
+  if (
+    trimmed &&
+    trimmed !== 'N/A' &&
+    lower !== 'undefined' &&
+    lower !== 'null' &&
+    lower !== 'none' &&
+    !lower.includes("haven't decided") &&
+    !lower.includes('not decided') &&
+    !lower.includes('undecided')
+  ) {
+    if (lower.includes('auror') || lower.includes('auroa')) {
+      return 'Aurora University';
+    }
+    return trimmed;
+  }
+
+  if (email && email.includes('@')) {
+    const domain = email.split('@')[1]?.toLowerCase().trim();
+    if (domain && !GENERIC_EMAIL_DOMAINS.has(domain)) {
+      const prefix = domain.split('.')[0];
+      if (prefix.startsWith('auror') || prefix.startsWith('auroa')) {
+        return 'Aurora University';
+      }
+      if (prefix === 'anurag') {
+        return 'Anurag University';
+      }
+      if (prefix === 'cmrec') {
+        return 'CMREC';
+      }
+      if (prefix === 'mvsrec') {
+        return 'MVSREC';
+      }
+      return prefix.length <= 5
+        ? prefix.toUpperCase()
+        : prefix.charAt(0).toUpperCase() + prefix.slice(1);
+    }
+  }
+
+  return '';
+};
+
 const AdminDashboard: React.FC = () => {
   const { logout, user } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
@@ -339,7 +389,8 @@ const AdminDashboard: React.FC = () => {
           const raw = (u.collegeUniversity || '').trim();
           const lower = raw.toLowerCase();
           const isUndecided = lower.includes("haven't decided") || lower.includes("not decided") || lower.includes("undecided");
-          const isUnassigned = !raw || raw === 'N/A' || lower === 'undefined' || lower === 'null';
+
+          const resolved = extractCollegeFromUser(raw, u.email);
 
           const sObj = {
             id: u._id,
@@ -350,14 +401,14 @@ const AdminDashboard: React.FC = () => {
             joinedAt: u.createdAt,
           };
 
-          if (isUndecided) {
+          if (resolved) {
+            if (!collegeMap[resolved]) collegeMap[resolved] = { count: 0, students: [] };
+            collegeMap[resolved].count += 1;
+            collegeMap[resolved].students.push(sObj);
+          } else if (isUndecided) {
             undecided.push(sObj);
-          } else if (isUnassigned) {
-            unassigned += 1;
           } else {
-            if (!collegeMap[raw]) collegeMap[raw] = { count: 0, students: [] };
-            collegeMap[raw].count += 1;
-            collegeMap[raw].students.push(sObj);
+            unassigned += 1;
           }
         });
 
@@ -515,11 +566,12 @@ const AdminDashboard: React.FC = () => {
   // Filtered Users Table
   const filteredUsers = (usersData.users || []).filter((u: any) => {
     const q = userSearch.toLowerCase();
+    const resolvedCollege = extractCollegeFromUser(u.collegeUniversity, u.email) || u.collegeUniversity || '';
     return (
       u.fullName?.toLowerCase().includes(q) ||
       u.email?.toLowerCase().includes(q) ||
       u._id?.toLowerCase().includes(q) ||
-      u.collegeUniversity?.toLowerCase().includes(q) ||
+      resolvedCollege.toLowerCase().includes(q) ||
       u.educationLevel?.toLowerCase().includes(q) ||
       u.targetRole?.toLowerCase().includes(q)
     );
@@ -1373,26 +1425,31 @@ const AdminDashboard: React.FC = () => {
                           <td className="py-3.5 px-4 font-bold text-slate-900">{u.fullName}</td>
                           <td className="py-3.5 px-4 text-slate-600 font-medium">{maskText(u.email, true)}</td>
                           <td className="py-3.5 px-4">
-                            {u.collegeUniversity && u.collegeUniversity !== 'N/A' && u.collegeUniversity.toLowerCase() !== 'undefined' ? (
-                              u.collegeUniversity.toLowerCase().includes("haven't decided") ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                                  <Sparkles className="w-3 h-3 text-amber-500" /> Undecided
-                                </span>
-                              ) : (
-                                <button
-                                  onClick={() => viewCollegeInUsers(u.collegeUniversity)}
-                                  className="flex items-center gap-1.5 text-left group"
-                                  title={`Filter all learners from ${u.collegeUniversity}`}
-                                >
-                                  <GraduationCap className="w-3.5 h-3.5 text-indigo-600 shrink-0 group-hover:scale-110 transition-transform" />
-                                  <span className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors truncate max-w-[210px]">
-                                    {u.collegeUniversity}
-                                  </span>
-                                </button>
-                              )
-                            ) : (
-                              <span className="text-[11px] text-slate-400 italic">Not Specified (Early Learner)</span>
-                            )}
+                            {(() => {
+                              const col = extractCollegeFromUser(u.collegeUniversity, u.email) || u.collegeUniversity;
+                              if (col && col !== 'N/A' && col.toLowerCase() !== 'undefined') {
+                                if (col.toLowerCase().includes("haven't decided")) {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                      <Sparkles className="w-3 h-3 text-amber-500" /> Undecided
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    onClick={() => viewCollegeInUsers(col)}
+                                    className="flex items-center gap-1.5 text-left group"
+                                    title={`Filter all learners from ${col}`}
+                                  >
+                                    <GraduationCap className="w-3.5 h-3.5 text-indigo-600 shrink-0 group-hover:scale-110 transition-transform" />
+                                    <span className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors truncate max-w-[210px]">
+                                      {col}
+                                    </span>
+                                  </button>
+                                );
+                              }
+                              return <span className="text-[11px] text-slate-400 italic">Not Specified (Early Learner)</span>;
+                            })()}
                           </td>
                           <td className="py-3.5 px-4">
                             <p className="font-semibold text-slate-800">{u.educationLevel || 'General'}</p>

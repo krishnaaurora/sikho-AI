@@ -223,7 +223,7 @@ export const getUsers = async (req: Request, res: Response) => {
           walletAddress: u.walletAddress || "N/A",
           totalLearningHours: u.totalLearningHours || 0,
           educationLevel: u.educationLevel || "N/A",
-          collegeUniversity: u.collegeUniversity || "N/A",
+          collegeUniversity: extractCollegeFromUser(u.collegeUniversity, u.email) || u.collegeUniversity || "N/A",
           targetRole: u.targetRole || "N/A",
           onboardingCompleted: !!u.onboardingCompleted,
           welcomeEmailSent: !!u.welcomeEmailSent,
@@ -1029,6 +1029,56 @@ export const sendTestWelcomeEmailController = async (req: Request, res: Response
   }
 };
 
+const GENERIC_EMAIL_DOMAINS = new Set([
+  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com',
+  'mail.com', 'proton.me', 'protonmail.com', 'example.com', 'sikhaoai.com'
+]);
+
+export const extractCollegeFromUser = (rawCollege?: string, email?: string): string => {
+  const trimmed = (rawCollege || '').trim();
+  const lower = trimmed.toLowerCase();
+
+  if (
+    trimmed &&
+    trimmed !== 'N/A' &&
+    lower !== 'undefined' &&
+    lower !== 'null' &&
+    lower !== 'none' &&
+    !lower.includes("haven't decided") &&
+    !lower.includes('not decided') &&
+    !lower.includes('undecided')
+  ) {
+    if (lower.includes('auror') || lower.includes('auroa')) {
+      return 'Aurora University';
+    }
+    return trimmed;
+  }
+
+  if (email && email.includes('@')) {
+    const domain = email.split('@')[1]?.toLowerCase().trim();
+    if (domain && !GENERIC_EMAIL_DOMAINS.has(domain)) {
+      const prefix = domain.split('.')[0];
+      if (prefix.startsWith('auror') || prefix.startsWith('auroa')) {
+        return 'Aurora University';
+      }
+      if (prefix === 'anurag') {
+        return 'Anurag University';
+      }
+      if (prefix === 'cmrec') {
+        return 'CMREC';
+      }
+      if (prefix === 'mvsrec') {
+        return 'MVSREC';
+      }
+      return prefix.length <= 5
+        ? prefix.toUpperCase()
+        : prefix.charAt(0).toUpperCase() + prefix.slice(1);
+    }
+  }
+
+  return '';
+};
+
 export const getColleges = async (req: Request, res: Response) => {
   try {
     const users = await User.find(
@@ -1048,7 +1098,8 @@ export const getColleges = async (req: Request, res: Response) => {
       const rawCollege = (u.collegeUniversity || "").trim();
       const lower = rawCollege.toLowerCase();
       const isUndecided = lower.includes("haven't decided") || lower.includes("not decided") || lower.includes("undecided");
-      const isUnassigned = !rawCollege || rawCollege === "N/A" || lower === "undefined" || lower === "null" || lower === "none";
+
+      const resolvedCollege = extractCollegeFromUser(rawCollege, u.email);
 
       const studentObj = {
         id: String(u._id),
@@ -1059,16 +1110,16 @@ export const getColleges = async (req: Request, res: Response) => {
         joinedAt: (u as any).createdAt,
       };
 
-      if (isUndecided) {
-        undecidedStudents.push(studentObj);
-      } else if (isUnassigned) {
-        unassignedCount += 1;
-      } else {
-        if (!collegeMap[rawCollege]) {
-          collegeMap[rawCollege] = { count: 0, students: [] };
+      if (resolvedCollege) {
+        if (!collegeMap[resolvedCollege]) {
+          collegeMap[resolvedCollege] = { count: 0, students: [] };
         }
-        collegeMap[rawCollege].count += 1;
-        collegeMap[rawCollege].students.push(studentObj);
+        collegeMap[resolvedCollege].count += 1;
+        collegeMap[resolvedCollege].students.push(studentObj);
+      } else if (isUndecided) {
+        undecidedStudents.push(studentObj);
+      } else {
+        unassignedCount += 1;
       }
     });
 
